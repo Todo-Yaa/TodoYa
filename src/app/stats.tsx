@@ -1,6 +1,26 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useUser } from '../context/user-context';
 
 export default function StatsScreen() {
+  const { orders } = useUser();
+
+  // Filter completed jobs for Juan Ríos
+  const myCompletedJobs = orders.filter(o => o.proveedor === 'Juan Ríos' && o.estado === 'Completado');
+
+  // Calculate dynamic earnings from completed jobs
+  const dynamicEarnings = myCompletedJobs.reduce((acc, job) => {
+    const numbers = job.precio.match(/\d+/g);
+    let priceVal = 80; // Default fallback
+    if (numbers && numbers.length > 0) {
+      priceVal = parseInt(numbers[0]);
+    }
+    return acc + priceVal;
+  }, 0);
+
+  // Baseline completed jobs + new completed ones
+  const totalCompletedCount = 15 + myCompletedJobs.length;
+  const totalEarnings = 2800 + dynamicEarnings;
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -13,19 +33,19 @@ export default function StatsScreen() {
         {/* Estadísticas principales */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>18</Text>
+            <Text style={styles.statValue}>{totalCompletedCount}</Text>
             <Text style={styles.statLabel}>Trabajos completados</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>Bs. 3,240</Text>
+            <Text style={styles.statValue}>Bs. {totalEarnings.toLocaleString()}</Text>
             <Text style={styles.statLabel}>Ingresos del mes</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: '#FFD700' }]}>4.9 ★</Text>
+            <Text style={[styles.statValue, { color: '#FFB400' }]}>4.9 ★</Text>
             <Text style={styles.statLabel}>Calificación promedio</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>92%</Text>
+            <Text style={styles.statValue}>95%</Text>
             <Text style={styles.statLabel}>Tasa de aceptación</Text>
           </View>
         </View>
@@ -59,7 +79,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
-  headerTitle: { fontSize: 22, fontWeight: '600', color: '#FFD700' },
+  headerTitle: { fontSize: 22, fontWeight: '600', color: '#FFB400' },
   headerSubtitle: { fontSize: 14, color: '#aaa', marginTop: 4 },
 
   body: { flex: 1, padding: 20, backgroundColor: '#f5f5f5' },
@@ -104,5 +124,5 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   repLabel: { fontSize: 15, color: '#555' },
-  stars: { fontSize: 16, color: '#FFD700' },
-})
+  stars: { fontSize: 16, color: '#FFB400' },
+});

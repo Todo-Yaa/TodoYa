@@ -1,50 +1,231 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useUser } from '../context/user-context';
 
+/**
+ * Componente PerfilScreen (Vista del Cliente):
+ * Permite gestionar los datos de la cuenta del cliente, cerrar sesión con confirmación
+ * y alternar al "Modo Proveedor" para acceder a las pantallas correspondientes.
+ */
 export default function PerfilScreen() {
+  const { toggleRole, logout, userName, userRole, setRole, activeUser, configurarProveedor } = useUser();
+  const isBusiness = userRole === 'business';
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
+
+  // Estados del onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([]);
+  const [experiencia, setExperiencia] = useState('1 a 3 años');
+  const [cobertura, setCobertura] = useState('Local');
+  const [descripcion, setDescripcion] = useState('');
+  const [errorOnboarding, setErrorOnboarding] = useState('');
+
+  const toggleServicio = (serv: string) => {
+    if (serviciosSeleccionados.includes(serv)) {
+      setServiciosSeleccionados(serviciosSeleccionados.filter(s => s !== serv));
+    } else {
+      setServiciosSeleccionados([...serviciosSeleccionados, serv]);
+    }
+  };
+
+  const handleSaveOnboarding = async () => {
+    if (serviciosSeleccionados.length === 0) {
+      setErrorOnboarding('Selecciona al menos un servicio o categoría.');
+      return;
+    }
+    if (descripcion.trim().length < 10) {
+      setErrorOnboarding('Escribe una descripción de al menos 10 caracteres.');
+      return;
+    }
+
+    setErrorOnboarding('');
+    const isEmpresa = activeUser?.tipoEntidad === 'empresa';
+    await configurarProveedor(
+      serviciosSeleccionados,
+      isEmpresa ? '' : experiencia,
+      descripcion.trim(),
+      isEmpresa ? cobertura : undefined
+    );
+    setShowOnboarding(false);
+    setServiciosSeleccionados([]);
+    setDescripcion('');
+    router.replace('/leads');
+  };
+
+  /**
+   * Cambia el rol actual a 'provider' (Proveedor) y redirige
+   * a la pestaña de Leads de Trabajo.
+   */
+  const handleSwitchRole = () => {
+    toggleRole();
+    router.replace('/leads'); // Redirección a la primera pestaña de proveedor
+  };
+
+  /**
+   * Muestra un modal de confirmación premium antes de proceder
+   * a cerrar la sesión del usuario.
+   */
+  const handleLogout = () => {
+    setConfirmConfig({
+      title: '¿Cerrar Sesión?',
+      message: '¿Estás seguro de que deseas cerrar tu sesión en Todo Ya?',
+      onConfirm: () => {
+        logout();
+        router.replace('/'); // Vuelve a la raíz (donde se activará el Auth Guard)
+      }
+    });
+    setShowConfirmModal(true);
+  };
+
+  // Calcula dinámicamente las iniciales del nombre de usuario para el Avatar
+  const avatarInitials = userName 
+    ? userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+    : 'CO';
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mi perfil</Text>
+      {/* Encabezado del perfil */}
+      <View style={[styles.header, isBusiness && styles.b2bHeader]}>
+        <Text style={[styles.headerTitle, isBusiness && { color: '#fff' }]}>
+          {isBusiness ? 'Perfil Corporativo' : 'Mi perfil'}
+        </Text>
       </View>
 
       <ScrollView style={styles.body}>
-        {/* Avatar y Info */}
+        {/* Sección de Tarjeta del Perfil */}
         <View style={styles.profileHeader}>
-          <View style={styles.avatarBig}>
-            <Text style={styles.avatarTextBig}>LM</Text>
+          <View style={[styles.avatarBig, isBusiness && { backgroundColor: '#6366f1' }]}>
+            <Text style={[styles.avatarTextBig, isBusiness && { color: '#fff' }]}>{avatarInitials}</Text>
           </View>
-          <Text style={styles.name}>Luis Alberto M.</Text>
-          <Text style={styles.veracity}>Índice de veracidad: <Text style={{ color: '#2F2F2F', fontWeight: '600' }}>98%</Text></Text>
+          <Text style={styles.name}>{userName}</Text>
+          <Text style={styles.veracity}>
+            {isBusiness ? 'Reputación B2B comercial: ' : 'Índice de veracidad: '}
+            <Text style={{ color: '#2F2F2F', fontWeight: '600' }}>99%</Text>
+          </Text>
           
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>12</Text>
-              <Text style={styles.statLabel}>Servicios</Text>
+              <Text style={styles.statNumber}>{isBusiness ? '5' : '12'}</Text>
+              <Text style={styles.statLabel}>{isBusiness ? 'Pedidos B2B' : 'Servicios'}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>4.8 ★</Text>
+              <Text style={styles.statNumber}>4.9 ★</Text>
               <Text style={styles.statLabel}>Calificación</Text>
             </View>
           </View>
         </View>
 
-        {/* Cuenta */}
-        <Text style={styles.sectionTitle}>Cuenta</Text>
-        
+        {/* Selector de Rol Dinámico */}
+        <Text style={styles.sectionTitle}>Cambiar de Rol</Text>
+        <View style={styles.rolesGrid}>
+          {[
+            { role: 'client', label: 'Cliente', icon: 'people-outline', desc: 'Residencial', path: '/' },
+            { role: 'business', label: 'Empresa', icon: 'business-outline', desc: 'B2B/Corporativo', path: '/' },
+            { role: 'provider', label: 'Proveedor', icon: 'construct-outline', desc: 'Ofrecer servicios', path: '/leads' }
+          ].map((item, index) => {
+            const isActive = userRole === item.role;
+            const isSelfBusiness = item.role === 'business';
+            const isSelfProvider = item.role === 'provider';
+            return (
+              <TouchableOpacity 
+                key={index} 
+                style={[
+                  styles.roleOptionCard,
+                  isActive && (
+                    isSelfBusiness ? styles.activeBusinessCard : 
+                    (isSelfProvider ? styles.activeProviderCard : styles.activeClientCard)
+                  )
+                ]}
+                onPress={() => {
+                  if (item.role === 'provider') {
+                    if (activeUser?.proveedorConfigurado) {
+                      setRole('provider');
+                      router.replace('/leads');
+                    } else {
+                      setShowOnboarding(true);
+                    }
+                  } else {
+                    setRole(item.role as any);
+                    router.replace(item.path as any);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name={item.icon as any} 
+                  size={20} 
+                  color={isActive ? '#fff' : '#666'} 
+                />
+                <Text style={[styles.roleOptionLabel, isActive && { color: '#fff', fontWeight: 'bold' }]}>
+                  {item.label}
+                </Text>
+                <Text style={[styles.roleOptionDesc, isActive && { color: '#e2e8f0' }]}>
+                  {item.desc}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Listado de Datos y Opciones de Cuenta */}
+        <Text style={styles.sectionTitle}>{isBusiness ? 'Datos de la Empresa' : 'Cuenta'}</Text>
         <View style={styles.accountCard}>
-          <TouchableOpacity style={styles.accountRow}>
-            <Ionicons name="location-outline" size={24} color="#666" />
-            <Text style={styles.accountText}>Santa Cruz de la Sierra</Text>
-          </TouchableOpacity>
+          {isBusiness ? (
+            <>
+              <View style={styles.accountRow}>
+                <Ionicons name="business-outline" size={24} color="#666" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: '#888' }}>Razón Social</Text>
+                  <Text style={styles.accountText}>{activeUser?.nombre || userName}</Text>
+                </View>
+              </View>
 
-          <TouchableOpacity style={styles.accountRow}>
-            <Ionicons name="call-outline" size={24} color="#666" />
-            <Text style={styles.accountText}>+591 7XXX XXXX</Text>
-          </TouchableOpacity>
+              <View style={styles.accountRow}>
+                <Ionicons name="document-text-outline" size={24} color="#666" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: '#888' }}>NIT / Registro</Text>
+                  <Text style={styles.accountText}>{activeUser?.nit || '481920028 (Verificado)'}</Text>
+                </View>
+              </View>
 
-          <TouchableOpacity style={[styles.accountRow, { borderBottomWidth: 0 }]}>
+              <View style={styles.accountRow}>
+                <Ionicons name="receipt-outline" size={24} color="#666" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: '#888' }}>Facturación Electrónica</Text>
+                  <Text style={styles.accountText}>{activeUser?.correoFacturacion || 'facturas@alfa.corp.bo'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.accountRow}>
+                <Ionicons name="pie-chart-outline" size={24} color="#666" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: '#888' }}>Rubro de la Empresa</Text>
+                  <Text style={styles.accountText}>{activeUser?.rubro || 'Papelería'}</Text>
+                </View>
+              </View>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.accountRow} activeOpacity={0.7}>
+                <Ionicons name="location-outline" size={24} color="#666" />
+                <Text style={styles.accountText}>Santa Cruz de la Sierra</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.accountRow} activeOpacity={0.7}>
+                <Ionicons name="call-outline" size={24} color="#666" />
+                <Text style={styles.accountText}>+591 7XXX XXXX</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          <TouchableOpacity 
+            style={[styles.accountRow, { borderBottomWidth: 0 }]}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
             <Ionicons name="log-out-outline" size={24} color="#e53935" />
             <Text style={[styles.accountText, { color: '#e53935' }]}>Cerrar sesión</Text>
           </TouchableOpacity>
@@ -54,6 +235,207 @@ export default function PerfilScreen() {
           Todo Ya © 2026
         </Text>
       </ScrollView>
+
+      {/* Modal de confirmación personalizado (Evita alertas nativas) */}
+      {showConfirmModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{confirmConfig.title}</Text>
+            <Text style={styles.modalMessage}>{confirmConfig.message}</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.modalCancelBtn}
+                onPress={() => setShowConfirmModal(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalConfirmBtn}
+                onPress={() => {
+                  setShowConfirmModal(false);
+                  confirmConfig.onConfirm();
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalConfirmText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Modal de Onboarding de Proveedor */}
+      {showOnboarding && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 420, width: '90%', maxHeight: '90%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={styles.modalTitle}>
+                  {activeUser?.tipoEntidad === 'empresa' 
+                    ? 'Registro de Proveedor B2B' 
+                    : 'Registro de Proveedor'}
+                </Text>
+                <TouchableOpacity onPress={() => setShowOnboarding(false)} style={{ padding: 4 }}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={styles.modalMessage}>
+                {activeUser?.tipoEntidad === 'empresa'
+                  ? 'Completa los siguientes datos comerciales para habilitar la oferta de servicios a otras empresas.'
+                  : 'Completa los siguientes datos para comenzar a postularte a solicitudes de clientes residenciales.'}
+              </Text>
+
+              {errorOnboarding ? (
+                <View style={styles.errorBanner}>
+                  <Ionicons name="warning-outline" size={16} color="#e53935" />
+                  <Text style={styles.errorText}>{errorOnboarding}</Text>
+                </View>
+              ) : null}
+
+              {/* Categorías de Servicios */}
+              <Text style={styles.fieldLabel}>
+                {activeUser?.tipoEntidad === 'empresa'
+                  ? '¿Qué categorías B2B/insumos ofrece tu empresa?'
+                  : '¿Qué servicios residenciales ofreces?'}
+              </Text>
+              <View style={styles.chipsContainer}>
+                {(activeUser?.tipoEntidad === 'empresa'
+                  ? ['Papelería', 'Decoración', 'Branding', 'Servicios B2B']
+                  : ['Plomería', 'Electricidad', 'Pintura', 'Climatización']
+                ).map((serv) => {
+                  const selected = serviciosSeleccionados.includes(serv);
+                  return (
+                    <TouchableOpacity
+                      key={serv}
+                      style={[
+                        styles.chip,
+                        selected && {
+                          backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
+                          borderColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
+                        }
+                      ]}
+                      onPress={() => toggleServicio(serv)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.chipText,
+                        selected && {
+                          color: activeUser?.tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F',
+                          fontWeight: 'bold',
+                        }
+                      ]}>
+                        {serv}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Pregunta Condicional */}
+              {activeUser?.tipoEntidad === 'empresa' ? (
+                <>
+                  <Text style={styles.fieldLabel}>Cobertura de servicio / entrega:</Text>
+                  <View style={styles.segmentContainer}>
+                    {['Local', 'Nacional'].map((cob) => {
+                      const selected = cobertura === cob;
+                      return (
+                        <TouchableOpacity
+                          key={cob}
+                          style={[
+                            styles.segmentBtn,
+                            selected && { backgroundColor: '#6366f1', borderColor: '#6366f1' }
+                          ]}
+                          onPress={() => setCobertura(cob)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.segmentText, selected && { color: '#fff', fontWeight: 'bold' }]}>
+                            {cob}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.fieldLabel}>Años de experiencia:</Text>
+                  <View style={styles.segmentContainer}>
+                    {['Menos de 1 año', '1 a 3 años', 'Más de 3 años'].map((exp) => {
+                      const selected = experiencia === exp;
+                      return (
+                        <TouchableOpacity
+                          key={exp}
+                          style={[
+                            styles.segmentBtn,
+                            selected && { backgroundColor: '#FFB400', borderColor: '#FFB400' }
+                          ]}
+                          onPress={() => setExperiencia(exp)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.segmentText, selected && { color: '#2F2F2F', fontWeight: 'bold' }]}>
+                            {exp}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
+              {/* Descripción */}
+              <Text style={styles.fieldLabel}>
+                {activeUser?.tipoEntidad === 'empresa'
+                  ? 'Presentación comercial de la empresa (mín. 10 caracteres):'
+                  : 'Breve descripción de tu especialidad (mín. 10 caracteres):'}
+              </Text>
+              <TextInput
+                style={styles.textArea}
+                multiline
+                numberOfLines={4}
+                value={descripcion}
+                onChangeText={setDescripcion}
+                placeholder={activeUser?.tipoEntidad === 'empresa'
+                  ? "Ej: Somos una distribuidora autorizada de papelería corporativa y material escolar a nivel nacional..."
+                  : "Ej: Plomero matriculado con experiencia en detección de fugas de agua y gas..."}
+                placeholderTextColor="#999"
+              />
+
+              {/* Acciones */}
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setShowOnboarding(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.modalConfirmBtn,
+                    {
+                      backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
+                    }
+                  ]}
+                  onPress={handleSaveOnboarding}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.modalConfirmText,
+                    {
+                      color: activeUser?.tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F',
+                    }
+                  ]}>
+                    Guardar y Activar
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -61,11 +443,14 @@ export default function PerfilScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   header: {
-    backgroundColor: '#FFD700',
+    backgroundColor: '#FFB400',
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
     alignItems: 'center',
+  },
+  b2bHeader: {
+    backgroundColor: '#1e293b',
   },
   headerTitle: { fontSize: 22, fontWeight: '600', color: '#2F2F2F' },
 
@@ -84,7 +469,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  avatarTextBig: { color: '#FFD700', fontSize: 36, fontWeight: 'bold' },
+  avatarTextBig: { color: '#FFB400', fontSize: 36, fontWeight: 'bold' },
   name: { fontSize: 20, fontWeight: '600', color: '#2F2F2F', marginBottom: 4 },
   veracity: { fontSize: 14, color: '#666' },
 
@@ -103,15 +488,21 @@ const styles = StyleSheet.create({
     color: '#888',
     textTransform: 'uppercase',
     marginBottom: 12,
+    marginTop: 10,
     paddingLeft: 4,
   },
 
   accountCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#f1f5f9',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
   accountRow: {
     flexDirection: 'row',
@@ -119,7 +510,225 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f1f5f9',
   },
   accountText: { fontSize: 16, color: '#2F2F2F' },
+
+  toggleCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
+    justifyContent: 'space-between',
+  },
+
+  // Role Grid Styles
+  rolesGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  roleOptionCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    borderRadius: 16,
+    padding: 10,
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  roleOptionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2F2F2F',
+    marginTop: 4,
+  },
+  roleOptionDesc: {
+    fontSize: 9,
+    color: '#888',
+  },
+  activeClientCard: {
+    backgroundColor: '#FFB400',
+    borderColor: '#FFB400',
+    shadowColor: '#FFB400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  activeProviderCard: {
+    backgroundColor: '#2F2F2F',
+    borderColor: '#2F2F2F',
+    shadowColor: '#2F2F2F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  activeBusinessCard: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  // Modal styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 380,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2F2F2F',
+    marginBottom: 10,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalCancelText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalConfirmBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    backgroundColor: '#FFB400',
+  },
+  modalConfirmText: {
+    color: '#2F2F2F',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ffebee',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ffcdd2',
+    marginBottom: 12,
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4a5568',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  chipText: {
+    fontSize: 12,
+    color: '#4a5568',
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+    borderRightWidth: 1,
+    borderRightColor: '#e2e8f0',
+  },
+  segmentText: {
+    fontSize: 12,
+    color: '#4a5568',
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: '#2d3748',
+    backgroundColor: '#fff',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    outlineStyle: 'none',
+  } as any,
 });

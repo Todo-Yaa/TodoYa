@@ -1,29 +1,43 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { useUser } from '../context/user-context';
 
 export default function TrabajosScreen() {
-  const trabajos = [
-    {
-      titulo: "Fuga lavabo — Luis M.",
-      estado: "Activo",
-      detalle: "Hoy 10:30 · Bs. 120 acordados",
-      progreso: 65,
-      color: "#FFD700"
-    },
-    {
-      titulo: "Grifo cocina — Ana P.",
-      estado: "Completado",
-      detalle: "Bs. 80 · 8 Jun 2026",
-      progreso: 100,
-      color: "#4caf50"
-    },
-    {
-      titulo: "Instalación enchufe sala",
-      estado: "En progreso",
-      detalle: "Ayer · Bs. 90",
-      progreso: 40,
-      color: "#FFD700"
-    },
-  ];
+  const { orders, completeJob } = useUser();
+
+  // Filter orders assigned to Juan Ríos
+  const trabajos = orders.filter(o => o.proveedor === 'Juan Ríos');
+
+  // Custom modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({ 
+    title: '', 
+    message: '', 
+    onConfirm: () => {},
+    singleButton: false
+  });
+
+  const handleComplete = (id: number, title: string) => {
+    setConfirmConfig({
+      title: '¿Completar Trabajo?',
+      message: `¿Confirmas que has terminado el trabajo "${title}"?`,
+      singleButton: false,
+      onConfirm: () => {
+        completeJob(id);
+        setTimeout(() => {
+          setConfirmConfig({
+            title: '✅ ¡Trabajo Completado!',
+            message: 'Se ha enviado la notificación al cliente y registrado en tus estadísticas.',
+            onConfirm: () => {},
+            singleButton: true
+          });
+          setShowConfirmModal(true);
+        }, 100);
+      }
+    });
+    setShowConfirmModal(true);
+  };
 
   return (
     <View style={styles.container}>
@@ -33,8 +47,8 @@ export default function TrabajosScreen() {
       </View>
 
       <ScrollView style={styles.body}>
-        {trabajos.map((trabajo, index) => (
-          <View key={index} style={styles.trabajoCard}>
+        {trabajos.map((trabajo) => (
+          <View key={trabajo.id} style={styles.trabajoCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.titulo}>{trabajo.titulo}</Text>
               <View style={[
@@ -51,17 +65,72 @@ export default function TrabajosScreen() {
               </View>
             </View>
 
-            <Text style={styles.detalle}>{trabajo.detalle}</Text>
+            <Text style={styles.detalle}>
+              {trabajo.servicio} · {trabajo.precio} acordados
+            </Text>
+            <Text style={styles.hora}>{trabajo.hora}</Text>
 
             <View style={styles.progressBar}>
               <View style={[
                 styles.progressFill, 
-                { width: `${trabajo.progreso}%`, backgroundColor: trabajo.color }
+                { 
+                  width: `${trabajo.progreso}%`, 
+                  backgroundColor: trabajo.estado === 'Completado' ? '#4caf50' : '#FFB400' 
+                }
               ]} />
             </View>
+
+            {trabajo.estado === 'En progreso' && (
+              <TouchableOpacity 
+                style={styles.completeBtn}
+                onPress={() => handleComplete(trabajo.id, trabajo.titulo)}
+              >
+                <Ionicons name="checkmark-circle" size={18} color="#2F2F2F" />
+                <Text style={styles.completeBtnText}>Marcar como completado</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
+
+        {trabajos.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="briefcase-outline" size={60} color="#ccc" />
+            <Text style={styles.emptyText}>No tienes trabajos asignados aún</Text>
+            <Text style={styles.emptySubtext}>Postúlate a leads activos para empezar a trabajar.</Text>
+          </View>
+        )}
       </ScrollView>
+
+      {/* Custom Modal */}
+      {showConfirmModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{confirmConfig.title}</Text>
+            <Text style={styles.modalMessage}>{confirmConfig.message}</Text>
+            <View style={styles.modalButtons}>
+              {!confirmConfig.singleButton && (
+                <TouchableOpacity 
+                  style={styles.modalCancelBtn}
+                  onPress={() => setShowConfirmModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                style={styles.modalConfirmBtn}
+                onPress={() => {
+                  setShowConfirmModal(false);
+                  confirmConfig.onConfirm();
+                }}
+              >
+                <Text style={styles.modalConfirmText}>
+                  {confirmConfig.singleButton ? 'Entendido' : 'Confirmar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -74,7 +143,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
-  headerTitle: { fontSize: 22, fontWeight: '600', color: '#FFD700' },
+  headerTitle: { fontSize: 22, fontWeight: '600', color: '#FFB400' },
 
   body: { flex: 1, padding: 20, backgroundColor: '#f5f5f5' },
 
@@ -98,16 +167,121 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
-  detalle: { fontSize: 14, color: '#555', marginBottom: 14 },
+  detalle: { fontSize: 14, color: '#555', marginBottom: 4 },
+  hora: { fontSize: 13, color: '#888', marginBottom: 12 },
 
   progressBar: {
     height: 8,
     backgroundColor: '#f0f0f0',
     borderRadius: 999,
     overflow: 'hidden',
+    marginBottom: 14,
   },
   progressFill: {
     height: '100%',
     borderRadius: 999,
   },
+
+  completeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFB400',
+    borderRadius: 10,
+    padding: 10,
+    gap: 8,
+    marginTop: 4,
+  },
+  completeBtnText: {
+    color: '#2F2F2F',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
+  emptyText: {
+    color: '#2F2F2F',
+    fontWeight: '600',
+    fontSize: 16,
+    marginTop: 16,
+  },
+  emptySubtext: {
+    color: '#888',
+    fontSize: 13,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+
+  // Modal styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 380,
+    borderWidth: 2,
+    borderColor: '#FFB400',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2F2F2F',
+    marginBottom: 10,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalCancelBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalCancelText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalConfirmBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    backgroundColor: '#FFB400',
+  },
+  modalConfirmText: {
+    color: '#2F2F2F',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
+
