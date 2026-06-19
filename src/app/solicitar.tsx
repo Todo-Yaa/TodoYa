@@ -21,6 +21,9 @@ interface CandidateProvider {
   experience: string;
   description: string;
   distance: string;
+  isCounterOffer?: boolean;
+  priceValue?: number;
+  originalPriceValue?: number;
 }
 
 const CANDIDATOS_DATABASE: Record<string, CandidateProvider[]> = {
@@ -81,11 +84,18 @@ export default function SolicitarScreen() {
   const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
   const [isFocused, setIsFocused] = useState(false);
 
-  // Estados para la búsqueda en tiempo real
-  const [faseBusqueda, setFaseBusqueda] = useState<'input' | 'scanning' | 'offers' | 'expired'>('input');
+  // Estados para la búsqueda en tiempo real y flujo B2B
+  const [faseBusqueda, setFaseBusqueda] = useState<'input' | 'scanning' | 'offers' | 'expired' | 'chat'>('input');
   const [contador, setContador] = useState(15);
   const [candidatos, setCandidatos] = useState<CandidateProvider[]>([]);
   const [timerIntervalId, setTimerIntervalId] = useState<any>(null);
+  const [presupuestoInput, setPresupuestoInput] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<CandidateProvider | null>(null);
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: 'client' | 'provider'; text: string; time: string }>>([]);
+  const [nuevoMensaje, setNuevoMensaje] = useState('');
+  const [replyIndex, setReplyIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
+  const [b2bVisibleOffers, setB2bVisibleOffers] = useState<CandidateProvider[]>([]);
 
   useEffect(() => {
     return () => {
@@ -163,6 +173,17 @@ export default function SolicitarScreen() {
           setServicio(serv);
           setUrgencia(urg);
           setPrecio(prec);
+
+          // Sugerencia de presupuesto para empresas en español
+          if (isBusiness) {
+            let sugerido = '600';
+            if (serv === 'Decoración & Eventos') sugerido = '1200';
+            else if (serv === 'Branding & Lettering') sugerido = '800';
+            else if (serv === 'Papelería & Oficina') sugerido = '450';
+            else if (serv === 'Servicios B2B') sugerido = '600';
+            setPresupuestoInput(sugerido);
+          }
+
           setLoading(false);
           setShowResult(true); // Despliega la tarjeta con los resultados sugeridos
         }, 500);
@@ -180,22 +201,71 @@ export default function SolicitarScreen() {
     // Simular escaneo de 2 segundos (radar de transmisión de señal)
     setTimeout(() => {
       const filtered = getCandidates(servicio);
-      setCandidatos(filtered);
-      setFaseBusqueda('offers');
-      setContador(15);
       
-      // Iniciar el temporizador regresivo de 15 segundos
-      const interval = setInterval(() => {
-        setContador((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            setFaseBusqueda('expired');
-            return 0;
+      if (isBusiness) {
+        // Generar contraofertas corporativas en base al presupuesto del usuario
+        const baseBudget = parseFloat(presupuestoInput) || 600;
+        const b2bCandidates = filtered.map((pro, index) => {
+          let finalPrice = baseBudget;
+          let isCounter = false;
+          
+          if (index === 1) {
+            // El segundo candidato ofrece un 8% menos
+            finalPrice = Math.round(baseBudget * 0.92);
+            isCounter = true;
+          } else if (index === 2 || (index === 0 && filtered.length === 1)) {
+            // El tercer candidato ofrece un 15% más por servicio premium
+            finalPrice = Math.round(baseBudget * 1.15);
+            isCounter = true;
           }
-          return prev - 1;
+          
+          return {
+            ...pro,
+            price: `Bs. ${finalPrice}`,
+            priceValue: finalPrice,
+            isCounterOffer: isCounter,
+            originalPriceValue: baseBudget,
+            description: index === 2 
+              ? `${pro.description} (Servicio Express Premium con Garantía extendida)`
+              : pro.description
+          };
         });
-      }, 1000);
-      setTimerIntervalId(interval);
+
+        setCandidatos(b2bCandidates);
+        setFaseBusqueda('offers');
+        setB2bVisibleOffers([]);
+
+        // Mostrar ofertas progresivamente para una UX espectacular
+        setB2bVisibleOffers([b2bCandidates[0]]);
+        
+        if (b2bCandidates[1]) {
+          setTimeout(() => {
+            setB2bVisibleOffers(prev => [...prev, b2bCandidates[1]]);
+          }, 1200);
+        }
+        if (b2bCandidates[2]) {
+          setTimeout(() => {
+            setB2bVisibleOffers(prev => [...prev, b2bCandidates[2]]);
+          }, 2400);
+        }
+      } else {
+        // Flujo residencial normal con temporizador de 15 segundos
+        setCandidatos(filtered);
+        setFaseBusqueda('offers');
+        setContador(15);
+        
+        const interval = setInterval(() => {
+          setContador((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              setFaseBusqueda('expired');
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        setTimerIntervalId(interval);
+      }
     }, 2000);
   };
 
@@ -206,6 +276,80 @@ export default function SolicitarScreen() {
   const aceptarOferta = (pro: CandidateProvider) => {
     if (timerIntervalId) clearInterval(timerIntervalId);
     
+    if (isBusiness) {
+      // Flujo B2B: Iniciar un chat interactivo con la empresa seleccionada antes de crear formalmente el pedido
+      setSelectedProvider(pro);
+      setFaseBusqueda('chat');
+      setReplyIndex(0);
+      setIsTyping(false);
+      
+      const priceMsg = pro.isCounterOffer 
+        ? `mi contraoferta de ${pro.price}` 
+        : `tu presupuesto propuesto de Bs. ${presupuestoInput}`;
+        
+      setChatMessages([
+        {
+          sender: 'provider',
+          text: `¡Hola! He recibido tu solicitud para el servicio de "${servicio}" y he aceptado formalizar ${priceMsg}. ¿Cuándo coordinamos la entrega o los detalles operativos?`,
+          time: 'Ahora'
+        }
+      ]);
+    } else {
+      // Flujo residencial estándar
+      let title = `${servicio} — ${urgencia === 'Alta' ? 'Urgente' : 'Estándar'}`;
+      if (inputText.length < 30) {
+        title = inputText;
+      } else {
+        title = inputText.substring(0, 25) + '...';
+      }
+
+      addOrder(title, servicio, inputText, pro.price, urgencia, pro.name);
+
+      setConfirmConfig({
+        title: '🎉 ¡Oferta Aceptada!',
+        message: `Has seleccionado a ${pro.name}. El proveedor ha aceptado y el trabajo está en curso.`,
+        onConfirm: () => {
+          resetForm();
+          router.replace('/pedidos');
+        }
+      });
+      setShowConfirmModal(true);
+    }
+  };
+
+  const enviarMensajeChat = () => {
+    if (!nuevoMensaje.trim() || !selectedProvider) return;
+    
+    const clientMsg = nuevoMensaje.trim();
+    setChatMessages(prev => [...prev, { sender: 'client', text: clientMsg, time: 'Ahora' }]);
+    setNuevoMensaje('');
+    
+    // Simular indicador de escribiendo
+    setTimeout(() => {
+      setIsTyping(true);
+    }, 600);
+    
+    // Simular respuesta del proveedor corporativo
+    setTimeout(() => {
+      setIsTyping(false);
+      let replyText = '';
+      
+      if (replyIndex === 0) {
+        replyText = `Excelente. Contamos con todo el equipamiento necesario y emitimos factura de ley. ¿Nos facilitas el NIT y correo de facturación corporativa para armar el contrato de servicio?`;
+      } else if (replyIndex === 1) {
+        replyText = `Entendido, queda agendado. Acabo de registrar la orden en nuestro sistema interno para comenzar mañana a primera hora. Te mantendremos informado del avance.`;
+      } else {
+        replyText = `Perfecto. Si tienes cualquier otro requerimiento o cambio de último momento, nos avisas por aquí. ¡Muchas gracias por confiar en nosotros!`;
+      }
+      
+      setChatMessages(prev => [...prev, { sender: 'provider', text: replyText, time: 'Ahora' }]);
+      setReplyIndex(prev => prev + 1);
+    }, 1800);
+  };
+
+  const concluirChatYCrearPedido = () => {
+    if (!selectedProvider) return;
+    
     let title = `${servicio} — ${urgencia === 'Alta' ? 'Urgente' : 'Estándar'}`;
     if (inputText.length < 30) {
       title = inputText;
@@ -213,17 +357,10 @@ export default function SolicitarScreen() {
       title = inputText.substring(0, 25) + '...';
     }
 
-    addOrder(title, servicio, inputText, pro.price, urgencia, pro.name);
+    addOrder(title, servicio, inputText, selectedProvider.price, urgencia, selectedProvider.name);
 
-    setConfirmConfig({
-      title: '🎉 ¡Oferta Aceptada!',
-      message: `Has seleccionado a ${pro.name}. El proveedor ha aceptado y el trabajo está en curso.`,
-      onConfirm: () => {
-        resetForm();
-        router.replace('/pedidos');
-      }
-    });
-    setShowConfirmModal(true);
+    resetForm();
+    router.replace('/pedidos');
   };
 
   /**
@@ -328,6 +465,25 @@ export default function SolicitarScreen() {
                   <Text style={styles.resultRow}><Text style={styles.bold}>Servicio:</Text> {servicio}</Text>
                   <Text style={styles.resultRow}><Text style={styles.bold}>Urgencia:</Text> <Text style={urgencia === 'Alta' ? styles.urgent : {}}>{urgencia}</Text></Text>
                   <Text style={styles.resultRow}><Text style={styles.bold}>Precio estimado:</Text> {precio}</Text>
+                  
+                  {isBusiness && (
+                    <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 }}>
+                      <Text style={[styles.inputLabel, { marginTop: 0, color: '#4f46e5' }]}>Tu presupuesto objetivo (Bs.):</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#818cf8', borderRadius: 10, paddingHorizontal: 12, height: 44, marginTop: 4 }}>
+                        <Text style={{ fontSize: 15, color: '#4f46e5', marginRight: 4, fontWeight: '600' }}>Bs.</Text>
+                        <TextInput
+                          style={{ flex: 1, fontSize: 15, color: '#1e293b', fontWeight: '600', outlineStyle: 'none' } as any}
+                          value={presupuestoInput}
+                          onChangeText={setPresupuestoInput}
+                          keyboardType="numeric"
+                          placeholder="Ej. 1000"
+                        />
+                      </View>
+                      <Text style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                        Los socios B2B enviarán cotizaciones o contraofertas basándose en esta cifra.
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 <TouchableOpacity 
@@ -365,21 +521,32 @@ export default function SolicitarScreen() {
               <Text style={[styles.headerTitle, isBusiness && { color: '#fff' }]}>Ofertas de Proveedores</Text>
               <Text style={[styles.headerSubtitle, isBusiness && { color: '#94a3b8' }]}>{servicio} · {urgencia}</Text>
             </View>
-            <View style={[styles.timerBadge, isBusiness && { backgroundColor: '#818cf8' }, contador < 5 && styles.timerDanger]}>
-              <Ionicons name="time-outline" size={18} color={contador < 5 ? '#fff' : (isBusiness ? '#fff' : '#2F2F2F')} />
-              <Text style={[styles.timerText, { color: contador < 5 ? '#fff' : (isBusiness ? '#fff' : '#2F2F2F') }]}>{contador}s</Text>
-            </View>
+            {isBusiness ? (
+              <View style={[styles.timerBadge, { backgroundColor: '#4f46e5' }]}>
+                <Ionicons name="radio-outline" size={18} color="#fff" />
+                <Text style={[styles.timerText, { color: '#fff' }]}>En vivo</Text>
+              </View>
+            ) : (
+              <View style={[styles.timerBadge, isBusiness && { backgroundColor: '#818cf8' }, contador < 5 && styles.timerDanger]}>
+                <Ionicons name="time-outline" size={18} color={contador < 5 ? '#fff' : (isBusiness ? '#fff' : '#2F2F2F')} />
+                <Text style={[styles.timerText, { color: contador < 5 ? '#fff' : (isBusiness ? '#fff' : '#2F2F2F') }]}>{contador}s</Text>
+              </View>
+            )}
           </View>
 
           {/* Map Section */}
           <View style={styles.mapWrap}>
-            <MapView providersList={candidatos} />
+            <MapView providersList={isBusiness ? b2bVisibleOffers : candidatos} />
           </View>
 
           {/* Candidates Slider */}
           <ScrollView style={styles.candidatesList} showsVerticalScrollIndicator={true}>
-            <Text style={styles.sectionTitle}>Proveedores Libres Disponibles ({candidatos.length})</Text>
-            {candidatos.map((pro, index) => {
+            <Text style={styles.sectionTitle}>
+              {isBusiness 
+                ? `Postulaciones recibidas (${b2bVisibleOffers.length} de ${candidatos.length})` 
+                : `Proveedores Libres Disponibles (${candidatos.length})`}
+            </Text>
+            {(isBusiness ? b2bVisibleOffers : candidatos).map((pro, index) => {
               const avatarInit = pro.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
               return (
                 <View key={index} style={styles.candidateCard}>
@@ -396,6 +563,18 @@ export default function SolicitarScreen() {
                         <Text style={[styles.candidateRating, !isBusiness && { color: '#b68000' }, isBusiness && { color: '#6366f1' }]}>{pro.rating}</Text>
                         <Text style={styles.candidateDistance}>· a {pro.distance} de distancia</Text>
                       </View>
+                      
+                      {/* Fila B2B explicativa de la oferta */}
+                      {isBusiness && (
+                        <View style={{ alignSelf: 'flex-start', marginVertical: 6, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: pro.isCounterOffer ? '#f5f3ff' : '#ecfdf5', borderWidth: 1, borderColor: pro.isCounterOffer ? '#c084fc' : '#34d399' }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: pro.isCounterOffer ? '#7c3aed' : '#059669' }}>
+                            {pro.isCounterOffer 
+                              ? `Contraoferta (Presupuesto objetivo: Bs. ${presupuestoInput})` 
+                              : 'Acepta tu presupuesto'}
+                          </Text>
+                        </View>
+                      )}
+
                       <Text style={styles.candidateDesc} numberOfLines={2}>{pro.description}</Text>
                     </View>
                   </View>
@@ -405,8 +584,10 @@ export default function SolicitarScreen() {
                       onPress={() => aceptarOferta(pro)}
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.acceptBtnText, isBusiness ? { color: '#fff' } : { color: '#2F2F2F' }]}>Aceptar Oferta</Text>
-                      <Ionicons name="checkmark" size={16} color={isBusiness ? '#fff' : '#2F2F2F'} />
+                      <Text style={[styles.acceptBtnText, isBusiness ? { color: '#fff' } : { color: '#2F2F2F' }]}>
+                        {isBusiness ? 'Aceptar y Chatear' : 'Aceptar Oferta'}
+                      </Text>
+                      <Ionicons name="chatbubbles-outline" size={16} color={isBusiness ? '#fff' : '#2F2F2F'} style={{ marginLeft: 2 }} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -446,6 +627,141 @@ export default function SolicitarScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.confirmButtonText, isBusiness ? { color: '#fff' } : { color: '#2F2F2F' }]}>Publicar en Lista General</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {faseBusqueda === 'chat' && selectedProvider && (
+        <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+          {/* Header del Chat */}
+          <View style={[styles.header, styles.b2bHeader, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+            <TouchableOpacity 
+              style={{ padding: 4 }} 
+              onPress={() => setFaseBusqueda('offers')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{selectedProvider.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981' }} />
+                <Text style={{ fontSize: 12, color: '#94a3b8' }}>En línea · Cotización: {selectedProvider.price}</Text>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={{ backgroundColor: '#4f46e5', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10 }}
+              onPress={concluirChatYCrearPedido}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>Ver Pedidos</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Lista de Mensajes */}
+          <ScrollView 
+            style={{ flex: 1, padding: 16 }}
+            contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+          >
+            {chatMessages.map((msg, index) => {
+              const isMe = msg.sender === 'client';
+              return (
+                <View 
+                  key={index}
+                  style={{
+                    alignSelf: isMe ? 'flex-end' : 'flex-start',
+                    backgroundColor: isMe ? '#818cf8' : '#fff',
+                    padding: 12,
+                    borderRadius: 16,
+                    borderTopRightRadius: isMe ? 4 : 16,
+                    borderTopLeftRadius: isMe ? 16 : 4,
+                    maxWidth: '80%',
+                    borderWidth: isMe ? 0 : 1,
+                    borderColor: '#e2e8f0',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.02,
+                    shadowRadius: 4,
+                    elevation: 1
+                  }}
+                >
+                  <Text style={{ fontSize: 14, color: isMe ? '#fff' : '#1e293b', lineHeight: 20 }}>
+                    {msg.text}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: isMe ? 'rgba(255,255,255,0.7)' : '#94a3b8', alignSelf: 'flex-end', marginTop: 4 }}>
+                    {msg.time}
+                  </Text>
+                </View>
+              );
+            })}
+
+            {/* Indicador de "Escribiendo..." */}
+            {isTyping && (
+              <View 
+                style={{
+                  alignSelf: 'flex-start',
+                  backgroundColor: '#fff',
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 16,
+                  borderTopLeftRadius: 4,
+                  borderWidth: 1,
+                  borderColor: '#e2e8f0',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <ActivityIndicator size="small" color="#6366f1" />
+                <Text style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>
+                  {selectedProvider.name} está escribiendo...
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Barra de Entrada del Chat */}
+          <View 
+            style={{
+              padding: 12,
+              backgroundColor: '#fff',
+              borderTopWidth: 1,
+              borderTopColor: '#e2e8f0',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10
+            }}
+          >
+            <TextInput
+              style={{
+                flex: 1,
+                backgroundColor: '#f1f5f9',
+                borderRadius: 20,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                fontSize: 14,
+                color: '#1e293b',
+                outlineStyle: 'none'
+              } as any}
+              placeholder="Escribe tu mensaje a la empresa..."
+              value={nuevoMensaje}
+              onChangeText={setNuevoMensaje}
+              onSubmitEditing={enviarMensajeChat}
+            />
+            <TouchableOpacity 
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: '#6366f1',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onPress={enviarMensajeChat}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="paper-plane" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -502,6 +818,12 @@ const styles = StyleSheet.create({
   },
   aiText: { color: '#5a4800', fontWeight: '500' },
 
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 6,
+  },
   input: {
     backgroundColor: 'white',
     borderRadius: 20,
