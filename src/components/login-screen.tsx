@@ -168,12 +168,26 @@ export default function LoginScreen() {
   };
 
   /**
-   * Completa automáticamente los campos del formulario con perfiles predefinidos
-   * para acelerar las pruebas y la demostración de la app.
+   * Completa automáticamente los campos del formulario y realiza el inicio de sesión
+   * de forma inmediata y automática para agilizar las pruebas y la demostración de la app.
    */
-  const manejarAccesoRapido = (usuarioDemo: string) => {
+  const manejarAccesoRapido = async (usuarioDemo: string) => {
     setCorreoOTelefono(usuarioDemo);
     setContrasena('demo1234');
+    setCargando(true); // Activar indicador de carga para dar feedback visual
+    
+    // Retraso artificial mínimo de 400ms para simular la autenticación y dar feedback
+    setTimeout(async () => {
+      const exito = await login(usuarioDemo, 'demo1234');
+      setCargando(false); // Desactivar carga
+      if (!exito) {
+        setConfiguracionModal({
+          titulo: '❌ Error de Acceso Rápido',
+          mensaje: 'No se pudo iniciar sesión automáticamente con la cuenta de prueba.'
+        });
+        setMostrarModal(true);
+      }
+    }, 400);
   };
 
   /**
@@ -531,22 +545,42 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Accesos Rápidos de Prueba */}
+        {/* Accesos Rápidos de Prueba (Con inicio de sesión automático y disabled al cargar) */}
         <View style={styles.demoCard}>
-          <Text style={styles.demoTitle}>💡 Acceso rápido de prueba:</Text>
+          <Text style={styles.demoTitle}>💡 Acceso rápido de prueba (Entrar al instante):</Text>
           <View style={styles.demoButtons}>
-            <TouchableOpacity style={styles.demoBtn} onPress={() => manejarAccesoRapido('luis@todoya.com')}>
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => manejarAccesoRapido('luis@todoya.com')}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
               <Text style={styles.demoBtnText}>Cliente (Luis)</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.demoBtn} onPress={() => manejarAccesoRapido('juan.rios@todoya.com')}>
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => manejarAccesoRapido('juan.rios@todoya.com')}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
               <Text style={styles.demoBtnText}>Proveedor (Juan)</Text>
             </TouchableOpacity>
           </View>
           <View style={[styles.demoButtons, { marginTop: 10 }]}>
-            <TouchableOpacity style={styles.demoBtn} onPress={() => manejarAccesoRapido('empresa@todoya.com')}>
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => manejarAccesoRapido('empresa@todoya.com')}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
               <Text style={styles.demoBtnText}>Empresa (Alfa)</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.demoBtn} onPress={() => manejarAccesoRapido('proveedor_empresa@todoya.com')}>
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => manejarAccesoRapido('proveedor_empresa@todoya.com')}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
               <Text style={styles.demoBtnText}>Empresa PRO (Beta)</Text>
             </TouchableOpacity>
           </View>
@@ -554,8 +588,7 @@ export default function LoginScreen() {
 
         {/* Divisor Visual de Redes Sociales */}
         <Text style={styles.socialDivider}>O CONECTAR CON</Text>
-        
-        {/* Botones de Inicio de Sesión / Registro Social (Google & LinkedIn) */}
+
         <View style={styles.socialContainer}>
           <TouchableOpacity 
             style={styles.socialBtn}
