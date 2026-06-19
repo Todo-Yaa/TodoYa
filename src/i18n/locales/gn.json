@@ -1,0 +1,47 @@
+{
+  "welcome": "¡Eguahé porá Todo Ya-pe!",
+  "tagline": "Tembiapo kuera ava aravo mbyrype 🚀",
+  "search_placeholder": "¿Mbae tembiapo reipota koápe? (Ej: Y ñehehë)",
+  "search_btn": "Eheka Mbaapohara",
+  "role_client": "Jogua (Koguagua)",
+  "role_provider": "Mbaapohara tee",
+  "role_business": "Ñemuha guasu / B2B",
+  "role_selector_title": "Eiporavo nde rol",
+  "solicitud": {
+    "title_b2b": "B2B pyahu jerure",
+    "title": "Pyahu jerure",
+    "subtitle_b2b": "Emboheka ne ñemuha rembiapokuera",
+    "subtitle": "Ere oréve mbae reipota",
+    "ai_classification": "IA oñemohendáta nde jerure",
+    "placeholder_b2b": "Ej: Ore roipota globokuera oréve guara raymípe, ha 15 resmas papel bond...",
+    "placeholder": "Ej: y ñehehë oî, pya'e...",
+    "analyze_btn": "IA ndive ehecha ha eheka socios B2B",
+    "confirm_btn": "Eñongatu ha eheka mbaapoharakuera",
+    "scanning_title": "Ejerurekuera embohasa",
+    "scanning_subtitle": "Ombohasa rembiapo {{servicio}} mbaapoharakuerrape 5km jakápe..."
+  },
+  "profile": {
+    "title": "Che mbae perfil",
+    "edit": "Embojevy marandu",
+    "save": "Eñongatu kambiokuera",
+    "logout": "Ejei koape",
+    "language": "App ñe'ë",
+    "experience": "Araguereko tembiapope",
+    "description": "Che rekove tembiapope"
+  },
+  "matching": {
+    "scanning": "Eheka mbaapoharakuera jakápe...",
+    "found": "¡Mbaapoharakuera ojejuhu!",
+    "no_provider": "Ndaipori mbaapoharakuera. ¿Reheka jeypota?",
+    "suggested_price": "Hepykue oñeha'aröva",
+    "urgency": "Pya'ete",
+    "urgency_normal": "Mbeguekatupe",
+    "urgency_high": "Pya'eve"
+  },
+  "common": {
+    "back": "Ejevy",
+    "accept": "Néi",
+    "cancel": "Ani",
+    "save": "Eñongatu"
+  }
+}

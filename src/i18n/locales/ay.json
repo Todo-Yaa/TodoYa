@@ -1,0 +1,47 @@
+{
+  "welcome": "¡Mantanipam Todo Ya-ru!",
+  "tagline": "Marka irnaqawinakana minutunakata 🚀",
+  "search_placeholder": "¿Kuna irnaqawisa jichhürunakan munta? (Ej: Uma ch'alla)",
+  "search_btn": "Irnaqiri thaqhaña",
+  "role_client": "Utachiri (Aliri)",
+  "role_provider": "Irnaqiri luriri",
+  "role_business": "Jach'a irnaqawina / B2B",
+  "role_selector_title": "Rol aklliri",
+  "solicitud": {
+    "title_b2b": "B2B machaq mayt'awi",
+    "title": "Machaq mayt'awi",
+    "subtitle_b2b": "Jach'a irnaqawit yatiyawinaka uñt'ayaña",
+    "subtitle": "Yatiyapxita kuna munta",
+    "ai_classification": "IA uñt'awayit thaqhani",
+    "placeholder_b2b": "Ej: Utachiri globompi askichañani munapxta, 15 resmas papel bond uñt'ata...",
+    "placeholder": "Ej: uma t'axra utachiri jak'ana, jank'aki...",
+    "analyze_btn": "IA-mpi uñt'aña thaqhañampi",
+    "confirm_btn": "Iyau thaqhañampi irnaqirinak thaqhaña",
+    "scanning_title": "Yatiyawinaka apayani",
+    "scanning_subtitle": "{{servicio}} yatiyawi apaskiri jak'achirinakaru 5km jak'ana..."
+  },
+  "profile": {
+    "title": "Nayan perfilxa",
+    "edit": "Yatiyawinak askichaña",
+    "save": "Yatiyawinaka imaña",
+    "logout": "Mistsuñani",
+    "language": "App arusa",
+    "experience": "Irnaqata maranaka",
+    "description": "Irnaqawit uñt'ayawi"
+  },
+  "matching": {
+    "scanning": "Jak'a irnaqirinaka thaqhaskiri...",
+    "found": "¡Irnaqirinaka jikxatata!",
+    "no_provider": "Janiw irnaqirinaka jikxatatikiti. ¿Wasitat thaqhaña?",
+    "suggested_price": "Aljañ qullqi uñt'ata",
+    "urgency": "Jila jank'aki",
+    "urgency_normal": "K'achata",
+    "urgency_high": "Jank'aki"
+  },
+  "common": {
+    "back": "Kutiña",
+    "accept": "Iyau",
+    "cancel": "Janiw",
+    "save": "Imaña"
+  }
+}

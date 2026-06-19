@@ -2,7 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
+import Storage from '../utils/storage';
+
 
 /**
  * Componente PerfilScreen (Vista del Cliente):
@@ -10,6 +13,7 @@ import { useUser } from '../context/user-context';
  * y alternar al "Modo Proveedor" para acceder a las pantallas correspondientes.
  */
 export default function PerfilScreen() {
+  const { t, i18n } = useTranslation();
   const { toggleRole, logout, userName, userRole, setRole, activeUser, configurarProveedor } = useUser();
   const isBusiness = userRole === 'business';
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -90,7 +94,7 @@ export default function PerfilScreen() {
       {/* Encabezado del perfil */}
       <View style={[styles.header, isBusiness && styles.b2bHeader]}>
         <Text style={[styles.headerTitle, isBusiness && { color: '#fff' }]}>
-          {isBusiness ? 'Perfil Corporativo' : 'Mi perfil'}
+          {isBusiness ? 'Perfil Corporativo' : t('profile.title')}
         </Text>
       </View>
 
@@ -119,12 +123,12 @@ export default function PerfilScreen() {
         </View>
 
         {/* Selector de Rol Dinámico */}
-        <Text style={styles.sectionTitle}>Cambiar de Rol</Text>
+        <Text style={styles.sectionTitle}>{t('role_selector_title')}</Text>
         <View style={styles.rolesGrid}>
           {[
-            { role: 'client', label: 'Cliente natural', icon: 'people-outline', desc: 'Residencial', path: '/' },
-            { role: 'business', label: 'Empresa (Cliente)', icon: 'business-outline', desc: 'B2B/Corporativo', path: '/' },
-            { role: 'provider', label: 'Proveedor', icon: 'construct-outline', desc: 'Ofrecer servicios', path: '/leads' }
+            { role: 'client', label: t('role_client'), icon: 'people-outline', desc: 'Residencial', path: '/' },
+            { role: 'business', label: t('role_business'), icon: 'business-outline', desc: 'B2B/Corporativo', path: '/' },
+            { role: 'provider', label: t('role_provider'), icon: 'construct-outline', desc: 'Ofrecer servicios', path: '/leads' }
           ]
             .filter((item) => {
               const entity = activeUser?.tipoEntidad || 'natural';
@@ -230,13 +234,56 @@ export default function PerfilScreen() {
             </>
           )}
 
+          {/* Fila del selector de idiomas */}
+          <View style={styles.accountRow}>
+            <Ionicons name="globe-outline" size={24} color="#666" />
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <Text style={styles.accountText}>{t('profile.language')}</Text>
+              <View style={{ flexDirection: 'row', gap: 4 }}>
+                {[
+                  { code: 'es', name: 'ES' },
+                  { code: 'en', name: 'EN' },
+                  { code: 'qu', name: 'QU' },
+                  { code: 'ay', name: 'AY' },
+                  { code: 'gn', name: 'GN' }
+                ].map((lang) => {
+                  const isActive = i18n.language === lang.code;
+                  return (
+                    <TouchableOpacity
+                      key={lang.code}
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 5,
+                        borderRadius: 8,
+                        backgroundColor: isActive ? (isBusiness ? '#6366f1' : '#FFB400') : '#e2e8f0',
+                      }}
+                      onPress={async () => {
+                        await i18n.changeLanguage(lang.code);
+                        await Storage.setItem('user-language', lang.code);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ 
+                        fontSize: 10, 
+                        fontWeight: 'bold', 
+                        color: isActive ? (isBusiness ? '#fff' : '#2F2F2F') : '#475569' 
+                      }}>
+                        {lang.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+
           <TouchableOpacity 
             style={[styles.accountRow, { borderBottomWidth: 0 }]}
             onPress={handleLogout}
             activeOpacity={0.7}
           >
             <Ionicons name="log-out-outline" size={24} color="#e53935" />
-            <Text style={[styles.accountText, { color: '#e53935' }]}>Cerrar sesión</Text>
+            <Text style={[styles.accountText, { color: '#e53935' }]}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </View>
 

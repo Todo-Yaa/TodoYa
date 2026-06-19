@@ -2,8 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
 import MapView from '../components/map-view';
+import { matchProviders } from '../services/ai-matching';
 
 /**
  * Componente SolicitarScreen:
@@ -69,6 +71,7 @@ const getCandidates = (cat: string) => {
 };
 
 export default function SolicitarScreen() {
+  const { t } = useTranslation();
   const { addOrder, userRole } = useUser();
   const isBusiness = userRole === 'business';
   const [inputText, setInputText] = useState('');
@@ -104,10 +107,9 @@ export default function SolicitarScreen() {
   }, [timerIntervalId]);
 
   /**
-   * Procesa la entrada de texto simulando un análisis progresivo con Inteligencia Artificial.
-   * Cuenta con 3 etapas visuales con retardos programados de 500ms para enriquecer la UX.
+   * Procesa la entrada de texto mediante el algoritmo de matching (IA / local).
    */
-  const processNLP = () => {
+  const processNLP = async () => {
     if (!inputText.trim()) {
       setConfirmConfig({
         title: '⚠️ Entrada vacía',
@@ -121,74 +123,59 @@ export default function SolicitarScreen() {
     setLoading(true);
     setLoadingText('Analizando descripción con IA...');
 
-    // Etapa 1: Análisis gramatical básico
-    setTimeout(() => {
-      setLoadingText('Clasificando categoría de servicio...');
+    try {
+      // 1. Llamar al servicio de emparejamiento inteligente (intenta API online -> fallback local offline)
+      const res = await matchProviders(inputText, -17.784, -63.180);
       
-      // Etapa 2: Mapeo de categorías
-      setTimeout(() => {
-        setLoadingText('Calculando rango de precio estimado...');
+      const cat = res.nlpAnalysis.categoriaDetectada;
+      const urg = res.nlpAnalysis.urgenciaDetectada;
+      
+      setServicio(cat);
+      setUrgencia(urg);
+      setPrecio(res.precioSugerido);
 
-        // Etapa 3: Cálculo del presupuesto de base
-        setTimeout(() => {
-          const text = inputText.toLowerCase();
-          let serv = isBusiness ? 'Decoración & Eventos' : 'Plomería'; // Categoría por defecto
-          let urg = 'Normal';
-          let prec = isBusiness ? 'Bs. 800–1500' : 'Bs. 80–150';
+      // 2. Mapear los proveedores obtenidos al formato del estado de la pantalla
+      let mapped = res.proveedoresEmparejados.map((p: any) => ({
+        name: p.nombre,
+        lat: p.lat,
+        lng: p.lng,
+        service: p.especialidad,
+        rating: `${p.rating} ★`,
+        price: urg === 'Alta' ? 'Bs. 180' : 'Bs. 120', // precio base estimado
+        experience: `${p.experiencia} años`,
+        description: p.descripcion,
+        distance: `${p.distanciaKm} km`
+      }));
 
-          if (isBusiness) {
-            // Clasificación Corporativa B2B
-            if (text.includes('decor') || text.includes('evento') || text.includes('fiesta') || text.includes('cumpleañ') || text.includes('aniversario') || text.includes('globos') || text.includes('arreglos')) {
-              serv = 'Decoración & Eventos';
-              prec = 'Bs. 800–2500';
-            } else if (text.includes('lettering') || text.includes('litering') || text.includes('letrero') || text.includes('rotul') || text.includes('branding') || text.includes('diseño') || text.includes('grafic') || text.includes('gráfic')) {
-              serv = 'Branding & Lettering';
-              prec = 'Bs. 400–1200';
-            } else if (text.includes('papel') || text.includes('insumo') || text.includes('suministro') || text.includes('carpetas') || text.includes('útiles') || text.includes('bolígrafo') || text.includes('cuaderno') || text.includes('resma')) {
-              serv = 'Papelería & Oficina';
-              prec = 'Bs. 200–800';
-            } else if (text.includes('electr') || text.includes('luz') || text.includes('ac') || text.includes('clima') || text.includes('plomer') || text.includes('fuga')) {
-              serv = 'Servicios B2B';
-              prec = 'Bs. 300–1000';
-            }
-          } else {
-            // Clasificación Residencial Estándar
-            if (text.includes('electr') || text.includes('luz') || text.includes('cable') || text.includes('enchufe') || text.includes('corto')) {
-              serv = 'Electricidad';
-              prec = 'Bs. 60–120';
-            } else if (text.includes('pint') || text.includes('pared') || text.includes('techo')) {
-              serv = 'Pintura';
-              prec = 'Bs. 120–300';
-            } else if (text.includes('ac') || text.includes('aire') || text.includes('clima') || text.includes('frío') || text.includes('split')) {
-              serv = 'Climatización';
-              prec = 'Bs. 150–400';
-            }
-          }
+      // Si no devolvió nada (por ejemplo, categorías B2B no cargadas en la BD temporal), usar fallback estático
+      if (mapped.length === 0) {
+        mapped = getCandidates(cat);
+      }
 
-          // Detección del nivel de urgencia del usuario
-          if (text.includes('urgente') || text.includes('ahora') || text.includes('rápido') || text.includes('rapido') || text.includes('urgencia')) {
-            urg = 'Alta';
-          }
+      setCandidatos(mapped);
 
-          setServicio(serv);
-          setUrgencia(urg);
-          setPrecio(prec);
+      // 3. Si es cuenta corporativa, pre-calcular sugerido
+      if (isBusiness) {
+        let sugerido = '600';
+        if (cat === 'Decoración & Eventos') sugerido = '1200';
+        else if (cat === 'Branding & Lettering') sugerido = '800';
+        else if (cat === 'Papelería & Oficina') sugerido = '450';
+        else if (cat === 'Servicios B2B') sugerido = '600';
+        setPresupuestoInput(sugerido);
+      }
 
-          // Sugerencia de presupuesto para empresas en español
-          if (isBusiness) {
-            let sugerido = '600';
-            if (serv === 'Decoración & Eventos') sugerido = '1200';
-            else if (serv === 'Branding & Lettering') sugerido = '800';
-            else if (serv === 'Papelería & Oficina') sugerido = '450';
-            else if (serv === 'Servicios B2B') sugerido = '600';
-            setPresupuestoInput(sugerido);
-          }
-
-          setLoading(false);
-          setShowResult(true); // Despliega la tarjeta con los resultados sugeridos
-        }, 500);
-      }, 500);
-    }, 500);
+      setLoading(false);
+      setShowResult(true);
+    } catch (err) {
+      console.error('Error al clasificar solicitud:', err);
+      setLoading(false);
+      setConfirmConfig({
+        title: '⚠️ Error de análisis',
+        message: 'No pudimos completar el análisis de IA. Inténtalo de nuevo.',
+        onConfirm: () => {}
+      });
+      setShowConfirmModal(true);
+    }
   };
 
   /**
@@ -408,10 +395,10 @@ export default function SolicitarScreen() {
           {/* Encabezado de la página */}
           <View style={[styles.header, isBusiness && styles.b2bHeader]}>
             <Text style={[styles.headerTitle, isBusiness && { color: '#fff' }]}>
-              {isBusiness ? 'Nueva solicitud B2B' : 'Nueva solicitud'}
+              {isBusiness ? t('solicitud.title_b2b') : t('solicitud.title')}
             </Text>
             <Text style={[styles.headerSubtitle, isBusiness && { color: '#94a3b8' }]}>
-              {isBusiness ? 'Publica los requerimientos corporativos de tu empresa' : 'Cuéntanos qué necesitas'}
+              {isBusiness ? t('solicitud.subtitle_b2b') : t('solicitud.subtitle')}
             </Text>
           </View>
 
@@ -419,7 +406,7 @@ export default function SolicitarScreen() {
             {/* Chip informativo sobre IA */}
             <View style={[styles.aiChip, isBusiness && styles.b2bAiChip]}>
               <Ionicons name="sparkles" size={20} color={isBusiness ? '#818cf8' : '#FFB400'} />
-              <Text style={[styles.aiText, isBusiness && { color: '#4f46e5' }]}>La IA clasificará tu pedido corporativo</Text>
+              <Text style={[styles.aiText, isBusiness && { color: '#4f46e5' }]}>{t('solicitud.ai_classification')}</Text>
             </View>
 
             {/* Input de descripción multilínea */}
@@ -429,7 +416,7 @@ export default function SolicitarScreen() {
                 isBusiness && { borderColor: '#818cf8' },
                 isFocused && (isBusiness ? styles.inputFocusedB2B : styles.inputFocused)
               ]}
-              placeholder={isBusiness ? "Ej: Requerimos decoración corporativa con globos para nuestro aniversario de oficina, y 15 resmas de papel bond..." : "Ej: tengo una fuga debajo del lavabo, es urgente..."}
+              placeholder={isBusiness ? t('solicitud.placeholder_b2b') : t('solicitud.placeholder')}
               value={inputText}
               onChangeText={setInputText}
               multiline
@@ -452,7 +439,7 @@ export default function SolicitarScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons name="send" size={22} color={isBusiness ? '#fff' : '#FFB400'} />
-                <Text style={[styles.sendButtonText, isBusiness && { color: '#fff' }]}>Analizar y buscar socios B2B</Text>
+                <Text style={[styles.sendButtonText, isBusiness && { color: '#fff' }]}>{t('solicitud.analyze_btn')}</Text>
               </TouchableOpacity>
             )}
 
@@ -491,7 +478,7 @@ export default function SolicitarScreen() {
                   onPress={iniciarEscaneoRealTime}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.confirmButtonText, isBusiness && { color: '#fff' }]}>Confirmar y buscar proveedores</Text>
+                  <Text style={[styles.confirmButtonText, isBusiness && { color: '#fff' }]}>{t('solicitud.confirm_btn')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -503,9 +490,9 @@ export default function SolicitarScreen() {
         <View style={styles.scanningContainer}>
           <Ionicons name="sparkles" size={54} color={isBusiness ? '#6366f1' : '#FFB400'} style={{ marginBottom: 20 }} />
           <ActivityIndicator size="large" color={isBusiness ? '#6366f1' : '#FFB400'} />
-          <Text style={styles.scanningTitle}>Transmitiendo Solicitud</Text>
+          <Text style={styles.scanningTitle}>{t('solicitud.scanning_title')}</Text>
           <Text style={styles.scanningSubtitle}>
-            Enviando requerimiento de {servicio} a proveedores libres en un radio de 5km...
+            {t('solicitud.scanning_subtitle', { servicio })}
           </Text>
           <View style={[styles.radarOuterCircle, isBusiness && { backgroundColor: 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.3)' }]}>
             <View style={[styles.radarInnerCircle, isBusiness && { backgroundColor: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366f1' }]} />

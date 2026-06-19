@@ -1,0 +1,47 @@
+{
+  "welcome": "¡Bienvenido a Todo Ya!",
+  "tagline": "Servicios Locales en Minutos",
+  "search_placeholder": "¿Qué servicio necesitas hoy? (Ej: Mi caño gotea)",
+  "search_btn": "Buscar Proveedor",
+  "role_client": "Cliente Residencial",
+  "role_provider": "Proveedor de Servicios",
+  "role_business": "Empresa / Corporativo",
+  "role_selector_title": "Selecciona tu Rol",
+  "solicitud": {
+    "title_b2b": "Nueva solicitud B2B",
+    "title": "Nueva solicitud",
+    "subtitle_b2b": "Publica los requerimientos corporativos de tu empresa",
+    "subtitle": "Cuéntanos qué necesitas",
+    "ai_classification": "La IA clasificará tu pedido corporativo",
+    "placeholder_b2b": "Ej: Requerimos decoración corporativa con globos para nuestro aniversario de oficina, y 15 resmas de papel bond...",
+    "placeholder": "Ej: tengo una fuga debajo del lavabo, es urgente...",
+    "analyze_btn": "Analizar y buscar socios B2B",
+    "confirm_btn": "Confirmar y buscar proveedores",
+    "scanning_title": "Transmitiendo Solicitud",
+    "scanning_subtitle": "Enviando requerimiento de {{servicio}} a proveedores libres en un radio de 5km..."
+  },
+  "profile": {
+    "title": "Mi Perfil",
+    "edit": "Editar Datos",
+    "save": "Guardar Cambios",
+    "logout": "Cerrar Sesión",
+    "language": "Idioma de la App",
+    "experience": "Años de Experiencia",
+    "description": "Descripción Profesional"
+  },
+  "matching": {
+    "scanning": "Escaneando proveedores cercanos...",
+    "found": "¡Proveedores encontrados!",
+    "no_provider": "No se encontraron proveedores. ¿Deseas reintentar?",
+    "suggested_price": "Precio sugerido por el mercado",
+    "urgency": "Urgencia",
+    "urgency_normal": "Normal",
+    "urgency_high": "Alta"
+  },
+  "common": {
+    "back": "Volver",
+    "accept": "Aceptar",
+    "cancel": "Cancelar",
+    "save": "Guardar"
+  }
+}

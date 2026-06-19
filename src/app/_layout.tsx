@@ -165,11 +165,32 @@ function NavigationLayout() {
   );
 }
 
+import { useEffect, useState } from 'react';
+import '../i18n'; // Inicializar i18n
+import { loadSavedLanguage } from '../i18n';
+
 /**
  * Componente Raíz de Entrada (RootLayout):
  * Envuelve el árbol con `UserProvider` para disponibilizar el estado de sesión y datos.
+ * Inicializa la carga del idioma guardado del usuario antes de renderizar la aplicación.
  */
 export default function RootLayout() {
+  const [isI18nReady, setIsI18nReady] = useState(false);
+
+  useEffect(() => {
+    loadSavedLanguage().finally(() => {
+      setIsI18nReady(true);
+    });
+  }, []);
+
+  if (!isI18nReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#FFB400" />
+      </View>
+    );
+  }
+
   return (
     <UserProvider>
       <NavigationLayout />

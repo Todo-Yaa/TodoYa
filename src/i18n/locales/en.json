@@ -1,0 +1,47 @@
+{
+  "welcome": "Welcome to Todo Ya!",
+  "tagline": "Local Services in Minutes",
+  "search_placeholder": "What service do you need today? (e.g. My tap is leaking)",
+  "search_btn": "Find Provider",
+  "role_client": "Residential Client",
+  "role_provider": "Service Provider",
+  "role_business": "Business / Corporate",
+  "role_selector_title": "Select your Role",
+  "solicitud": {
+    "title_b2b": "New B2B Request",
+    "title": "New Request",
+    "subtitle_b2b": "Publish your company's corporate requirements",
+    "subtitle": "Tell us what you need",
+    "ai_classification": "AI will classify your request",
+    "placeholder_b2b": "E.g. We require corporate decoration with balloons for our office anniversary, and 15 reams of bond paper...",
+    "placeholder": "E.g. I have a leak under the sink, it's urgent...",
+    "analyze_btn": "Analyze & find B2B partners",
+    "confirm_btn": "Confirm and find providers",
+    "scanning_title": "Broadcasting Request",
+    "scanning_subtitle": "Sending {{servicio}} request to free providers in a 5km radius..."
+  },
+  "profile": {
+    "title": "My Profile",
+    "edit": "Edit Info",
+    "save": "Save Changes",
+    "logout": "Log Out",
+    "language": "App Language",
+    "experience": "Years of Experience",
+    "description": "Professional Description"
+  },
+  "matching": {
+    "scanning": "Scanning nearby providers...",
+    "found": "Providers found!",
+    "no_provider": "No providers found. Do you want to retry?",
+    "suggested_price": "Suggested market price",
+    "urgency": "Urgency",
+    "urgency_normal": "Normal",
+    "urgency_high": "High"
+  },
+  "common": {
+    "back": "Back",
+    "accept": "Accept",
+    "cancel": "Cancel",
+    "save": "Save"
+  }
+}

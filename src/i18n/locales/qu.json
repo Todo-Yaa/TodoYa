@@ -1,0 +1,47 @@
+{
+  "welcome": "¡Allillanchu Todo Ya-man!",
+  "tagline": "Llaqta llank'aykuna minutukunallapi 🚀",
+  "search_placeholder": "¿Ima llank'aytataq kunan munanki? (Ej: Yaku ch'allaq)",
+  "search_btn": "Llank'aqta tariy",
+  "role_client": "Wasichayuq (Rantiq)",
+  "role_provider": "Llank'aq ruraq",
+  "role_business": "Hatun ruruchina / B2B",
+  "role_selector_title": "Rolniykita akllay",
+  "solicitud": {
+    "title_b2b": "B2B musuq mañakuy",
+    "title": "Musuq mañakuy",
+    "subtitle_b2b": "Ruruchinaykipaq hatun mañakuykunata churay",
+    "subtitle": "Willariwayku ima necesitasqaykita",
+    "ai_classification": "IA mañakuyta t'aqanqan",
+    "placeholder_b2b": "Ej: Llank'anapaq globokunawan munaychayta munayku hatun raymipaq, 15 resmas papel bondpas...",
+    "placeholder": "Ej: yaku ch'allaq kachkan, utqayllam...",
+    "analyze_btn": "IA-wan t'aqwiy ha mask'ay",
+    "confirm_btn": "Allin niy llank'aqkunatapas mask'ay",
+    "scanning_title": "Mañakuyta apachichkan",
+    "scanning_subtitle": "{{servicio}} mañakuyta apachichkan qaylla llank'aqkunaman 5km radiuspi..."
+  },
+  "profile": {
+    "title": "Ñoqaq perfilniy",
+    "edit": "Willayta allichay",
+    "save": "T'ikrakunata waqaychay",
+    "logout": "Lluqsiy",
+    "language": "App simi",
+    "experience": "Watakuna llank'aypi",
+    "description": "Llank'aypa kawsaynin"
+  },
+  "matching": {
+    "scanning": "Qaylla llank'aqkunata mask'ashan...",
+    "found": "¡Llank'aqkuna tarisqa!",
+    "no_provider": "Mana llank'aqkuna kanchu. ¿Watiqmanta mask'anki?",
+    "suggested_price": "Llaqtap chanin",
+    "urgency": "Usqhay",
+    "urgency_normal": "Allillanlla",
+    "urgency_high": "Utqaylla"
+  },
+  "common": {
+    "back": "Kutiy",
+    "accept": "Ari",
+    "cancel": "Mana",
+    "save": "Waqaychay"
+  }
+}
