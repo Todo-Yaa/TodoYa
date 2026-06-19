@@ -407,7 +407,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     setIsAuthenticated(true);
     setUserName(usuarioEncontrado ? usuarioEncontrado.nombre : nombre);
-    const rolFinal = usuarioEncontrado ? usuarioEncontrado.rol : rol;
+    
+    // CORRECCIÓN: Usamos la variable 'rol' que ya fue procesada con 'forceRole' en lugar del rol persistido 'usuarioEncontrado.rol'.
+    // Esto previene que al usar los botones de acceso rápido de prueba (que fuerzan un rol) se termine cargando el rol de proveedor
+    // guardado previamente en el almacenamiento persistente del usuario.
+    const rolFinal = rol;
     setUserRole(rolFinal);
 
     await Storage.setItem('todo_ya_auth', 'true');

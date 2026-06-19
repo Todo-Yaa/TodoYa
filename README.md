@@ -53,6 +53,9 @@
     * *3-4 estrellas*: Etiquetas promedio (`"Trabajo regular"`, `"Poco comunicativo"`).
     * *5 estrellas*: Etiquetas de excelencia (`"Excelente trabajo"`, `"Súper recomendado"`, `"Puntual y rápido"`).
 
+### 7. Corrección del Acceso Rápido y Persistencia de Roles (Bugfix)
+* **Consistencia de forceRole**: Corregido un problema en la función `login` de [user-context.tsx](file:///c:/Users/PCZ/Desktop/todo-ya/src/context/user-context.tsx) donde al iniciar sesión mediante los botones de acceso rápido de prueba (que fuerzan un rol específico, como `'business'`), se terminaba cargando el rol anterior persistido en la base de datos local (`usuarioEncontrado.rol` que podía ser `'provider'`). Ahora se respeta estrictamente el `forceRole` provisto por el botón, previniendo redirecciones incorrectas y bloqueos de navegación.
+
 ---
 
 ## 💻 Pila Tecnológica (Tech Stack)

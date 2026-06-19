@@ -110,3 +110,9 @@ export interface Order {
 * **`expo-router`**: `~56.2.11`
 * **`react-native-reanimated`**: `4.3.1`
 * **`expo-image`**: `~56.0.11`
+
+---
+
+## 🔧 Historial de Correcciones y Mejoras
+
+*   **Corrección en la Función de Login (`user-context.tsx`)**: Se corrigió una inconsistencia lógica donde la variable `rolFinal` tomaba el valor original desactualizado de `usuarioEncontrado.rol` en lugar de la variable local `rol` (la cual ya contiene la lógica de `forceRole`). Esto causaba que al presionar el botón de acceso rápido "Empresa (Alfa)" (que debe ingresar como cliente corporativo con rol `business`), el sistema cargara el rol de proveedor (`provider`) que se había persistido en localStorage durante pruebas previas de conversión, forzando la redirección al panel de proveedor en lugar de mantenerse en la vista corporativa de cliente. En la actualidad, el rol se sobrescribe y actualiza de manera consistente en la base de datos local y el estado reactivo.
