@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator,
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useUser, UserRole } from '../context/user-context';
+import { router } from 'expo-router'; // Importar enrutador para redireccionar tras login dinámico
 
 /**
  * Componente LoginScreen:
@@ -102,7 +103,8 @@ export default function LoginScreen() {
         tipoEntidad === 'empresa' ? nit.trim() : undefined,
         tipoEntidad === 'empresa' ? correoFacturacion.trim() : undefined,
         tipoEntidad === 'empresa' ? rubro : undefined,
-        undefined
+        // CORRECCIÓN: Si es una entidad de tipo empresa, se establece ofreceB2B como true por defecto
+        tipoEntidad === 'empresa'
       );
 
       setCargando(false);
@@ -168,12 +170,41 @@ export default function LoginScreen() {
   };
 
   /**
-   * Completa automáticamente los campos del formulario con perfiles predefinidos
-   * para acelerar las pruebas y la demostración de la app.
+   * Completa automáticamente los campos del formulario, define el rol forzado para el botón de prueba
+   * y realiza el inicio de sesión automático y redirección inmediata para agilizar las pruebas.
    */
-  const manejarAccesoRapido = (usuarioDemo: string) => {
+  const manejarAccesoRapido = async (usuarioDemo: string) => {
     setCorreoOTelefono(usuarioDemo);
     setContrasena('demo1234');
+    setCargando(true); // Activar indicador de carga para dar feedback visual
+    
+    // Determinar qué rol debe tener el usuario al loguearse mediante el botón de prueba de acceso rápido
+    let forceRole: UserRole = 'client';
+    if (usuarioDemo === 'empresa@todoya.com') {
+      forceRole = 'business';
+    } else if (usuarioDemo === 'juan.rios@todoya.com' || usuarioDemo === 'proveedor_empresa@todoya.com') {
+      forceRole = 'provider';
+    }
+    
+    // Retraso artificial mínimo de 400ms para simular la autenticación y dar feedback
+    setTimeout(async () => {
+      const exito = await login(usuarioDemo, 'demo1234', forceRole);
+      setCargando(false); // Desactivar carga
+      if (exito) {
+        // Redireccionar inmediatamente según el rol forzado para evitar quedarse en pantallas incorrectas
+        if (forceRole === 'provider') {
+          router.replace('/leads');
+        } else {
+          router.replace('/');
+        }
+      } else {
+        setConfiguracionModal({
+          titulo: '❌ Error de Acceso Rápido',
+          mensaje: 'No se pudo iniciar sesión automáticamente con la cuenta de prueba.'
+        });
+        setMostrarModal(true);
+      }
+    }, 400);
   };
 
   /**
@@ -531,22 +562,42 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Accesos Rápidos de Prueba */}
+        {/* Accesos Rápidos de Prueba (Con inicio de sesión automático y disabled al cargar) */}
         <View style={styles.demoCard}>
-          <Text style={styles.demoTitle}>💡 Acceso rápido de prueba:</Text>
+          <Text style={styles.demoTitle}>💡 Acceso rápido de prueba (Entrar al instante):</Text>
           <View style={styles.demoButtons}>
-            <TouchableOpacity style={styles.demoBtn} onPress={() => manejarAccesoRapido('luis@todoya.com')}>
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => manejarAccesoRapido('luis@todoya.com')}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
               <Text style={styles.demoBtnText}>Cliente (Luis)</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.demoBtn} onPress={() => manejarAccesoRapido('juan.rios@todoya.com')}>
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => manejarAccesoRapido('juan.rios@todoya.com')}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
               <Text style={styles.demoBtnText}>Proveedor (Juan)</Text>
             </TouchableOpacity>
           </View>
           <View style={[styles.demoButtons, { marginTop: 10 }]}>
-            <TouchableOpacity style={styles.demoBtn} onPress={() => manejarAccesoRapido('empresa@todoya.com')}>
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => manejarAccesoRapido('empresa@todoya.com')}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
               <Text style={styles.demoBtnText}>Empresa (Alfa)</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.demoBtn} onPress={() => manejarAccesoRapido('proveedor_empresa@todoya.com')}>
+            <TouchableOpacity 
+              style={styles.demoBtn} 
+              onPress={() => manejarAccesoRapido('proveedor_empresa@todoya.com')}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
               <Text style={styles.demoBtnText}>Empresa PRO (Beta)</Text>
             </TouchableOpacity>
           </View>
@@ -554,8 +605,7 @@ export default function LoginScreen() {
 
         {/* Divisor Visual de Redes Sociales */}
         <Text style={styles.socialDivider}>O CONECTAR CON</Text>
-        
-        {/* Botones de Inicio de Sesión / Registro Social (Google & LinkedIn) */}
+
         <View style={styles.socialContainer}>
           <TouchableOpacity 
             style={styles.socialBtn}

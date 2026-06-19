@@ -29,6 +29,8 @@
   * Las **Empresas** solo pueden alternar entre *Empresa (Cliente)* y *Proveedor*.
   * Las **Personas Naturales** solo pueden alternar entre *Cliente residencial* y *Proveedor*.
 * **Cohesión de Retorno**: El botón de regreso en el perfil profesional se adapta contextualmente para mostrar *"Volver a modo Empresa"* o *"Volver a modo Cliente residencial"* según el usuario activo.
+* **Unificación Cromática B2B**: Las pantallas de proveedor (*Leads*, *Estadísticas*, *Trabajos* y *Mi Perfil*) y el enrutador principal adaptan sus colores de fondo y acentos al morado/índigo corporativo si el usuario activo es una entidad de tipo empresa (`tipoEntidad === 'empresa'`), garantizando una experiencia de marca uniforme y fluida.
+
 
 ### 4. Búsqueda de Proveedores en Tiempo Real (Estilo inDriver)
 * **Radar de Escaneo**: Al confirmar un servicio, la aplicación transmite la solicitud en un radio de 5km mediante un radar animado.
@@ -52,6 +54,9 @@
     * *1-2 estrellas*: Etiquetas críticas (`"Mal trabajo"`, `"Mala actitud"`, `"Impuntual"`).
     * *3-4 estrellas*: Etiquetas promedio (`"Trabajo regular"`, `"Poco comunicativo"`).
     * *5 estrellas*: Etiquetas de excelencia (`"Excelente trabajo"`, `"Súper recomendado"`, `"Puntual y rápido"`).
+
+### 7. Corrección del Acceso Rápido y Persistencia de Roles (Bugfix)
+* **Consistencia de forceRole**: Corregido un problema en la función `login` de [user-context.tsx](file:///c:/Users/PCZ/Desktop/todo-ya/src/context/user-context.tsx) donde al iniciar sesión mediante los botones de acceso rápido de prueba (que fuerzan un rol específico, como `'business'`), se terminaba cargando el rol anterior persistido en la base de datos local (`usuarioEncontrado.rol` que podía ser `'provider'`). Ahora se respeta estrictamente el `forceRole` provisto por el botón, previniendo redirecciones incorrectas y bloqueos de navegación.
 
 ---
 

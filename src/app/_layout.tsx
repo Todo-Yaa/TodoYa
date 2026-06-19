@@ -11,10 +11,19 @@ import RatingOverlayModal from '../components/rating-overlay-modal';
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
  */
 function NavigationLayout() {
-  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole } = useUser();
+  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser } = useUser();
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
+
+  // CORRECCIÓN: Unificamos el color y fondo de la barra de pestañas de acuerdo al tipo de entidad del usuario activo.
+  // Si el usuario es de tipo 'empresa' (como Corporación Alfa S.A. o Imprenta Beta), se le asignan los tonos B2B (índigo/slate oscuro)
+  // de forma consistente tanto en el rol de comprador (business) como en el de vendedor (provider).
+  const esEmpresa = activeUser?.tipoEntidad === 'empresa';
+  const colorActivo = esEmpresa ? '#818cf8' : '#FFB400';
+  const colorInactivo = esEmpresa ? '#94a3b8' : '#888';
+  const fondoTabBar = esEmpresa ? '#1e293b' : (isClient ? '#fff' : '#2F2F2F');
+  const colorBordeTabBar = esEmpresa ? '#0f172a' : (isClient ? '#eee' : '#1F1F1F');
 
   // [AUTH GUARD]: Si el usuario no ha iniciado sesión, se bloquea la navegación de pestañas
   // y se despliega la pantalla de Login a pantalla completa.
@@ -30,15 +39,15 @@ function NavigationLayout() {
     <View style={{ flex: 1 }}>
       <Tabs
       screenOptions={{
-        // Color activo de los iconos y texto (Dorado premium para cliente/proveedor, azul corporativo para empresas)
-        tabBarActiveTintColor: isBusiness ? '#818cf8' : '#FFB400',
+        // Color activo de los iconos y texto adaptado dinámicamente
+        tabBarActiveTintColor: colorActivo,
         // Color inactivo
-        tabBarInactiveTintColor: isBusiness ? '#94a3b8' : '#888',
-        // Estilo dinámico de la barra de pestañas según el rol
+        tabBarInactiveTintColor: colorInactivo,
+        // Estilo dinámico de la barra de pestañas según el rol y tipo de entidad
         tabBarStyle: { 
-          backgroundColor: isBusiness ? '#1e293b' : (isClient ? '#fff' : '#2F2F2F'), // Slate oscuro para Empresa, claro para Cliente, carbón oscuro para Proveedor
+          backgroundColor: fondoTabBar,
           borderTopWidth: 1,
-          borderTopColor: isBusiness ? '#0f172a' : (isClient ? '#eee' : '#1F1F1F'),
+          borderTopColor: colorBordeTabBar,
           height: 60,
         },
         headerShown: false, // Ocultar el encabezado nativo por defecto

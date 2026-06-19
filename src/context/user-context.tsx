@@ -54,7 +54,7 @@ interface UserContextType {
   resetData: () => void;   // Resetea todos los estados al valor inicial
   isAuthenticated: boolean; // Estado de sesión del usuario
   userName: string;        // Nombre personalizado del usuario activo
-  login: (telefonoOCorreo: string, contrasena: string) => Promise<boolean>; // Inicia sesión
+  login: (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole) => Promise<boolean>; // Inicia sesión
   logout: () => void;      // Cierra sesión y limpia la memoria
   usuariosRegistrados: UsuarioRegistrado[]; // Lista de todos los usuarios de la base de datos local
   registrarEIniciarSesion: (nombre: string, correoOTelefono: string, rol: UserRole, tipoProveedor: 'google' | 'linkedin' | 'normal', extraData?: Partial<UsuarioRegistrado>) => Promise<void>; // Registro social
@@ -180,7 +180,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const savedActiveUser = await Storage.getItem('todo_ya_active_user');
       if (savedActiveUser) {
         try {
-          setActiveUser(JSON.parse(savedActiveUser));
+          const usuarioActivoParseado = JSON.parse(savedActiveUser);
+          // CORRECCIÓN: Nos aseguramos de sanitizar el rol y el tipo de entidad de la sesión activa
+          // en base a su correo electrónico o datos fiscales para evitar que persista como 'natural' por error.
+          const esEmpresaActiva = usuarioActivoParseado.tipoEntidad === 'empresa' || 
+                                 (usuarioActivoParseado.correoOTelefono || '').toLowerCase().includes('empresa') || 
+                                 !!usuarioActivoParseado.nit;
+          usuarioActivoParseado.tipoEntidad = esEmpresaActiva ? 'empresa' : 'natural';
+          
+          setActiveUser(usuarioActivoParseado);
         } catch(e) {}
       }
 
@@ -190,19 +198,42 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
           const usuariosParseados = JSON.parse(savedUsers);
           if (Array.isArray(usuariosParseados)) {
-            // Mapeamos propiedades en inglés (antiguas) a español para evitar errores de undefined
-            const usuariosSaneados: UsuarioRegistrado[] = usuariosParseados.map((u: any) => ({
-              nombre: u.nombre || u.name || 'Usuario',
-              correoOTelefono: u.correoOTelefono || u.emailOrPhone || '',
-              rol: u.rol || u.role || 'client',
-              contrasena: u.contrasena || u.password || 'demo1234',
-              tipoProveedor: u.tipoProveedor || u.providerType || 'normal',
-              tipoEntidad: u.tipoEntidad || 'natural',
-              nit: u.nit,
-              correoFacturacion: u.correoFacturacion,
-              rubro: u.rubro,
-              ofreceB2B: u.ofreceB2B
-            }));
+            // Mapeamos propiedades en inglés (antiguas) a español para evitar errores de de variables indefinidas.
+            let usuariosSaneados: UsuarioRegistrado[] = usuariosParseados.map((u: any) => {
+              const correoClean = (u.correoOTelefono || u.emailOrPhone || '').trim().toLowerCase();
+              // Determinamos si es empresa según su tipo guardado, presencia del NIT o si el correo incluye 'empresa' (útil en pruebas)
+              const esEmpresa = u.tipoEntidad === 'empresa' || correoClean.includes('empresa') || !!u.nit;
+              
+              return {
+                nombre: u.nombre || u.name || 'Usuario',
+                correoOTelefono: u.correoOTelefono || u.emailOrPhone || '',
+                rol: u.rol || u.role || 'client',
+                contrasena: u.contrasena || u.password || 'demo1234',
+                tipoProveedor: u.tipoProveedor || u.providerType || 'normal',
+                tipoEntidad: esEmpresa ? 'empresa' : 'natural',
+                nit: u.nit,
+                correoFacturacion: u.correoFacturacion,
+                rubro: u.rubro,
+                ofreceB2B: u.ofreceB2B || esEmpresa,
+                proveedorConfigurado: u.proveedorConfigurado,
+                serviciosOfrecidos: u.serviciosOfrecidos,
+                anosExperiencia: u.anosExperiencia,
+                descripcionProveedor: u.descripcionProveedor,
+                coberturaB2B: u.coberturaB2B
+              };
+            });
+
+            // COMPROBACIÓN ADICIONAL: Si algún usuario de prueba de initialSeedUsers no existe en los registros guardados 
+            // del localStorage (por ejemplo, tras cambios de versiones del modelo), lo agregamos para asegurar que funcione.
+            initialSeedUsers.forEach(seedUser => {
+              const existe = usuariosSaneados.some(u => 
+                (u.correoOTelefono || '').toLowerCase() === (seedUser.correoOTelefono || '').toLowerCase()
+              );
+              if (!existe) {
+                usuariosSaneados.push(seedUser);
+              }
+            });
+
             setUsuariosRegistrados(usuariosSaneados);
             // Guardamos de vuelta los usuarios saneados en el almacenamiento local
             await Storage.setItem('todo_ya_registered_users', JSON.stringify(usuariosSaneados));
@@ -348,7 +379,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * - Comprueba la base de datos local para verificar si el usuario ya existe y validar su rol.
    * - Si no existe, lo registra dinámicamente como Cliente para asegurar la flexibilidad de uso.
    */
-  const login = async (telefonoOCorreo: string, contrasena: string): Promise<boolean> => {
+  const login = async (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole): Promise<boolean> => {
     if (!telefonoOCorreo.trim() || !contrasena.trim()) {
       return false; // Campos vacíos
     }
@@ -367,9 +398,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return false; // Contraseña incorrecta
       }
       nombre = usuarioEncontrado.nombre;
-      rol = usuarioEncontrado.rol;
-      setActiveUser(usuarioEncontrado);
-      await Storage.setItem('todo_ya_active_user', JSON.stringify(usuarioEncontrado));
+      rol = forceRole || usuarioEncontrado.rol; // Forzar el rol si viene de los botones de prueba de acceso rápido
+      
+      const updatedUser = { ...usuarioEncontrado, rol };
+      setActiveUser(updatedUser);
+      await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+      
+      // Actualizar también en la lista de usuarios registrados para mantener la consistencia al cambiar de rol en la BD local
+      const listaActualizada = usuariosRegistrados.map(u => 
+        (u.correoOTelefono || '').toLowerCase() === claveCorreo ? updatedUser : u
+      );
+      setUsuariosRegistrados(listaActualizada);
+      await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
     } else {
       // Registrar al vuelo (auto-registro de prueba si es nuevo)
       if (telefonoOCorreo.includes('@')) {
@@ -380,13 +420,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
       nombre = nombre || 'Usuario';
       
+      // CORRECCIÓN: Detectamos de manera inteligente si el correo de prueba contiene la palabra 'empresa'
+      // para auto-registrarlo como entidad 'empresa' (con rol 'business') en lugar de 'natural' (con rol 'client').
+      const esEmpresaEmail = telefonoOCorreo.trim().toLowerCase().includes('empresa');
+      const rolDefault: UserRole = esEmpresaEmail ? 'business' : 'client';
+      rol = forceRole || rolDefault;
+      
       const nuevoUsuario: UsuarioRegistrado = {
         nombre,
         correoOTelefono: telefonoOCorreo.trim(),
-        rol: 'client',
+        rol,
         tipoProveedor: 'normal',
         contrasena: contrasena,
-        tipoEntidad: 'natural'
+        tipoEntidad: esEmpresaEmail ? 'empresa' : 'natural'
       };
       
       const listaActualizada = [...usuariosRegistrados, nuevoUsuario];
@@ -398,7 +444,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     setIsAuthenticated(true);
     setUserName(usuarioEncontrado ? usuarioEncontrado.nombre : nombre);
-    const rolFinal = usuarioEncontrado ? usuarioEncontrado.rol : rol;
+    
+    // CORRECCIÓN: Usamos la variable 'rol' que ya fue procesada con 'forceRole' en lugar del rol persistido 'usuarioEncontrado.rol'.
+    // Esto previene que al usar los botones de acceso rápido de prueba (que fuerzan un rol) se termine cargando el rol de proveedor
+    // guardado previamente en el almacenamiento persistente del usuario.
+    const rolFinal = rol;
     setUserRole(rolFinal);
 
     await Storage.setItem('todo_ya_auth', 'true');
@@ -434,11 +484,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
         rol,
         tipoProveedor,
         contrasena: 'demo1234',
-        tipoEntidad: extraData?.tipoEntidad || 'natural',
+        // CORRECCIÓN: Detectamos si el correo contiene la palabra 'empresa' para establecer tipoEntidad como 'empresa' en registros sociales de prueba
+        tipoEntidad: extraData?.tipoEntidad || 
+          (correoOTelefono.trim().toLowerCase().includes('empresa') ? 'empresa' : 'natural'),
         nit: extraData?.nit,
         correoFacturacion: extraData?.correoFacturacion,
         rubro: extraData?.rubro,
-        ofreceB2B: extraData?.ofreceB2B
+        ofreceB2B: extraData?.ofreceB2B || (correoOTelefono.trim().toLowerCase().includes('empresa') ? true : undefined)
       };
       listaActualizada = [...usuariosRegistrados, usuarioFinal];
       setUsuariosRegistrados(listaActualizada);
