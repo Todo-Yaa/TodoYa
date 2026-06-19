@@ -59,9 +59,9 @@ export default function PperfilScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Encabezado del perfil en color carbón oscuro característico del modo proveedor */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mi perfil profesional</Text>
+      {/* CORRECCIÓN: Encabezado adaptativo. Si es empresa proveedora (B2B), se colorea con Slate oscuro (#1e293b) e Índigo (#818cf8). */}
+      <View style={[styles.header, isB2BProvider && { backgroundColor: '#1e293b' }]}>
+        <Text style={[styles.headerTitle, isB2BProvider && { color: '#818cf8' }]}>Mi perfil profesional</Text>
       </View>
 
       <ScrollView style={styles.body}>
@@ -70,7 +70,9 @@ export default function PperfilScreen() {
           <View style={[styles.avatarBig, isB2BProvider && { backgroundColor: '#6366f1' }]}>
             <Text style={[styles.avatarTextBig, isB2BProvider && { color: '#fff' }]}>{providerInitials}</Text>
           </View>
-          <Text style={styles.name}>{providerName} <Text style={styles.proBadge}>PRO</Text></Text>
+          <Text style={styles.name}>
+            {providerName} <Text style={[styles.proBadge, isB2BProvider && { backgroundColor: '#6366f1', color: '#fff' }]}>PRO</Text>
+          </Text>
           <Text style={styles.profession}>{professionText}</Text>
 
           <View style={styles.statsRow}>
@@ -136,9 +138,10 @@ export default function PperfilScreen() {
 
         {/* Información sobre el Estado de Membresía de Pago PRO */}
         <Text style={styles.sectionTitle}>Membresía</Text>
-        <View style={styles.proCard}>
+        {/* Tarjeta de membresía adaptada con bordes y sombra de color de marca */}
+        <View style={[styles.proCard, isB2BProvider && { borderColor: '#6366f1', shadowColor: '#6366f1' }]}>
           <View style={styles.proHeader}>
-            <Ionicons name={"crown" as any} size={32} color="#FFB400" />
+            <Ionicons name={"crown" as any} size={32} color={isB2BProvider ? "#6366f1" : "#FFB400"} />
             <View style={{ marginLeft: 12 }}>
               <Text style={styles.proTitle}>Plan PRO activo</Text>
               <Text style={styles.proSubtitle}>Acceso a leads exclusivos</Text>
@@ -154,10 +157,10 @@ export default function PperfilScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal personalizado reutilizable */}
+      {/* Modal personalizado con bordes y botón de confirmación adaptado al tipo de proveedor */}
       {showConfirmModal && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, isB2BProvider && { borderColor: '#6366f1' }]}>
             <Text style={styles.modalTitle}>{confirmConfig.title}</Text>
             <Text style={styles.modalMessage}>{confirmConfig.message}</Text>
             <View style={styles.modalButtons}>
@@ -171,14 +174,14 @@ export default function PperfilScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity 
-                style={styles.modalConfirmBtn}
+                style={[styles.modalConfirmBtn, isB2BProvider && { backgroundColor: '#6366f1' }]}
                 onPress={() => {
                   setShowConfirmModal(false);
                   confirmConfig.onConfirm();
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalConfirmText}>
+                <Text style={[styles.modalConfirmText, isB2BProvider && { color: '#fff' }]}>
                   {confirmConfig.singleButton ? 'Entendido' : 'Confirmar'}
                 </Text>
               </TouchableOpacity>

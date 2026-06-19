@@ -29,6 +29,8 @@
   * Las **Empresas** solo pueden alternar entre *Empresa (Cliente)* y *Proveedor*.
   * Las **Personas Naturales** solo pueden alternar entre *Cliente residencial* y *Proveedor*.
 * **Cohesión de Retorno**: El botón de regreso en el perfil profesional se adapta contextualmente para mostrar *"Volver a modo Empresa"* o *"Volver a modo Cliente residencial"* según el usuario activo.
+* **Unificación Cromática B2B**: Las pantallas de proveedor (*Leads*, *Estadísticas*, *Trabajos* y *Mi Perfil*) y el enrutador principal adaptan sus colores de fondo y acentos al morado/índigo corporativo si el usuario activo es una entidad de tipo empresa (`tipoEntidad === 'empresa'`), garantizando una experiencia de marca uniforme y fluida.
+
 
 ### 4. Búsqueda de Proveedores en Tiempo Real (Estilo inDriver)
 * **Radar de Escaneo**: Al confirmar un servicio, la aplicación transmite la solicitud en un radio de 5km mediante un radar animado.

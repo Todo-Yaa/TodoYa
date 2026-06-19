@@ -5,6 +5,7 @@ import { useUser } from '../context/user-context';
 
 export default function TrabajosScreen() {
   const { orders, completeJob, activeUser } = useUser();
+  const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
 
   // Obtener el nombre de perfil del proveedor activo de forma dinámica
   const providerName = activeUser?.nombre || 'Juan Ríos';
@@ -44,9 +45,9 @@ export default function TrabajosScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mis trabajos</Text>
+      {/* CORRECCIÓN: Header adaptativo. Si es empresa proveedora (B2B), se colorea con Slate oscuro (#1e293b) e Índigo (#818cf8). */}
+      <View style={[styles.header, isB2BProvider && { backgroundColor: '#1e293b' }]}>
+        <Text style={[styles.headerTitle, isB2BProvider && { color: '#818cf8' }]}>Mis trabajos</Text>
       </View>
 
       <ScrollView style={styles.body}>
@@ -54,12 +55,13 @@ export default function TrabajosScreen() {
           <View key={trabajo.id} style={styles.trabajoCard}>
             <View style={styles.cardHeader}>
               <Text style={styles.titulo}>{trabajo.titulo}</Text>
+              {/* Badge de estado adaptado cromáticamente */}
               <View style={[
                 styles.estadoBadge, 
-                { backgroundColor: trabajo.estado === 'Completado' ? '#e8f5e9' : '#FFF8DC' }
+                { backgroundColor: trabajo.estado === 'Completado' ? '#e8f5e9' : (isB2BProvider ? '#e0e7ff' : '#FFF8DC') }
               ]}>
                 <Text style={{ 
-                  color: trabajo.estado === 'Completado' ? '#1b5e20' : '#8a6d00',
+                  color: trabajo.estado === 'Completado' ? '#1b5e20' : (isB2BProvider ? '#3730a3' : '#8a6d00'),
                   fontSize: 12,
                   fontWeight: '500'
                 }}>
@@ -74,22 +76,23 @@ export default function TrabajosScreen() {
             <Text style={styles.hora}>{trabajo.hora}</Text>
 
             <View style={styles.progressBar}>
+              {/* Relleno de progreso adaptado al tipo de proveedor */}
               <View style={[
                 styles.progressFill, 
                 { 
                   width: `${trabajo.progreso}%`, 
-                  backgroundColor: trabajo.estado === 'Completado' ? '#4caf50' : '#FFB400' 
+                  backgroundColor: trabajo.estado === 'Completado' ? '#4caf50' : (isB2BProvider ? '#6366f1' : '#FFB400') 
                 }
               ]} />
             </View>
 
             {trabajo.estado === 'En progreso' && (
               <TouchableOpacity 
-                style={styles.completeBtn}
+                style={[styles.completeBtn, isB2BProvider && { backgroundColor: '#6366f1' }]}
                 onPress={() => handleComplete(trabajo.id, trabajo.titulo)}
               >
-                <Ionicons name="checkmark-circle" size={18} color="#2F2F2F" />
-                <Text style={styles.completeBtnText}>Marcar como completado</Text>
+                <Ionicons name="checkmark-circle" size={18} color={isB2BProvider ? '#fff' : '#2F2F2F'} />
+                <Text style={[styles.completeBtnText, isB2BProvider && { color: '#fff' }]}>Marcar como completado</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -104,10 +107,10 @@ export default function TrabajosScreen() {
         )}
       </ScrollView>
 
-      {/* Custom Modal */}
+      {/* Custom Modal con bordes y botones adaptados cromáticamente */}
       {showConfirmModal && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, isB2BProvider && { borderColor: '#6366f1' }]}>
             <Text style={styles.modalTitle}>{confirmConfig.title}</Text>
             <Text style={styles.modalMessage}>{confirmConfig.message}</Text>
             <View style={styles.modalButtons}>
@@ -120,13 +123,13 @@ export default function TrabajosScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity 
-                style={styles.modalConfirmBtn}
+                style={[styles.modalConfirmBtn, isB2BProvider && { backgroundColor: '#6366f1' }]}
                 onPress={() => {
                   setShowConfirmModal(false);
                   confirmConfig.onConfirm();
                 }}
               >
-                <Text style={styles.modalConfirmText}>
+                <Text style={[styles.modalConfirmText, isB2BProvider && { color: '#fff' }]}>
                   {confirmConfig.singleButton ? 'Entendido' : 'Confirmar'}
                 </Text>
               </TouchableOpacity>

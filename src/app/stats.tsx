@@ -2,7 +2,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useUser } from '../context/user-context';
 
 export default function StatsScreen() {
-  const { orders } = useUser();
+  const { orders, activeUser } = useUser();
+  const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
 
   // Filter completed jobs for Juan Ríos
   const myCompletedJobs = orders.filter(o => o.proveedor === 'Juan Ríos' && o.estado === 'Completado');
@@ -23,9 +24,9 @@ export default function StatsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mis estadísticas</Text>
+      {/* CORRECCIÓN: Header adaptativo. Si es empresa proveedora (B2B), se colorea con Slate oscuro (#1e293b) e Índigo (#818cf8). */}
+      <View style={[styles.header, isB2BProvider && { backgroundColor: '#1e293b' }]}>
+        <Text style={[styles.headerTitle, isB2BProvider && { color: '#818cf8' }]}>Mis estadísticas</Text>
         <Text style={styles.headerSubtitle}>Junio 2026</Text>
       </View>
 
@@ -41,7 +42,8 @@ export default function StatsScreen() {
             <Text style={styles.statLabel}>Ingresos del mes</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: '#FFB400' }]}>4.9 ★</Text>
+            {/* Calificación promedio adaptada cromáticamente */}
+            <Text style={[styles.statValue, { color: isB2BProvider ? '#818cf8' : '#FFB400' }]}>4.9 ★</Text>
             <Text style={styles.statLabel}>Calificación promedio</Text>
           </View>
           <View style={styles.statCard}>
@@ -55,15 +57,16 @@ export default function StatsScreen() {
         <View style={styles.reputationCard}>
           <View style={styles.reputationRow}>
             <Text style={styles.repLabel}>Puntualidad</Text>
-            <Text style={styles.stars}>★★★★★</Text>
+            {/* Estrellas adaptadas cromáticamente al modo empresa */}
+            <Text style={[styles.stars, isB2BProvider && { color: '#818cf8' }]}>★★★★★</Text>
           </View>
           <View style={styles.reputationRow}>
             <Text style={styles.repLabel}>Calidad del trabajo</Text>
-            <Text style={styles.stars}>★★★★★</Text>
+            <Text style={[styles.stars, isB2BProvider && { color: '#818cf8' }]}>★★★★★</Text>
           </View>
           <View style={styles.reputationRow}>
             <Text style={styles.repLabel}>Comunicación</Text>
-            <Text style={styles.stars}>★★★★☆</Text>
+            <Text style={[styles.stars, isB2BProvider && { color: '#818cf8' }]}>★★★★☆</Text>
           </View>
         </View>
       </ScrollView>
