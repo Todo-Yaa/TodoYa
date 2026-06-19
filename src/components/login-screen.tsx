@@ -103,7 +103,8 @@ export default function LoginScreen() {
         tipoEntidad === 'empresa' ? nit.trim() : undefined,
         tipoEntidad === 'empresa' ? correoFacturacion.trim() : undefined,
         tipoEntidad === 'empresa' ? rubro : undefined,
-        undefined
+        // CORRECCIÓN: Si es una entidad de tipo empresa, se establece ofreceB2B como true por defecto
+        tipoEntidad === 'empresa'
       );
 
       setCargando(false);

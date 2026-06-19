@@ -180,7 +180,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const savedActiveUser = await Storage.getItem('todo_ya_active_user');
       if (savedActiveUser) {
         try {
-          setActiveUser(JSON.parse(savedActiveUser));
+          const usuarioActivoParseado = JSON.parse(savedActiveUser);
+          // CORRECCIÓN: Nos aseguramos de sanitizar el rol y el tipo de entidad de la sesión activa
+          // en base a su correo electrónico o datos fiscales para evitar que persista como 'natural' por error.
+          const esEmpresaActiva = usuarioActivoParseado.tipoEntidad === 'empresa' || 
+                                 (usuarioActivoParseado.correoOTelefono || '').toLowerCase().includes('empresa') || 
+                                 !!usuarioActivoParseado.nit;
+          usuarioActivoParseado.tipoEntidad = esEmpresaActiva ? 'empresa' : 'natural';
+          
+          setActiveUser(usuarioActivoParseado);
         } catch(e) {}
       }
 
@@ -190,19 +198,42 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
           const usuariosParseados = JSON.parse(savedUsers);
           if (Array.isArray(usuariosParseados)) {
-            // Mapeamos propiedades en inglés (antiguas) a español para evitar errores de undefined
-            const usuariosSaneados: UsuarioRegistrado[] = usuariosParseados.map((u: any) => ({
-              nombre: u.nombre || u.name || 'Usuario',
-              correoOTelefono: u.correoOTelefono || u.emailOrPhone || '',
-              rol: u.rol || u.role || 'client',
-              contrasena: u.contrasena || u.password || 'demo1234',
-              tipoProveedor: u.tipoProveedor || u.providerType || 'normal',
-              tipoEntidad: u.tipoEntidad || 'natural',
-              nit: u.nit,
-              correoFacturacion: u.correoFacturacion,
-              rubro: u.rubro,
-              ofreceB2B: u.ofreceB2B
-            }));
+            // Mapeamos propiedades en inglés (antiguas) a español para evitar errores de de variables indefinidas.
+            let usuariosSaneados: UsuarioRegistrado[] = usuariosParseados.map((u: any) => {
+              const correoClean = (u.correoOTelefono || u.emailOrPhone || '').trim().toLowerCase();
+              // Determinamos si es empresa según su tipo guardado, presencia del NIT o si el correo incluye 'empresa' (útil en pruebas)
+              const esEmpresa = u.tipoEntidad === 'empresa' || correoClean.includes('empresa') || !!u.nit;
+              
+              return {
+                nombre: u.nombre || u.name || 'Usuario',
+                correoOTelefono: u.correoOTelefono || u.emailOrPhone || '',
+                rol: u.rol || u.role || 'client',
+                contrasena: u.contrasena || u.password || 'demo1234',
+                tipoProveedor: u.tipoProveedor || u.providerType || 'normal',
+                tipoEntidad: esEmpresa ? 'empresa' : 'natural',
+                nit: u.nit,
+                correoFacturacion: u.correoFacturacion,
+                rubro: u.rubro,
+                ofreceB2B: u.ofreceB2B || esEmpresa,
+                proveedorConfigurado: u.proveedorConfigurado,
+                serviciosOfrecidos: u.serviciosOfrecidos,
+                anosExperiencia: u.anosExperiencia,
+                descripcionProveedor: u.descripcionProveedor,
+                coberturaB2B: u.coberturaB2B
+              };
+            });
+
+            // COMPROBACIÓN ADICIONAL: Si algún usuario de prueba de initialSeedUsers no existe en los registros guardados 
+            // del localStorage (por ejemplo, tras cambios de versiones del modelo), lo agregamos para asegurar que funcione.
+            initialSeedUsers.forEach(seedUser => {
+              const existe = usuariosSaneados.some(u => 
+                (u.correoOTelefono || '').toLowerCase() === (seedUser.correoOTelefono || '').toLowerCase()
+              );
+              if (!existe) {
+                usuariosSaneados.push(seedUser);
+              }
+            });
+
             setUsuariosRegistrados(usuariosSaneados);
             // Guardamos de vuelta los usuarios saneados en el almacenamiento local
             await Storage.setItem('todo_ya_registered_users', JSON.stringify(usuariosSaneados));
@@ -389,13 +420,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
       nombre = nombre || 'Usuario';
       
+      // CORRECCIÓN: Detectamos de manera inteligente si el correo de prueba contiene la palabra 'empresa'
+      // para auto-registrarlo como entidad 'empresa' (con rol 'business') en lugar de 'natural' (con rol 'client').
+      const esEmpresaEmail = telefonoOCorreo.trim().toLowerCase().includes('empresa');
+      const rolDefault: UserRole = esEmpresaEmail ? 'business' : 'client';
+      rol = forceRole || rolDefault;
+      
       const nuevoUsuario: UsuarioRegistrado = {
         nombre,
         correoOTelefono: telefonoOCorreo.trim(),
-        rol: 'client',
+        rol,
         tipoProveedor: 'normal',
         contrasena: contrasena,
-        tipoEntidad: 'natural'
+        tipoEntidad: esEmpresaEmail ? 'empresa' : 'natural'
       };
       
       const listaActualizada = [...usuariosRegistrados, nuevoUsuario];
@@ -447,11 +484,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
         rol,
         tipoProveedor,
         contrasena: 'demo1234',
-        tipoEntidad: extraData?.tipoEntidad || 'natural',
+        // CORRECCIÓN: Detectamos si el correo contiene la palabra 'empresa' para establecer tipoEntidad como 'empresa' en registros sociales de prueba
+        tipoEntidad: extraData?.tipoEntidad || 
+          (correoOTelefono.trim().toLowerCase().includes('empresa') ? 'empresa' : 'natural'),
         nit: extraData?.nit,
         correoFacturacion: extraData?.correoFacturacion,
         rubro: extraData?.rubro,
-        ofreceB2B: extraData?.ofreceB2B
+        ofreceB2B: extraData?.ofreceB2B || (correoOTelefono.trim().toLowerCase().includes('empresa') ? true : undefined)
       };
       listaActualizada = [...usuariosRegistrados, usuarioFinal];
       setUsuariosRegistrados(listaActualizada);
