@@ -54,7 +54,7 @@ interface UserContextType {
   resetData: () => void;   // Resetea todos los estados al valor inicial
   isAuthenticated: boolean; // Estado de sesión del usuario
   userName: string;        // Nombre personalizado del usuario activo
-  login: (telefonoOCorreo: string, contrasena: string) => Promise<boolean>; // Inicia sesión
+  login: (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole) => Promise<boolean>; // Inicia sesión
   logout: () => void;      // Cierra sesión y limpia la memoria
   usuariosRegistrados: UsuarioRegistrado[]; // Lista de todos los usuarios de la base de datos local
   registrarEIniciarSesion: (nombre: string, correoOTelefono: string, rol: UserRole, tipoProveedor: 'google' | 'linkedin' | 'normal', extraData?: Partial<UsuarioRegistrado>) => Promise<void>; // Registro social
@@ -348,7 +348,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * - Comprueba la base de datos local para verificar si el usuario ya existe y validar su rol.
    * - Si no existe, lo registra dinámicamente como Cliente para asegurar la flexibilidad de uso.
    */
-  const login = async (telefonoOCorreo: string, contrasena: string): Promise<boolean> => {
+  const login = async (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole): Promise<boolean> => {
     if (!telefonoOCorreo.trim() || !contrasena.trim()) {
       return false; // Campos vacíos
     }
@@ -367,9 +367,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return false; // Contraseña incorrecta
       }
       nombre = usuarioEncontrado.nombre;
-      rol = usuarioEncontrado.rol;
-      setActiveUser(usuarioEncontrado);
-      await Storage.setItem('todo_ya_active_user', JSON.stringify(usuarioEncontrado));
+      rol = forceRole || usuarioEncontrado.rol; // Forzar el rol si viene de los botones de prueba de acceso rápido
+      
+      const updatedUser = { ...usuarioEncontrado, rol };
+      setActiveUser(updatedUser);
+      await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+      
+      // Actualizar también en la lista de usuarios registrados para mantener la consistencia al cambiar de rol en la BD local
+      const listaActualizada = usuariosRegistrados.map(u => 
+        (u.correoOTelefono || '').toLowerCase() === claveCorreo ? updatedUser : u
+      );
+      setUsuariosRegistrados(listaActualizada);
+      await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
     } else {
       // Registrar al vuelo (auto-registro de prueba si es nuevo)
       if (telefonoOCorreo.includes('@')) {

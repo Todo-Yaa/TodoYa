@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator,
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useUser, UserRole } from '../context/user-context';
+import { router } from 'expo-router'; // Importar enrutador para redireccionar tras login dinámico
 
 /**
  * Componente LoginScreen:
@@ -168,19 +169,34 @@ export default function LoginScreen() {
   };
 
   /**
-   * Completa automáticamente los campos del formulario y realiza el inicio de sesión
-   * de forma inmediata y automática para agilizar las pruebas y la demostración de la app.
+   * Completa automáticamente los campos del formulario, define el rol forzado para el botón de prueba
+   * y realiza el inicio de sesión automático y redirección inmediata para agilizar las pruebas.
    */
   const manejarAccesoRapido = async (usuarioDemo: string) => {
     setCorreoOTelefono(usuarioDemo);
     setContrasena('demo1234');
     setCargando(true); // Activar indicador de carga para dar feedback visual
     
+    // Determinar qué rol debe tener el usuario al loguearse mediante el botón de prueba de acceso rápido
+    let forceRole: UserRole = 'client';
+    if (usuarioDemo === 'empresa@todoya.com') {
+      forceRole = 'business';
+    } else if (usuarioDemo === 'juan.rios@todoya.com' || usuarioDemo === 'proveedor_empresa@todoya.com') {
+      forceRole = 'provider';
+    }
+    
     // Retraso artificial mínimo de 400ms para simular la autenticación y dar feedback
     setTimeout(async () => {
-      const exito = await login(usuarioDemo, 'demo1234');
+      const exito = await login(usuarioDemo, 'demo1234', forceRole);
       setCargando(false); // Desactivar carga
-      if (!exito) {
+      if (exito) {
+        // Redireccionar inmediatamente según el rol forzado para evitar quedarse en pantallas incorrectas
+        if (forceRole === 'provider') {
+          router.replace('/leads');
+        } else {
+          router.replace('/');
+        }
+      } else {
         setConfiguracionModal({
           titulo: '❌ Error de Acceso Rápido',
           mensaje: 'No se pudo iniciar sesión automáticamente con la cuenta de prueba.'
