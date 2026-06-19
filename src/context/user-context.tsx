@@ -62,6 +62,7 @@ interface UserContextType {
   activeUser: UsuarioRegistrado | null; // Usuario activo logueado
   configurarProveedor: (servicios: string[], experiencia: string, descripcion: string, cobertura?: string) => Promise<void>;
   rateOrder: (orderId: number, estrellas: number, etiquetas: string[]) => void;
+  isSwitchingRole: boolean; // Indica si se está realizando una transición de rol
 }
 
 // Creación del React Context
@@ -144,6 +145,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [userName, setUserName] = useState<string>('Luis Alberto M.');
   const [usuariosRegistrados, setUsuariosRegistrados] = useState<UsuarioRegistrado[]>([]);
   const [activeUser, setActiveUser] = useState<UsuarioRegistrado | null>(null);
+  const [isSwitchingRole, setIsSwitchingRole] = useState(false);
 
   // Efecto inicial: Carga los datos guardados en la memoria persistente al iniciar la app
   useEffect(() => {
@@ -220,37 +222,53 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   /**
    * Alterna de rol de usuario (Cliente <-> Proveedor) y guarda la selección.
+   * Modificado para activar el estado de transición fluida de cambio de rol.
    */
   const toggleRole = () => {
-    let nextRole: UserRole = 'client';
-    const isEmpresa = activeUser?.tipoEntidad === 'empresa' || userRole === 'business';
-    
-    if (isEmpresa) {
-      nextRole = userRole === 'business' ? 'provider' : 'business';
-    } else {
-      nextRole = userRole === 'client' ? 'provider' : 'client';
-    }
+    setIsSwitchingRole(true); // Activa el overlay de cambio de rol para una transición elegante
+    setTimeout(() => {
+      let nextRole: UserRole = 'client';
+      const isEmpresa = activeUser?.tipoEntidad === 'empresa' || userRole === 'business';
+      
+      if (isEmpresa) {
+        nextRole = userRole === 'business' ? 'provider' : 'business';
+      } else {
+        nextRole = userRole === 'client' ? 'provider' : 'client';
+      }
 
-    setUserRole(nextRole);
-    Storage.setItem('todo_ya_role', nextRole);
-    if (activeUser) {
-      const updatedUser: UsuarioRegistrado = { ...activeUser, rol: nextRole };
-      setActiveUser(updatedUser);
-      Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
-    }
+      setUserRole(nextRole);
+      Storage.setItem('todo_ya_role', nextRole);
+      if (activeUser) {
+        const updatedUser: UsuarioRegistrado = { ...activeUser, rol: nextRole };
+        setActiveUser(updatedUser);
+        Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+      }
+      
+      // Mantenemos la pantalla de carga brevemente para completar la navegación
+      setTimeout(() => {
+        setIsSwitchingRole(false);
+      }, 500);
+    }, 100);
   };
 
   /**
    * Define un rol específico (Cliente o Proveedor) y guarda la selección.
+   * Modificado para activar el estado de transición fluida de cambio de rol.
    */
   const setRole = (role: UserRole) => {
-    setUserRole(role);
-    Storage.setItem('todo_ya_role', role);
-    if (activeUser) {
-      const updatedUser: UsuarioRegistrado = { ...activeUser, rol: role };
-      setActiveUser(updatedUser);
-      Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
-    }
+    setIsSwitchingRole(true); // Activa el overlay de cambio de rol para una transición elegante
+    setTimeout(() => {
+      setUserRole(role);
+      Storage.setItem('todo_ya_role', role);
+      if (activeUser) {
+        const updatedUser: UsuarioRegistrado = { ...activeUser, rol: role };
+        setActiveUser(updatedUser);
+        Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+      }
+      setTimeout(() => {
+        setIsSwitchingRole(false);
+      }, 500);
+    }, 100);
   };
 
   /**
@@ -610,7 +628,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       registrarUsuario,
       activeUser,
       configurarProveedor,
-      rateOrder
+      rateOrder,
+      isSwitchingRole
     }}>
       {children}
     </UserContext.Provider>

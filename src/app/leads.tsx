@@ -4,10 +4,30 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { useUser } from '../context/user-context';
 
 export default function LeadsScreen() {
-  const { orders, coins, applyToLead } = useUser();
+  const { orders, coins, applyToLead, activeUser } = useUser();
 
-  // Filter orders that are looking for a provider
-  const activeLeads = orders.filter(o => o.estado === 'Buscando proveedor');
+  // Nombre e iniciales dinámicas del proveedor activo basados en el tipo de entidad registrado
+  const providerName = activeUser?.nombre || 'Juan Ríos';
+  const providerInitials = providerName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
+  const professionText = isB2BProvider 
+    ? `Empresa de ${activeUser?.serviciosOfrecidos?.join(', ') || activeUser?.rubro || 'Branding & Lettering'}`
+    : `${activeUser?.serviciosOfrecidos?.join(', ') || 'Plomería'}`;
+
+  // Filtramos las solicitudes de clientes de forma que correspondan a su tipo de cuenta (B2B vs Residencial)
+  const activeLeads = orders.filter(o => {
+    if (o.estado !== 'Buscando proveedor') return false;
+    
+    // Identificar si la categoría solicitada por el cliente pertenece al segmento corporativo B2B
+    const isOrderB2B = 
+      o.servicio === 'Decoración & Eventos' || 
+      o.servicio === 'Branding & Lettering' || 
+      o.servicio === 'Papelería & Oficina' || 
+      o.servicio === 'Servicios B2B';
+      
+    // Las empresas proveedoras solo ven requerimientos B2B, y los proveedores naturales solo ven requerimientos residenciales
+    return isB2BProvider ? isOrderB2B : !isOrderB2B;
+  });
 
   // Custom modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -35,7 +55,8 @@ export default function LeadsScreen() {
       message: `¿Deseas postularte para "${title}" por ${cost} monedas?`,
       singleButton: false,
       onConfirm: () => {
-        const success = applyToLead(leadId, cost, 'Juan Ríos');
+        // Enviar la postulación utilizando el nombre dinámico del proveedor
+        const success = applyToLead(leadId, cost, providerName);
         if (success) {
           setTimeout(() => {
             setConfirmConfig({
@@ -54,32 +75,38 @@ export default function LeadsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header Proveedor */}
-      <View style={styles.header}>
+      {/* Header Proveedor Adaptado Visualmente (Slate para B2B, Carbón para Natural) */}
+      <View style={[styles.header, isB2BProvider && { backgroundColor: '#1e293b' }]}>
         <View style={styles.headerContent}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>JR</Text>
+          <View style={[styles.avatar, isB2BProvider && { backgroundColor: '#6366f1' }]}>
+            <Text style={[styles.avatarText, isB2BProvider && { color: '#fff' }]}>{providerInitials}</Text>
           </View>
           <View>
-            <Text style={styles.name}>Juan Ríos <Text style={styles.proBadge}>PRO</Text></Text>
-            <Text style={styles.status}>Plomero · <Text style={{ color: '#4caf50' }}>Disponible</Text></Text>
+            <Text style={[styles.name, isB2BProvider && { color: '#818cf8' }]}>
+              {providerName} <Text style={[styles.proBadge, isB2BProvider && { backgroundColor: '#6366f1', color: '#fff' }]}>PRO</Text>
+            </Text>
+            <Text style={styles.status}>{professionText} · <Text style={{ color: '#4caf50' }}>Disponible</Text></Text>
           </View>
         </View>
-        <Ionicons name="notifications-outline" size={28} color="#FFB400" />
+        <Ionicons 
+          name="notifications-outline" 
+          size={28} 
+          color={isB2BProvider ? '#818cf8' : '#FFB400'} 
+        />
       </View>
 
       <ScrollView style={styles.body}>
-        {/* Saldo de Monedas */}
-        <View style={styles.monedasCard}>
-          <View style={styles.monedasIcon}>
-            <Ionicons name="cash-outline" size={28} color="#2F2F2F" />
+        {/* Saldo de Monedas con Estilos Adaptativos según el tipo de Proveedor */}
+        <View style={[styles.monedasCard, isB2BProvider && { borderColor: '#6366f1', shadowColor: '#6366f1' }]}>
+          <View style={[styles.monedasIcon, isB2BProvider && { backgroundColor: '#6366f1' }]}>
+            <Ionicons name="cash-outline" size={28} color={isB2BProvider ? '#fff' : '#2F2F2F'} />
           </View>
           <View>
             <Text style={styles.monedasAmount}>{coins} <Text style={{ fontSize: 14, color: '#666' }}>monedas</Text></Text>
             <Text style={styles.monedasLabel}>Saldo disponible · Bs. 5 c/u</Text>
           </View>
           <TouchableOpacity 
-            style={styles.comprarBtn} 
+            style={[styles.comprarBtn, isB2BProvider && { backgroundColor: '#6366f1' }]} 
             onPress={() => {
               setConfirmConfig({
                 title: 'Comprar Monedas',
@@ -91,7 +118,7 @@ export default function LeadsScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Text style={styles.comprarText}>+ Comprar</Text>
+            <Text style={[styles.comprarText, isB2BProvider && { color: '#fff' }]}>+ Comprar</Text>
           </TouchableOpacity>
         </View>
 

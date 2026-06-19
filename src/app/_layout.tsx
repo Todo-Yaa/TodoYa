@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { View } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'; // Para una animación fluida de desvanecimiento
 import { UserProvider, useUser } from '../context/user-context';
 import LoginScreen from '../components/login-screen';
 import RatingOverlayModal from '../components/rating-overlay-modal';
@@ -10,7 +11,7 @@ import RatingOverlayModal from '../components/rating-overlay-modal';
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
  */
 function NavigationLayout() {
-  const { userRole, isAuthenticated, orders, rateOrder } = useUser();
+  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole } = useUser();
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
@@ -126,6 +127,39 @@ function NavigationLayout() {
           order={unratedOrder}
           onRate={(estrellas, etiquetas) => rateOrder(unratedOrder.id, estrellas, etiquetas)}
         />
+      )}
+
+      {/* Pantalla flotante de transición de rol con micro-animación de desvanecimiento */}
+      {isSwitchingRole && (
+        <Animated.View 
+          entering={FadeIn.duration(220)} 
+          exiting={FadeOut.duration(200)} 
+          style={[
+            StyleSheet.absoluteFill, 
+            { 
+              backgroundColor: userRole === 'business' || userRole === 'provider' ? '#1e293b' : '#ffffff', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              zIndex: 99999 
+            }
+          ]}
+        >
+          <ActivityIndicator 
+            size="large" 
+            color={userRole === 'business' || userRole === 'provider' ? '#818cf8' : '#FFB400'} 
+          />
+          <Text style={{ 
+            marginTop: 18, 
+            color: userRole === 'business' || userRole === 'provider' ? '#ffffff' : '#2F2F2F', 
+            fontSize: 15, 
+            fontWeight: '600',
+            letterSpacing: 0.5
+          }}>
+            {userRole === 'provider' 
+              ? 'Activando perfil profesional...' 
+              : (userRole === 'business' ? 'Ingresando a cuenta corporativa...' : 'Ingresando a cuenta residencial...')}
+          </Text>
+        </Animated.View>
       )}
     </View>
   );

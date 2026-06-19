@@ -4,10 +4,13 @@ import { useState } from 'react';
 import { useUser } from '../context/user-context';
 
 export default function TrabajosScreen() {
-  const { orders, completeJob } = useUser();
+  const { orders, completeJob, activeUser } = useUser();
 
-  // Filter orders assigned to Juan Ríos
-  const trabajos = orders.filter(o => o.proveedor === 'Juan Ríos');
+  // Obtener el nombre de perfil del proveedor activo de forma dinámica
+  const providerName = activeUser?.nombre || 'Juan Ríos';
+
+  // Filtrar los trabajos asignados al proveedor actual en lugar de usar un nombre fijo
+  const trabajos = orders.filter(o => o.proveedor === providerName);
 
   // Custom modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
