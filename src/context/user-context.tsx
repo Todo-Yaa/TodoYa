@@ -222,7 +222,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * Alterna de rol de usuario (Cliente <-> Proveedor) y guarda la selección.
    */
   const toggleRole = () => {
-    const nextRole: UserRole = userRole === 'client' ? 'provider' : 'client';
+    let nextRole: UserRole = 'client';
+    const isEmpresa = activeUser?.tipoEntidad === 'empresa' || userRole === 'business';
+    
+    if (isEmpresa) {
+      nextRole = userRole === 'business' ? 'provider' : 'business';
+    } else {
+      nextRole = userRole === 'client' ? 'provider' : 'client';
+    }
+
     setUserRole(nextRole);
     Storage.setItem('todo_ya_role', nextRole);
     if (activeUser) {

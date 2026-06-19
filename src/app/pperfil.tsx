@@ -114,10 +114,20 @@ export default function PperfilScreen() {
         <View style={styles.toggleCard}>
           <TouchableOpacity style={styles.toggleRow} onPress={handleSwitchRole} activeOpacity={0.7}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 }}>
-              <Ionicons name="people-outline" size={24} color="#FFB400" />
+              <Ionicons 
+                name={isB2BProvider ? "business-outline" : "people-outline"} 
+                size={24} 
+                color={isB2BProvider ? "#6366f1" : "#FFB400"} 
+              />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.accountText, { fontWeight: '600' }]}>Cambiar a modo Cliente</Text>
-                <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Busca profesionales para solucionar tus problemas</Text>
+                <Text style={[styles.accountText, { fontWeight: '600' }]}>
+                  {isB2BProvider ? 'Volver a modo Empresa' : 'Volver a modo Cliente residencial'}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                  {isB2BProvider 
+                    ? 'Publica requerimientos B2B para tu empresa' 
+                    : 'Busca profesionales para solucionar tus problemas'}
+                </Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />

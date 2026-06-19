@@ -122,52 +122,61 @@ export default function PerfilScreen() {
         <Text style={styles.sectionTitle}>Cambiar de Rol</Text>
         <View style={styles.rolesGrid}>
           {[
-            { role: 'client', label: 'Cliente', icon: 'people-outline', desc: 'Residencial', path: '/' },
-            { role: 'business', label: 'Empresa', icon: 'business-outline', desc: 'B2B/Corporativo', path: '/' },
+            { role: 'client', label: 'Cliente natural', icon: 'people-outline', desc: 'Residencial', path: '/' },
+            { role: 'business', label: 'Empresa (Cliente)', icon: 'business-outline', desc: 'B2B/Corporativo', path: '/' },
             { role: 'provider', label: 'Proveedor', icon: 'construct-outline', desc: 'Ofrecer servicios', path: '/leads' }
-          ].map((item, index) => {
-            const isActive = userRole === item.role;
-            const isSelfBusiness = item.role === 'business';
-            const isSelfProvider = item.role === 'provider';
-            return (
-              <TouchableOpacity 
-                key={index} 
-                style={[
-                  styles.roleOptionCard,
-                  isActive && (
-                    isSelfBusiness ? styles.activeBusinessCard : 
-                    (isSelfProvider ? styles.activeProviderCard : styles.activeClientCard)
-                  )
-                ]}
-                onPress={() => {
-                  if (item.role === 'provider') {
-                    if (activeUser?.proveedorConfigurado) {
-                      setRole('provider');
-                      router.replace('/leads');
+          ]
+            .filter((item) => {
+              const entity = activeUser?.tipoEntidad || 'natural';
+              if (entity === 'empresa') {
+                return item.role !== 'client';
+              } else {
+                return item.role !== 'business';
+              }
+            })
+            .map((item, index) => {
+              const isActive = userRole === item.role;
+              const isSelfBusiness = item.role === 'business';
+              const isSelfProvider = item.role === 'provider';
+              return (
+                <TouchableOpacity 
+                  key={index} 
+                  style={[
+                    styles.roleOptionCard,
+                    isActive && (
+                      isSelfBusiness ? styles.activeBusinessCard : 
+                      (isSelfProvider ? styles.activeProviderCard : styles.activeClientCard)
+                    )
+                  ]}
+                  onPress={() => {
+                    if (item.role === 'provider') {
+                      if (activeUser?.proveedorConfigurado) {
+                        setRole('provider');
+                        router.replace('/leads');
+                      } else {
+                        setShowOnboarding(true);
+                      }
                     } else {
-                      setShowOnboarding(true);
+                      setRole(item.role as any);
+                      router.replace(item.path as any);
                     }
-                  } else {
-                    setRole(item.role as any);
-                    router.replace(item.path as any);
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons 
-                  name={item.icon as any} 
-                  size={20} 
-                  color={isActive ? '#fff' : '#666'} 
-                />
-                <Text style={[styles.roleOptionLabel, isActive && { color: '#fff', fontWeight: 'bold' }]}>
-                  {item.label}
-                </Text>
-                <Text style={[styles.roleOptionDesc, isActive && { color: '#e2e8f0' }]}>
-                  {item.desc}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name={item.icon as any} 
+                    size={20} 
+                    color={isActive ? '#fff' : '#666'} 
+                  />
+                  <Text style={[styles.roleOptionLabel, isActive && { color: '#fff', fontWeight: 'bold' }]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.roleOptionDesc, isActive && { color: '#e2e8f0' }]}>
+                    {item.desc}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
         </View>
 
         {/* Listado de Datos y Opciones de Cuenta */}
