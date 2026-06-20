@@ -26,6 +26,9 @@ export async function GET(request: Request) {
       calificado: o.calificado || false,
       calificacionEstrellas: o.calificacionEstrellas || undefined,
       calificacionEtiquetas: (o.calificacionEtiquetas as string[]) || undefined,
+      acceptedAt: o.acceptedAt,
+      completedAt: o.completedAt,
+      tiempoEjecucion: o.tiempoEjecucion,
     }));
 
     return Response.json({ status: 'success', data: formatOrders });
@@ -55,6 +58,7 @@ export async function POST(request: Request) {
       progreso: proveedor ? 65 : 25,
       color: '#FFB400',
       hora: 'Ahora mismo',
+      acceptedAt: proveedor ? new Date() : null,
     }).returning();
 
     return Response.json({ status: 'success', order: nuevoPedido[0] });
@@ -86,18 +90,32 @@ export async function PUT(request: Request) {
           proveedor: providerName,
           estado: 'En progreso',
           progreso: 65,
-          hora: 'Hace un momento'
+          hora: 'Hace un momento',
+          acceptedAt: new Date()
         })
         .where(eq(orders.id, id))
         .returning();
     } else if (action === 'complete') {
       // Completar el trabajo
+      const [orderToComplete] = await db.select().from(orders).where(eq(orders.id, id));
+      if (!orderToComplete) return Response.json({ error: 'Pedido no encontrado' }, { status: 404 });
+
+      const now = new Date();
+      let tiempoEjecucionText = 'Tiempo desconocido';
+      if (orderToComplete.acceptedAt) {
+        const diffMs = now.getTime() - new Date(orderToComplete.acceptedAt).getTime();
+        const diffMins = Math.round(diffMs / 60000);
+        tiempoEjecucionText = diffMins > 60 ? `${Math.round(diffMins / 60)} horas` : `${diffMins} minutos`;
+      }
+
       updated = await db.update(orders)
         .set({
           estado: 'Completado',
           progreso: 100,
           color: '#4caf50',
-          hora: 'Terminado recientemente'
+          hora: 'Terminado recientemente',
+          completedAt: now,
+          tiempoEjecucion: tiempoEjecucionText
         })
         .where(eq(orders.id, id))
         .returning();

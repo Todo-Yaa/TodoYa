@@ -47,5 +47,9 @@ export const orders = pgTable('orders', {
   calificacionEstrellas: integer('calificacion_estrellas'),
   calificacionEtiquetas: jsonb('calificacion_etiquetas').$type<string[]>(),
   
+  // Tiempos de ejecución
   createdAt: timestamp('created_at').defaultNow(),
+  acceptedAt: timestamp('accepted_at'),
+  completedAt: timestamp('completed_at'),
+  tiempoEjecucion: varchar('tiempo_ejecucion', { length: 100 }), // Ej: "45 minutos"
 });

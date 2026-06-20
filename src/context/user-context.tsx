@@ -39,6 +39,9 @@ export interface Order {
   calificado?: boolean;
   calificacionEstrellas?: number;
   calificacionEtiquetas?: string[];
+  acceptedAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  tiempoEjecucion?: string | null;
 }
 
 // Estructura del Contexto Global del Usuario (en español)
@@ -330,7 +333,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       hora: 'Ahora mismo',
       color: '#FFB400',
       precio,
-      urgencia
+      urgencia,
+      acceptedAt: proveedor ? new Date().toISOString() : null,
     };
 
     if (isDbOnline) {
@@ -354,7 +358,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
               hora: data.order.hora,
               color: data.order.color,
               precio: data.order.precio,
-              urgencia: data.order.urgencia
+              urgencia: data.order.urgencia,
+              acceptedAt: data.order.acceptedAt,
+              completedAt: data.order.completedAt,
+              tiempoEjecucion: data.order.tiempoEjecucion
             };
             setOrders(prev => [syncedOrder, ...prev]);
             return;
@@ -395,7 +402,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
           proveedor: providerName,
           estado: 'En progreso' as const,
           progreso: 65,
-          hora: 'Hace un momento'
+          hora: 'Hace un momento',
+          acceptedAt: new Date().toISOString()
         };
       }
       return order;
@@ -419,12 +427,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     const updatedOrders = orders.map(order => {
       if (order.id === orderId) {
+        const now = new Date();
+        let tiempoEjecucionText = 'Tiempo desconocido';
+        if (order.acceptedAt) {
+          const diffMs = now.getTime() - new Date(order.acceptedAt).getTime();
+          const diffMins = Math.round(diffMs / 60000);
+          tiempoEjecucionText = diffMins > 60 ? `${Math.round(diffMins / 60)} horas` : `${diffMins} minutos`;
+        }
+
         return {
           ...order,
           estado: 'Completado' as const,
           progreso: 100,
           color: '#4caf50',
-          hora: 'Terminado recientemente'
+          hora: 'Terminado recientemente',
+          completedAt: now.toISOString(),
+          tiempoEjecucion: tiempoEjecucionText
         };
       }
       return order;
