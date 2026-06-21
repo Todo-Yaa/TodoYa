@@ -100,6 +100,36 @@ export default function SolicitarScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [b2bVisibleOffers, setB2bVisibleOffers] = useState<CandidateProvider[]>([]);
 
+  // Voice input (Speech-to-Text) states
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [voicePulse, setVoicePulse] = useState(1);
+
+  // Simulación de grabación de voz
+  const iniciarGrabacionVoz = () => {
+    setShowVoiceModal(true);
+    setVoicePulse(1);
+
+    // Efecto de animación de ondas de sonido pulsantes
+    const pulseInterval = setInterval(() => {
+      setVoicePulse(p => (p === 1 ? 1.3 : 1));
+    }, 600);
+
+    setTimeout(() => {
+      clearInterval(pulseInterval);
+      setShowVoiceModal(false);
+      
+      const textoTranscrito = isBusiness
+        ? "Requerimos 20 resmas de papel bond tamaño carta, carpetas membretadas y bolígrafos para uso corporativo urgente."
+        : "Hola, necesito instalar un aire acondicionado split de 12000 BTU en mi dormitorio lo antes posible.";
+      
+      setInputText(textoTranscrito);
+      
+      setTimeout(() => {
+        processNLP(textoTranscrito);
+      }, 500);
+    }, 2800);
+  };
+
   useEffect(() => {
     return () => {
       if (timerIntervalId) clearInterval(timerIntervalId);
@@ -109,8 +139,9 @@ export default function SolicitarScreen() {
   /**
    * Procesa la entrada de texto mediante el algoritmo de matching (IA / local).
    */
-  const processNLP = async () => {
-    if (!inputText.trim()) {
+  const processNLP = async (textToProcess?: string) => {
+    const targetText = typeof textToProcess === 'string' ? textToProcess : inputText;
+    if (!targetText.trim()) {
       setConfirmConfig({
         title: '⚠️ Entrada vacía',
         message: 'Por favor describe qué necesitas antes de analizar.',
@@ -125,7 +156,7 @@ export default function SolicitarScreen() {
 
     try {
       // 1. Llamar al servicio de emparejamiento inteligente (intenta API online -> fallback local offline)
-      const res = await matchProviders(inputText, -17.784, -63.180);
+      const res = await matchProviders(targetText, -17.784, -63.180);
       
       const cat = res.nlpAnalysis.categoriaDetectada;
       const urg = res.nlpAnalysis.urgenciaDetectada;
@@ -409,22 +440,36 @@ export default function SolicitarScreen() {
               <Text style={[styles.aiText, isBusiness && { color: '#4f46e5' }]}>{t('solicitud.ai_classification')}</Text>
             </View>
 
-            {/* Input de descripción multilínea */}
-            <TextInput
-              style={[
-                styles.input,
-                isBusiness && { borderColor: '#818cf8' },
-                isFocused && (isBusiness ? styles.inputFocusedB2B : styles.inputFocused)
-              ]}
-              placeholder={isBusiness ? t('solicitud.placeholder_b2b') : t('solicitud.placeholder')}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              numberOfLines={4}
-              editable={!loading}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-            />
+            {/* Input de descripción multilínea con micrófono para entrada de voz */}
+            <View style={{ position: 'relative', width: '100%', marginBottom: 20 }}>
+              <TextInput
+                style={[
+                  styles.input,
+                  isBusiness && { borderColor: '#818cf8' },
+                  isFocused && (isBusiness ? styles.inputFocusedB2B : styles.inputFocused),
+                  { paddingRight: 50, marginBottom: 0 } // Espacio para el micrófono flotante
+                ]}
+                placeholder={isBusiness ? t('solicitud.placeholder_b2b') : t('solicitud.placeholder')}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                numberOfLines={4}
+                editable={!loading}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+              />
+              <TouchableOpacity 
+                style={[
+                  styles.micFloatingBtn,
+                  isBusiness && { backgroundColor: '#e0e7ff', borderColor: '#818cf8' }
+                ]}
+                onPress={iniciarGrabacionVoz}
+                activeOpacity={0.7}
+                disabled={loading}
+              >
+                <Ionicons name="mic" size={22} color={isBusiness ? '#4f46e5' : '#b68000'} />
+              </TouchableOpacity>
+            </View>
 
             {/* Botón de análisis / Estado cargando */}
             {loading ? (
@@ -771,6 +816,42 @@ export default function SolicitarScreen() {
               >
                 <Text style={[styles.modalConfirmText, isBusiness && { color: '#fff' }]}>Entendido</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Modal de Entrada de Voz (Speech-to-Text) */}
+      {showVoiceModal && (
+        <View style={styles.voiceModalOverlay}>
+          <View style={styles.voiceModalContent}>
+            <View 
+              style={[
+                styles.voiceMicContainer, 
+                isBusiness && styles.voiceMicContainerB2B,
+                { transform: [{ scale: voicePulse }] }
+              ]}
+            >
+              <Ionicons 
+                name="mic" 
+                size={40} 
+                color={isBusiness ? '#818cf8' : '#FFB400'} 
+              />
+            </View>
+
+            <Text style={styles.voiceTitle}>Escuchando...</Text>
+            <Text style={styles.voiceSubtitle}>
+              {isBusiness 
+                ? "Describe los insumos o servicios que requiere tu empresa..." 
+                : "Describe el problema o servicio técnico que necesitas en casa..."}
+            </Text>
+
+            <View style={styles.voiceWaveContainer}>
+              <View style={[styles.voiceWaveBar, { height: 12 * voicePulse, backgroundColor: isBusiness ? '#818cf8' : '#FFB400' }]} />
+              <View style={[styles.voiceWaveBar, { height: 28 * (voicePulse === 1 ? 1.2 : 0.7), backgroundColor: isBusiness ? '#6366f1' : '#FFC107' }]} />
+              <View style={[styles.voiceWaveBar, { height: 38 * voicePulse, backgroundColor: isBusiness ? '#4f46e5' : '#FFD54F' }]} />
+              <View style={[styles.voiceWaveBar, { height: 20 * (voicePulse === 1 ? 0.8 : 1.3), backgroundColor: isBusiness ? '#6366f1' : '#FFC107' }]} />
+              <View style={[styles.voiceWaveBar, { height: 10 * voicePulse, backgroundColor: isBusiness ? '#818cf8' : '#FFB400' }]} />
             </View>
           </View>
         </View>
@@ -1135,6 +1216,87 @@ const styles = StyleSheet.create({
     gap: 12,
     width: '100%',
     paddingHorizontal: 20,
+  },
+  micFloatingBtn: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFF8DC',
+    borderWidth: 1,
+    borderColor: '#FFB400',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  voiceModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10000,
+    padding: 24,
+  },
+  voiceModalContent: {
+    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+    borderRadius: 30,
+    padding: 32,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  voiceMicContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 180, 0, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  voiceMicContainerB2B: {
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+  },
+  voiceWaveContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 40,
+    marginVertical: 20,
+  },
+  voiceWaveBar: {
+    width: 4,
+    borderRadius: 2,
+  },
+  voiceTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  voiceSubtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
 

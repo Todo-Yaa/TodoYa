@@ -57,6 +57,26 @@ export default function PperfilScreen() {
   const myJobs = orders.filter(o => o.proveedor === providerName);
   const trabajosCount = 15 + myJobs.length; // 15 trabajos preexistentes simulados + los nuevos postulados
 
+  // Calcular ingresos del mes dinámicamente
+  const completedJobs = myJobs.filter(o => o.estado === 'Completado');
+  const dynamicEarnings = completedJobs.reduce((acc, job) => {
+    const numbers = job.precio?.match(/\d+/g);
+    let priceVal = 80; // Default fallback
+    if (numbers && numbers.length > 0) {
+      priceVal = parseInt(numbers[0]);
+    }
+    return acc + priceVal;
+  }, 0);
+  const totalEarnings = 2800 + dynamicEarnings;
+
+  // Calcular calificación promedio dinámicamente
+  const ratedJobs = myJobs.filter(o => o.estado === 'Completado' && o.calificado);
+  let averageRating = 4.9;
+  if (ratedJobs.length > 0) {
+    const sum = ratedJobs.reduce((acc, o) => acc + (o.calificacionEstrellas || 5), 0);
+    averageRating = parseFloat((sum / ratedJobs.length).toFixed(1));
+  }
+
   return (
     <View style={styles.container}>
       {/* Encabezado del perfil en color carbón oscuro característico del modo proveedor */}
@@ -79,7 +99,7 @@ export default function PperfilScreen() {
               <Text style={styles.statLabel}>Trabajos</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>4.9 ★</Text>
+              <Text style={styles.statNumber}>{averageRating} ★</Text>
               <Text style={styles.statLabel}>Calificación</Text>
             </View>
             <View style={styles.statItem}>
@@ -133,6 +153,25 @@ export default function PperfilScreen() {
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
         </View>
+
+        {/* Tarjeta de Acceso a Estadísticas Detalladas */}
+        <Text style={styles.sectionTitle}>Rendimiento Financiero</Text>
+        <TouchableOpacity 
+          style={styles.statsShortcutCard}
+          onPress={() => router.replace('/stats')}
+          activeOpacity={0.7}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 }}>
+            <View style={styles.statsShortcutIcon}>
+              <Ionicons name="bar-chart-outline" size={24} color="#FFB400" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statsShortcutTitle}>Ver Estadísticas Detalladas</Text>
+              <Text style={styles.statsShortcutDesc}>Ingresos del mes: Bs. {totalEarnings.toLocaleString()} · Meta 95% completada</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        </TouchableOpacity>
 
         {/* Información sobre el Estado de Membresía de Pago PRO */}
         <Text style={styles.sectionTitle}>Membresía</Text>
@@ -386,5 +425,39 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#5a4800',
     fontWeight: '600',
+  },
+  statsShortcutCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  statsShortcutIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#fffbeb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statsShortcutTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2F2F2F',
+  },
+  statsShortcutDesc: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
   },
 });
