@@ -24,7 +24,18 @@ export const users = pgTable('users', {
   anosExperiencia: varchar('anos_experiencia', { length: 50 }),
   descripcionProveedor: text('descripcion_provider'),
   coberturaB2B: varchar('cobertura_b2b', { length: 100 }), // Local o Nacional
+  monedas: integer('monedas').default(24), // Sistema de billetera (saldo de monedas)
   
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Tabla de Historial de Transacciones (Billetera)
+export const transactions = pgTable('transactions', {
+  id: serial('id').primaryKey(),
+  usuario_id: integer('usuario_id').references(() => users.id).notNull(),
+  tipo: varchar('tipo', { length: 50 }).$type<'recarga' | 'gasto'>().notNull(),
+  monto_monedas: integer('monto_monedas').notNull(),
+  detalle: varchar('detalle', { length: 256 }).notNull(), // Ej: "Recarga de monedas (Prueba)" o "Postulación a lead #23"
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -47,5 +58,9 @@ export const orders = pgTable('orders', {
   calificacionEstrellas: integer('calificacion_estrellas'),
   calificacionEtiquetas: jsonb('calificacion_etiquetas').$type<string[]>(),
   
+  // Tiempos de ejecución
   createdAt: timestamp('created_at').defaultNow(),
+  acceptedAt: timestamp('accepted_at'),
+  completedAt: timestamp('completed_at'),
+  tiempoEjecucion: varchar('tiempo_ejecucion', { length: 100 }), // Ej: "45 minutos"
 });

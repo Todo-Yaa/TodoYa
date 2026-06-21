@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@expo/server": "^0.7.5",
     "@expo/ui": "~56.0.18",
     "@expo/vector-icons": "^15.0.2",
     "@neondatabase/serverless": "^1.1.0",
@@ -43,6 +44,8 @@
   "scripts": {
     "start": "expo start --port 7153",
     "dev": "expo start --host lan --port 7153",
+    "build": "expo export -p web",
+    "db:push": "drizzle-kit push",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android --port 7153",
     "ios": "expo start --ios --port 7153",

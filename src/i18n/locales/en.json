@@ -43,5 +43,23 @@
     "accept": "Accept",
     "cancel": "Cancel",
     "save": "Save"
+  },
+  "chat": {
+    "provider_offers": "Provider Offers",
+    "received_offers": "Received applications ({{count}} of {{total}})",
+    "free_providers": "Available Free Providers ({{count}})",
+    "distance": "{{dist}} away",
+    "accept_offer": "Accept Offer",
+    "accept_and_chat": "Accept & Chat",
+    "counter_offer": "Counter Offer (Target budget: Bs. {{budget}})",
+    "accept_budget": "Accepts your budget",
+    "publish_general": "Publish in general list unassigned",
+    "time_out_title": "Time's up!",
+    "time_out_desc": "Nearby providers didn't respond in time. You can retry the search or publish your request to the general list.",
+    "retry": "Retry",
+    "publish_btn": "Publish to General List",
+    "typing": "is typing...",
+    "type_message": "Type your message...",
+    "view_orders": "View Orders"
   }
 }

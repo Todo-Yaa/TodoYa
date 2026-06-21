@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import MapView from '../components/map-view';
 import { useUser } from '../context/user-context';
+import { matchProviders } from '../services/ai-matching';
 
 export default function HomeScreen() {
-  const { userRole, userName, orders } = useUser();
+  const { userRole, userName, orders, addOrder } = useUser();
   const [showModal, setShowModal] = useState(false);
+  const [panicDesc, setPanicDesc] = useState('');
+  const [isPanicLoading, setIsPanicLoading] = useState(false);
 
   // Filtramos pedidos de esta empresa
   const businessOrders = orders.filter(o => 
@@ -23,6 +26,37 @@ export default function HomeScreen() {
   const getInitials = (name: string) => {
     if (!name) return 'CO';
     return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  const executePanicAction = async (quickDesc?: string) => {
+    const descToUse = quickDesc || panicDesc;
+    if (!descToUse.trim()) return;
+    
+    setIsPanicLoading(true);
+    try {
+      const res = await matchProviders(descToUse + ' (urgencia extrema)', -17.784, -63.180);
+      const category = res.nlpAnalysis.categoriaDetectada || 'General';
+      const price = res.precioSugerido || 'Bs. 150';
+      
+      // Enviar alerta general (sin asignar aún) a Leads
+      let providerName = null;
+      // Ya no auto-asignamos, para que aparezca en Leads
+      // if (res.proveedoresEmparejados && res.proveedoresEmparejados.length > 0) {
+      //   providerName = res.proveedoresEmparejados[0].nombre;
+      // }
+      
+      const title = descToUse.length > 25 ? descToUse.substring(0, 25) + '...' : descToUse;
+      addOrder(title, category, descToUse, price, 'Alta', providerName);
+      
+      setIsPanicLoading(false);
+      setShowModal(false);
+      setPanicDesc('');
+      router.push('/pedidos');
+    } catch(e) {
+      console.error(e);
+      setIsPanicLoading(false);
+      setShowModal(false);
+    }
   };
 
   if (userRole === 'business') {
@@ -154,6 +188,68 @@ export default function HomeScreen() {
           <MapView />
         </View>
       </ScrollView>
+
+      {/* Modal de Botón Pánico */}
+      {showModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={styles.modalTitle}>Emitir Alerta S.O.S</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 20 }}>
+              Selecciona una opción rápida o describe tu emergencia para enviar una alerta inmediata a proveedores en un radio de 5km.
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+              <TouchableOpacity 
+                style={{ flex: 1, backgroundColor: '#ffebee', padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#ffcdd2' }}
+                onPress={() => executePanicAction('Fuga de agua grave masiva')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="water" size={28} color="#e53935" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#c62828', marginTop: 8, textAlign: 'center' }}>Fuga de Agua</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={{ flex: 1, backgroundColor: '#fff8e1', padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#ffecb3' }}
+                onPress={() => executePanicAction('Cortocircuito grave / Sin luz')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="flash" size={28} color="#f57f17" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#f57f17', marginTop: 8, textAlign: 'center' }}>Corte de Luz</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={{ backgroundColor: '#f1f5f9', borderRadius: 12, padding: 16, fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 16, outlineStyle: 'none' } as any}
+              placeholder="O describe qué sucede..."
+              value={panicDesc}
+              onChangeText={setPanicDesc}
+              multiline
+            />
+
+            <TouchableOpacity 
+              style={{ backgroundColor: '#e53935', padding: 16, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}
+              onPress={() => executePanicAction()}
+              activeOpacity={0.7}
+              disabled={isPanicLoading || (!panicDesc.trim())}
+            >
+              {isPanicLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="warning" size={20} color="#fff" />
+              )}
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                {isPanicLoading ? 'Emitiendo Alerta...' : 'Enviar Alerta Urgente'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -354,5 +450,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748b',
     marginTop: 4,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    zIndex: 9999,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
   },
 });

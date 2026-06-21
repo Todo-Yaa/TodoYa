@@ -4,9 +4,10 @@ import { useUser } from '../context/user-context';
 export default function StatsScreen() {
   const { orders, activeUser } = useUser();
   const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
+  const providerName = activeUser?.nombre || 'Juan Ríos';
 
-  // Filter completed jobs for Juan Ríos
-  const myCompletedJobs = orders.filter(o => o.proveedor === 'Juan Ríos' && o.estado === 'Completado');
+  // Filter completed jobs for the active provider dynamically
+  const myCompletedJobs = orders.filter(o => o.proveedor === providerName && o.estado === 'Completado');
 
   // Calculate dynamic earnings from completed jobs
   const dynamicEarnings = myCompletedJobs.reduce((acc, job) => {

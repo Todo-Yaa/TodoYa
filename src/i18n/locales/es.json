@@ -43,5 +43,23 @@
     "accept": "Aceptar",
     "cancel": "Cancelar",
     "save": "Guardar"
+  },
+  "chat": {
+    "provider_offers": "Ofertas de Proveedores",
+    "received_offers": "Postulaciones recibidas ({{count}} de {{total}})",
+    "free_providers": "Proveedores Libres Disponibles ({{count}})",
+    "distance": "a {{dist}} de distancia",
+    "accept_offer": "Aceptar Oferta",
+    "accept_and_chat": "Aceptar y Chatear",
+    "counter_offer": "Contraoferta (Presupuesto: Bs. {{budget}})",
+    "accept_budget": "Acepta tu presupuesto",
+    "publish_general": "Publicar en lista general sin asignar",
+    "time_out_title": "¡Tiempo de espera agotado!",
+    "time_out_desc": "Los proveedores cercanos no respondieron a tiempo. Puedes reintentar la búsqueda o publicar en la lista general.",
+    "retry": "Reintentar",
+    "publish_btn": "Publicar en Lista General",
+    "typing": "está escribiendo...",
+    "type_message": "Escribe tu mensaje...",
+    "view_orders": "Ver Pedidos"
   }
 }

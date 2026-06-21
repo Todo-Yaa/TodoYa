@@ -6,6 +6,7 @@ export type UserRole = 'client' | 'provider' | 'business';
 
 // Representación de un usuario registrado en la aplicación (en español)
 export interface UsuarioRegistrado {
+  id?: number;
   nombre: string;
   correoOTelefono: string;
   rol: UserRole;
@@ -39,6 +40,9 @@ export interface Order {
   calificado?: boolean;
   calificacionEstrellas?: number;
   calificacionEtiquetas?: string[];
+  acceptedAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  tiempoEjecucion?: string | null;
 }
 
 // Estructura del Contexto Global del Usuario (en español)
@@ -63,10 +67,12 @@ interface UserContextType {
   configurarProveedor: (servicios: string[], experiencia: string, descripcion: string, cobertura?: string) => Promise<void>;
   rateOrder: (orderId: number, estrellas: number, etiquetas: string[]) => void;
   isSwitchingRole: boolean; // Indica si se está realizando una transición de rol
+  syncOrders: () => Promise<void>; // Fuerza la sincronización de pedidos con la DB
+  addCoins: (amount: number, detail: string) => Promise<void>; // Agrega o quita monedas en DB
 }
 
 // Creación del React Context
-const UserContext = createContext<UserContextType | undefined>(undefined);
+const UserContext = React.createContext<UserContextType | undefined>(undefined);
 
 // Datos semilla iniciales para dar vida a la interfaz en el primer uso
 const initialSeedOrders: Order[] = [
@@ -146,37 +152,42 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [usuariosRegistrados, setUsuariosRegistrados] = useState<UsuarioRegistrado[]>([]);
   const [activeUser, setActiveUser] = useState<UsuarioRegistrado | null>(null);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
+  const [isDbOnline, setIsDbOnline] = useState<boolean>(false);
 
   // Efecto inicial: Carga los datos guardados en la memoria persistente al iniciar la app
   useEffect(() => {
     async function loadData() {
-      // Carga de rol seleccionado anteriormente
+      // 1. Verificar si la base de datos Neon.db está conectada y activa en el servidor
+      let online = false;
+      try {
+        const response = await fetch('/api/db-status');
+        if (response.ok) {
+          const statusData = await response.json();
+          if (statusData.database === 'connected') {
+            online = true;
+            setIsDbOnline(true);
+            console.log('[UserContext] Conexión establecida con Neon.db (Modo Online activo)');
+          }
+        }
+      } catch (err) {
+        console.warn('[UserContext] Ejecutándose en modo local simulado (offline).');
+      }
+
+      // Cargar otros valores locales del dispositivo que son fijos de la sesión
       const savedRole = await Storage.getItem('todo_ya_role');
       if (savedRole) setUserRole(savedRole as UserRole);
 
-      // Carga de monedas del proveedor
       const savedCoins = await Storage.getItem('todo_ya_coins');
       if (savedCoins !== null) setCoins(Number(savedCoins));
 
-      // Carga de historial de pedidos local
-      const savedOrders = await Storage.getItem('todo_ya_orders');
-      if (savedOrders) {
-        setOrders(JSON.parse(savedOrders));
-      } else {
-        setOrders(initialSeedOrders); // Semilla por defecto
-      }
-
-      // Carga de estado de sesión
       const savedAuth = await Storage.getItem('todo_ya_auth');
       if (savedAuth === 'true') {
         setIsAuthenticated(true);
       }
 
-      // Carga de nombre de usuario personalizado
       const savedName = await Storage.getItem('todo_ya_username');
       if (savedName) setUserName(savedName);
 
-      // Carga de usuario activo logueado
       const savedActiveUser = await Storage.getItem('todo_ya_active_user');
       if (savedActiveUser) {
         try {
@@ -192,60 +203,101 @@ export function UserProvider({ children }: { children: ReactNode }) {
         } catch(e) {}
       }
 
-      // Carga de la base de datos local de usuarios y sanitización de datos (compatibilidad hacia atrás con campos en inglés)
-      const savedUsers = await Storage.getItem('todo_ya_registered_users');
-      if (savedUsers) {
+      // Si la BD está online, sincronizar listas desde el servidor. Si no, usar localStorage
+      if (online) {
         try {
-          const usuariosParseados = JSON.parse(savedUsers);
-          if (Array.isArray(usuariosParseados)) {
-            // Mapeamos propiedades en inglés (antiguas) a español para evitar errores de de variables indefinidas.
-            let usuariosSaneados: UsuarioRegistrado[] = usuariosParseados.map((u: any) => {
-              const correoClean = (u.correoOTelefono || u.emailOrPhone || '').trim().toLowerCase();
-              // Determinamos si es empresa según su tipo guardado, presencia del NIT o si el correo incluye 'empresa' (útil en pruebas)
-              const esEmpresa = u.tipoEntidad === 'empresa' || correoClean.includes('empresa') || !!u.nit;
+          // Obtener pedidos de Neon.db
+          const ordRes = await fetch('/api/orders');
+          if (ordRes.ok) {
+            const ordData = await ordRes.json();
+            if (ordData.status === 'success') {
+              setOrders(ordData.data);
+            }
+          }
+          
+          // Obtener usuarios de Neon.db
+          const usrRes = await fetch('/api/users');
+          if (usrRes.ok) {
+            const usrData = await usrRes.json();
+            if (usrData.status === 'success') {
+              setUsuariosRegistrados(usrData.data);
               
-              return {
+              // Migración automática del usuario activo a Neon DB
+              if (savedActiveUser) {
+                let parsedUser: UsuarioRegistrado | null = null;
+                try { parsedUser = JSON.parse(savedActiveUser); } catch(e) {}
+                
+                if (parsedUser && !parsedUser.id) {
+                   const regRes = await fetch('/api/users', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify(parsedUser)
+                   });
+                   if (regRes.ok) {
+                     const regData = await regRes.json();
+                     if (regData.status === 'success' && regData.user) {
+                       parsedUser.id = regData.user.id;
+                       setActiveUser(parsedUser);
+                       await Storage.setItem('todo_ya_active_user', JSON.stringify(parsedUser));
+                       
+                       // Refrescar billetera tras crear
+                       const wRes = await fetch(`/api/wallet?userId=${parsedUser.id}`);
+                       if (wRes.ok) {
+                         const wData = await wRes.json();
+                         if (wData.status === 'success') setCoins(wData.coins);
+                       }
+                     }
+                   }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[UserContext] Error al sincronizar con Neon.db:', e);
+        }
+      } else {
+        // Carga de historial de pedidos local (Offline)
+        const savedOrders = await Storage.getItem('todo_ya_orders');
+        if (savedOrders) {
+          setOrders(JSON.parse(savedOrders));
+        } else {
+          setOrders(initialSeedOrders);
+        }
+
+        // Carga de usuarios registrados locales (Offline)
+        const savedUsers = await Storage.getItem('todo_ya_registered_users');
+        if (savedUsers) {
+          try {
+            const usuariosParseados = JSON.parse(savedUsers);
+            if (Array.isArray(usuariosParseados)) {
+              const usuariosSaneados: UsuarioRegistrado[] = usuariosParseados.map((u: any) => ({
                 nombre: u.nombre || u.name || 'Usuario',
                 correoOTelefono: u.correoOTelefono || u.emailOrPhone || '',
                 rol: u.rol || u.role || 'client',
                 contrasena: u.contrasena || u.password || 'demo1234',
                 tipoProveedor: u.tipoProveedor || u.providerType || 'normal',
-                tipoEntidad: esEmpresa ? 'empresa' : 'natural',
+                tipoEntidad: u.tipoEntidad || 'natural',
                 nit: u.nit,
                 correoFacturacion: u.correoFacturacion,
                 rubro: u.rubro,
-                ofreceB2B: u.ofreceB2B || esEmpresa,
+                ofreceB2B: u.ofreceB2B,
                 proveedorConfigurado: u.proveedorConfigurado,
                 serviciosOfrecidos: u.serviciosOfrecidos,
                 anosExperiencia: u.anosExperiencia,
                 descripcionProveedor: u.descripcionProveedor,
                 coberturaB2B: u.coberturaB2B
-              };
-            });
-
-            // COMPROBACIÓN ADICIONAL: Si algún usuario de prueba de initialSeedUsers no existe en los registros guardados 
-            // del localStorage (por ejemplo, tras cambios de versiones del modelo), lo agregamos para asegurar que funcione.
-            initialSeedUsers.forEach(seedUser => {
-              const existe = usuariosSaneados.some(u => 
-                (u.correoOTelefono || '').toLowerCase() === (seedUser.correoOTelefono || '').toLowerCase()
-              );
-              if (!existe) {
-                usuariosSaneados.push(seedUser);
-              }
-            });
-
-            setUsuariosRegistrados(usuariosSaneados);
-            // Guardamos de vuelta los usuarios saneados en el almacenamiento local
-            await Storage.setItem('todo_ya_registered_users', JSON.stringify(usuariosSaneados));
-          } else {
+              }));
+              setUsuariosRegistrados(usuariosSaneados);
+            } else {
+              setUsuariosRegistrados(initialSeedUsers);
+            }
+          } catch (e) {
             setUsuariosRegistrados(initialSeedUsers);
           }
-        } catch (e) {
+        } else {
           setUsuariosRegistrados(initialSeedUsers);
+          await Storage.setItem('todo_ya_registered_users', JSON.stringify(initialSeedUsers));
         }
-      } else {
-        setUsuariosRegistrados(initialSeedUsers);
-        await Storage.setItem('todo_ya_registered_users', JSON.stringify(initialSeedUsers));
       }
     }
     loadData();
@@ -253,10 +305,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   /**
    * Alterna de rol de usuario (Cliente <-> Proveedor) y guarda la selección.
-   * Modificado para activar el estado de transición fluida de cambio de rol.
    */
   const toggleRole = () => {
-    setIsSwitchingRole(true); // Activa el overlay de cambio de rol para una transición elegante
+    setIsSwitchingRole(true);
     setTimeout(() => {
       let nextRole: UserRole = 'client';
       const isEmpresa = activeUser?.tipoEntidad === 'empresa' || userRole === 'business';
@@ -275,7 +326,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
         Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
       }
       
-      // Mantenemos la pantalla de carga brevemente para completar la navegación
       setTimeout(() => {
         setIsSwitchingRole(false);
       }, 500);
@@ -284,10 +334,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   /**
    * Define un rol específico (Cliente o Proveedor) y guarda la selección.
-   * Modificado para activar el estado de transición fluida de cambio de rol.
    */
   const setRole = (role: UserRole) => {
-    setIsSwitchingRole(true); // Activa el overlay de cambio de rol para una transición elegante
+    setIsSwitchingRole(true);
     setTimeout(() => {
       setUserRole(role);
       Storage.setItem('todo_ya_role', role);
@@ -305,9 +354,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
   /**
    * Añade un nuevo pedido a la lista local. El rol es de Cliente.
    */
-  const addOrder = (titulo: string, servicio: string, description: string, precio: string, urgencia: string, proveedor: string | null = null) => {
+  const addOrder = async (
+    titulo: string, 
+    servicio: string, 
+    description: string, 
+    precio: string, 
+    urgencia: string, 
+    proveedor: string | null = null
+  ) => {
     const newOrder: Order = {
-      id: Date.now(), // ID único usando timestamp
+      id: Date.now(),
       titulo,
       proveedor,
       servicio,
@@ -317,25 +373,81 @@ export function UserProvider({ children }: { children: ReactNode }) {
       hora: 'Ahora mismo',
       color: '#FFB400',
       precio,
-      urgencia
+      urgencia,
+      acceptedAt: proveedor ? new Date().toISOString() : null,
     };
+
+    if (isDbOnline) {
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo, servicio, description, precio, urgencia, proveedor })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'success') {
+            const syncedOrder: Order = {
+              id: data.order.id,
+              titulo: data.order.titulo,
+              proveedor: data.order.proveedor,
+              servicio: data.order.servicio,
+              description: data.order.descripcion,
+              estado: data.order.estado,
+              progreso: data.order.progreso,
+              hora: data.order.hora,
+              color: data.order.color,
+              precio: data.order.precio,
+              urgencia: data.order.urgencia,
+              acceptedAt: data.order.acceptedAt,
+              completedAt: data.order.completedAt,
+              tiempoEjecucion: data.order.tiempoEjecucion
+            };
+            setOrders(prev => [syncedOrder, ...prev]);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error al guardar pedido en Neon.db, recurriendo a local:', err);
+      }
+    }
+
     const updated = [newOrder, ...orders];
     setOrders(updated);
     Storage.setItem('todo_ya_orders', JSON.stringify(updated));
   };
 
   /**
-   * Postulación de un Proveedor a un Pedido/Lead de Cliente:
-   * - Verifica si el proveedor tiene suficientes monedas para postularse.
-   * - Descuenta las monedas correspondientes.
-   * - Asigna el nombre del proveedor al pedido y cambia el estado a 'En progreso'.
+   * Postulación de un Proveedor a un Pedido/Lead de Cliente
    */
   const applyToLead = (orderId: number, coinsCost: number, providerName: string): boolean => {
-    if (coins < coinsCost) return false; // Monedas insuficientes
+    if (coins < coinsCost) return false;
     
     const updatedCoins = coins - coinsCost;
     setCoins(updatedCoins);
     Storage.setItem('todo_ya_coins', String(updatedCoins));
+
+    let finalUserId = activeUser?.id;
+    if (!finalUserId && activeUser?.correoOTelefono) {
+       const found = usuariosRegistrados.find(u => u.correoOTelefono === activeUser.correoOTelefono);
+       if (found?.id) finalUserId = found.id;
+    }
+
+    if (isDbOnline) {
+      if (finalUserId) {
+        fetch('/api/wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: finalUserId, tipo: 'gasto', monto: coinsCost, detalle: `Postulación a pedido #${orderId}` })
+        }).catch(err => console.error('Error al descontar monedas en Neon.db:', err));
+      }
+
+      fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId, action: 'apply', providerName })
+      }).catch(err => console.error('Error al sincronizar postulación en Neon.db:', err));
+    }
 
     const updatedOrders = orders.map(order => {
       if (order.id === orderId) {
@@ -344,7 +456,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
           proveedor: providerName,
           estado: 'En progreso' as const,
           progreso: 65,
-          hora: 'Hace un momento'
+          hora: 'Hace un momento',
+          acceptedAt: new Date().toISOString()
         };
       }
       return order;
@@ -358,14 +471,32 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * Marca un trabajo/pedido como 'Completado' y eleva el progreso al 100%.
    */
   const completeJob = (orderId: number) => {
+    if (isDbOnline) {
+      fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId, action: 'complete' })
+      }).catch(err => console.error('Error al completar trabajo en Neon.db:', err));
+    }
+
     const updatedOrders = orders.map(order => {
       if (order.id === orderId) {
+        const now = new Date();
+        let tiempoEjecucionText = 'Tiempo desconocido';
+        if (order.acceptedAt) {
+          const diffMs = now.getTime() - new Date(order.acceptedAt).getTime();
+          const diffMins = Math.round(diffMs / 60000);
+          tiempoEjecucionText = diffMins > 60 ? `${Math.round(diffMins / 60)} horas` : `${diffMins} minutos`;
+        }
+
         return {
           ...order,
           estado: 'Completado' as const,
           progreso: 100,
           color: '#4caf50',
-          hora: 'Terminado recientemente'
+          hora: 'Terminado recientemente',
+          completedAt: now.toISOString(),
+          tiempoEjecucion: tiempoEjecucionText
         };
       }
       return order;
@@ -375,16 +506,45 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Proceso de Inicio de Sesión Normal (variables en español):
-   * - Comprueba la base de datos local para verificar si el usuario ya existe y validar su rol.
-   * - Si no existe, lo registra dinámicamente como Cliente para asegurar la flexibilidad de uso.
+   * Proceso de Inicio de Sesión
    */
   const login = async (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole): Promise<boolean> => {
     if (!telefonoOCorreo.trim() || !contrasena.trim()) {
-      return false; // Campos vacíos
+      return false;
     }
 
     const claveCorreo = telefonoOCorreo.trim().toLowerCase();
+
+    if (isDbOnline) {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.status === 'success') {
+            const dbUsers: UsuarioRegistrado[] = resData.data;
+            const usuarioEncontrado = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
+            
+            if (usuarioEncontrado) {
+              if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
+                return false;
+              }
+              setActiveUser(usuarioEncontrado);
+              setIsAuthenticated(true);
+              setUserName(usuarioEncontrado.nombre);
+              setUserRole(usuarioEncontrado.rol);
+              await Storage.setItem('todo_ya_auth', 'true');
+              await Storage.setItem('todo_ya_username', usuarioEncontrado.nombre);
+              await Storage.setItem('todo_ya_role', usuarioEncontrado.rol);
+              await Storage.setItem('todo_ya_active_user', JSON.stringify(usuarioEncontrado));
+              return true;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error en autenticación Neon.db, reintentando offline:', err);
+      }
+    }
+
     const usuarioEncontrado = usuariosRegistrados.find(u => {
       const correoRegistrado = (u.correoOTelefono || '').toLowerCase();
       return correoRegistrado === claveCorreo;
@@ -395,7 +555,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     if (usuarioEncontrado) {
       if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
-        return false; // Contraseña incorrecta
+        return false;
       }
       nombre = usuarioEncontrado.nombre;
       rol = forceRole || usuarioEncontrado.rol; // Forzar el rol si viene de los botones de prueba de acceso rápido
@@ -411,7 +571,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUsuariosRegistrados(listaActualizada);
       await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
     } else {
-      // Registrar al vuelo (auto-registro de prueba si es nuevo)
       if (telefonoOCorreo.includes('@')) {
         const partes = telefonoOCorreo.split('@')[0];
         nombre = partes.charAt(0).toUpperCase() + partes.slice(1);
@@ -440,6 +599,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
       await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
       setActiveUser(nuevoUsuario);
       await Storage.setItem('todo_ya_active_user', JSON.stringify(nuevoUsuario));
+
+      if (isDbOnline) {
+        fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevoUsuario)
+        }).catch(err => console.error(err));
+      }
     }
 
     setIsAuthenticated(true);
@@ -458,9 +625,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Registro y Login Social por Google o LinkedIn (variables y parámetros en español):
-   * - Agrega el nuevo usuario a la lista local si no existe previamente.
-   * - Autentica al usuario asignándole el rol seleccionado.
+   * Registro y Login Social por Google o LinkedIn
    */
   const registrarEIniciarSesion = async (
     nombre: string,
@@ -470,28 +635,46 @@ export function UserProvider({ children }: { children: ReactNode }) {
     extraData?: Partial<UsuarioRegistrado>
   ): Promise<void> => {
     const claveCorreo = correoOTelefono.trim().toLowerCase();
+
+    const esEmpresaEmail = correoOTelefono.trim().toLowerCase().includes('empresa');
+    let usuarioFinal: UsuarioRegistrado = {
+      nombre,
+      correoOTelefono: correoOTelefono.trim(),
+      rol,
+      tipoProveedor,
+      contrasena: 'demo1234',
+      tipoEntidad: extraData?.tipoEntidad || (esEmpresaEmail ? 'empresa' : 'natural'),
+      nit: extraData?.nit,
+      correoFacturacion: extraData?.correoFacturacion,
+      rubro: extraData?.rubro,
+      ofreceB2B: extraData?.ofreceB2B || (esEmpresaEmail ? true : undefined)
+    };
+
+    if (isDbOnline) {
+      try {
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(usuarioFinal)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'success') {
+            usuarioFinal = data.user;
+          }
+        }
+      } catch (err) {
+        console.error('Error registrando login social en Neon.db:', err);
+      }
+    }
+
     const usuarioExistente = usuariosRegistrados.find(u => {
       const correoRegistrado = (u.correoOTelefono || '').toLowerCase();
       return correoRegistrado === claveCorreo;
     });
     
-    let usuarioFinal: UsuarioRegistrado;
     let listaActualizada = [...usuariosRegistrados];
     if (!usuarioExistente) {
-      usuarioFinal = {
-        nombre,
-        correoOTelefono: correoOTelefono.trim(),
-        rol,
-        tipoProveedor,
-        contrasena: 'demo1234',
-        // CORRECCIÓN: Detectamos si el correo contiene la palabra 'empresa' para establecer tipoEntidad como 'empresa' en registros sociales de prueba
-        tipoEntidad: extraData?.tipoEntidad || 
-          (correoOTelefono.trim().toLowerCase().includes('empresa') ? 'empresa' : 'natural'),
-        nit: extraData?.nit,
-        correoFacturacion: extraData?.correoFacturacion,
-        rubro: extraData?.rubro,
-        ofreceB2B: extraData?.ofreceB2B || (correoOTelefono.trim().toLowerCase().includes('empresa') ? true : undefined)
-      };
       listaActualizada = [...usuariosRegistrados, usuarioFinal];
       setUsuariosRegistrados(listaActualizada);
       await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
@@ -511,6 +694,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setUserName(usuarioFinal.nombre);
     setUserRole(usuarioFinal.rol);
     setActiveUser(usuarioFinal);
+
+    // Sincronizar billetera al loguear
+    if (isDbOnline && usuarioFinal.id) {
+      try {
+        const walletRes = await fetch(`/api/wallet?userId=${usuarioFinal.id}`);
+        if (walletRes.ok) {
+          const wData = await walletRes.json();
+          if (wData.status === 'success') {
+            setCoins(wData.coins);
+            await Storage.setItem('todo_ya_coins', String(wData.coins));
+          }
+        }
+      } catch (err) {
+        console.error('Error sincronizando billetera:', err);
+      }
+    }
 
     await Storage.setItem('todo_ya_auth', 'true');
     await Storage.setItem('todo_ya_username', usuarioFinal.nombre);
@@ -533,12 +732,50 @@ export function UserProvider({ children }: { children: ReactNode }) {
     ofreceB2B?: boolean
   ): Promise<boolean> => {
     const claveCorreo = correoOTelefono.trim().toLowerCase();
+    
+    if (isDbOnline) {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.status === 'success') {
+            const dbUsers: UsuarioRegistrado[] = resData.data;
+            const usuarioExistente = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
+            if (usuarioExistente) return false;
+          }
+        }
+
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, correoOTelefono, rol, contrasena, tipoEntidad, nit, correoFacturacion, rubro, ofreceB2B })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'success') {
+            const registeredUser = data.user;
+            setIsAuthenticated(true);
+            setUserName(nombre);
+            setUserRole(rol);
+            setActiveUser(registeredUser);
+            await Storage.setItem('todo_ya_auth', 'true');
+            await Storage.setItem('todo_ya_username', nombre);
+            await Storage.setItem('todo_ya_role', rol);
+            await Storage.setItem('todo_ya_active_user', JSON.stringify(registeredUser));
+            return true;
+          }
+        }
+      } catch (err) {
+        console.error('Error registrando en Neon.db, recurriendo a local:', err);
+      }
+    }
+
     const usuarioExistente = usuariosRegistrados.find(u => 
       (u.correoOTelefono || '').toLowerCase() === claveCorreo
     );
 
     if (usuarioExistente) {
-      return false; // Ya existe
+      return false;
     }
 
     const nuevoUsuario: UsuarioRegistrado = {
@@ -571,8 +808,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Cierre de sesión:
-   * - Limpia el estado de autenticación, restablece rol por defecto y borra cookies/storage locales.
+   * Cierre de sesión
    */
   const logout = () => {
     setIsAuthenticated(false);
@@ -585,7 +821,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Configura al usuario activo como Proveedor (Natural o Empresa B2B) tras responder el onboarding.
+   * Configura al usuario activo como Proveedor tras responder el onboarding.
    */
   const configurarProveedor = async (
     servicios: string[],
@@ -606,12 +842,29 @@ export function UserProvider({ children }: { children: ReactNode }) {
       ofreceB2B: activeUser.tipoEntidad === 'empresa' ? true : false
     };
 
+    if (isDbOnline) {
+      try {
+        await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            correoOTelefono: activeUser.correoOTelefono,
+            serviciosOfrecidos: servicios,
+            anosExperiencia: experiencia,
+            descripcionProveedor: descripcion,
+            coberturaB2B: cobertura
+          })
+        });
+      } catch (err) {
+        console.error('Error al sincronizar perfil de proveedor en Neon.db:', err);
+      }
+    }
+
     setActiveUser(updatedUser);
     setUserRole('provider');
     await Storage.setItem('todo_ya_role', 'provider');
     await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
 
-    // Actualizar en la lista local de usuarios registrados
     const claveCorreo = (activeUser.correoOTelefono || '').toLowerCase();
     const listaActualizada = usuariosRegistrados.map(u => 
       (u.correoOTelefono || '').toLowerCase() === claveCorreo ? updatedUser : u
@@ -624,6 +877,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * Registra la calificación dada por el cliente a un pedido completado.
    */
   const rateOrder = (orderId: number, estrellas: number, etiquetas: string[]) => {
+    if (isDbOnline) {
+      fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId, action: 'rate', estrellas, etiquetas })
+      }).catch(err => console.error('Error al calificar trabajo en Neon.db:', err));
+    }
+
     const updatedOrders = orders.map(order => {
       if (order.id === orderId) {
         return {
@@ -660,6 +921,69 @@ export function UserProvider({ children }: { children: ReactNode }) {
     Storage.setItem('todo_ya_registered_users', JSON.stringify(initialSeedUsers));
   };
 
+  /**
+   * Agrega monedas a la billetera local y a la base de datos
+   */
+  const addCoins = async (amount: number, detail: string) => {
+    const updatedCoins = coins + amount;
+    setCoins(updatedCoins);
+    await Storage.setItem('todo_ya_coins', String(updatedCoins));
+
+    let finalUserId = activeUser?.id;
+    if (!finalUserId && activeUser?.correoOTelefono) {
+       const found = usuariosRegistrados.find(u => u.correoOTelefono === activeUser.correoOTelefono);
+       if (found?.id) finalUserId = found.id;
+    }
+
+    if (isDbOnline && finalUserId) {
+      try {
+        await fetch('/api/wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: finalUserId, tipo: 'recarga', monto: amount, detalle: detail })
+        });
+      } catch (e) {
+        console.error('Error al agregar monedas:', e);
+      }
+    }
+  };
+
+  /**
+   * Fuerza la recarga de pedidos (Leads) desde la base de datos o el almacenamiento local
+   */
+  const syncOrders = async () => {
+    if (isDbOnline) {
+      try {
+        const ordRes = await fetch('/api/orders');
+        if (ordRes.ok) {
+          const ordData = await ordRes.json();
+          if (ordData.status === 'success') {
+            setOrders(ordData.data);
+          }
+        }
+        
+        // También sincronizamos la billetera
+        if (activeUser?.id) {
+          const walletRes = await fetch(`/api/wallet?userId=${activeUser.id}`);
+          if (walletRes.ok) {
+            const wData = await walletRes.json();
+            if (wData.status === 'success') {
+              setCoins(wData.coins);
+              await Storage.setItem('todo_ya_coins', String(wData.coins));
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error forzando sincronización:', e);
+      }
+    } else {
+      const savedOrders = await Storage.getItem('todo_ya_orders');
+      if (savedOrders) {
+        setOrders(JSON.parse(savedOrders));
+      }
+    }
+  };
+
   return (
     <UserContext.Provider value={{ 
       userRole, 
@@ -681,7 +1005,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       activeUser,
       configurarProveedor,
       rateOrder,
-      isSwitchingRole
+      isSwitchingRole,
+      syncOrders,
+      addCoins
     }}>
       {children}
     </UserContext.Provider>

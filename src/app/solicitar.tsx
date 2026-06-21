@@ -505,7 +505,7 @@ export default function SolicitarScreen() {
           {/* Header Bidding */}
           <View style={[styles.header, isBusiness && styles.b2bHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <View>
-              <Text style={[styles.headerTitle, isBusiness && { color: '#fff' }]}>Ofertas de Proveedores</Text>
+              <Text style={[styles.headerTitle, isBusiness && { color: '#fff' }]}>{t('chat.provider_offers')}</Text>
               <Text style={[styles.headerSubtitle, isBusiness && { color: '#94a3b8' }]}>{servicio} · {urgencia}</Text>
             </View>
             {isBusiness ? (
@@ -530,8 +530,8 @@ export default function SolicitarScreen() {
           <ScrollView style={styles.candidatesList} showsVerticalScrollIndicator={true}>
             <Text style={styles.sectionTitle}>
               {isBusiness 
-                ? `Postulaciones recibidas (${b2bVisibleOffers.length} de ${candidatos.length})` 
-                : `Proveedores Libres Disponibles (${candidatos.length})`}
+                ? t('chat.received_offers', { count: b2bVisibleOffers.length, total: candidatos.length }) 
+                : t('chat.free_providers', { count: candidatos.length })}
             </Text>
             {(isBusiness ? b2bVisibleOffers : candidatos).map((pro, index) => {
               const avatarInit = pro.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
@@ -548,7 +548,7 @@ export default function SolicitarScreen() {
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                         <Text style={[styles.candidateRating, !isBusiness && { color: '#b68000' }, isBusiness && { color: '#6366f1' }]}>{pro.rating}</Text>
-                        <Text style={styles.candidateDistance}>· a {pro.distance} de distancia</Text>
+                        <Text style={styles.candidateDistance}>· {t('chat.distance', { dist: pro.distance })}</Text>
                       </View>
                       
                       {/* Fila B2B explicativa de la oferta */}
@@ -556,8 +556,8 @@ export default function SolicitarScreen() {
                         <View style={{ alignSelf: 'flex-start', marginVertical: 6, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: pro.isCounterOffer ? '#f5f3ff' : '#ecfdf5', borderWidth: 1, borderColor: pro.isCounterOffer ? '#c084fc' : '#34d399' }}>
                           <Text style={{ fontSize: 11, fontWeight: '700', color: pro.isCounterOffer ? '#7c3aed' : '#059669' }}>
                             {pro.isCounterOffer 
-                              ? `Contraoferta (Presupuesto objetivo: Bs. ${presupuestoInput})` 
-                              : 'Acepta tu presupuesto'}
+                              ? t('chat.counter_offer', { budget: presupuestoInput }) 
+                              : t('chat.accept_budget')}
                           </Text>
                         </View>
                       )}
@@ -572,7 +572,7 @@ export default function SolicitarScreen() {
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.acceptBtnText, isBusiness ? { color: '#fff' } : { color: '#2F2F2F' }]}>
-                        {isBusiness ? 'Aceptar y Chatear' : 'Aceptar Oferta'}
+                        {isBusiness ? t('chat.accept_and_chat') : t('chat.accept_offer')}
                       </Text>
                       <Ionicons name="chatbubbles-outline" size={16} color={isBusiness ? '#fff' : '#2F2F2F'} style={{ marginLeft: 2 }} />
                     </TouchableOpacity>
@@ -586,7 +586,7 @@ export default function SolicitarScreen() {
               onPress={publicarSinAsignar}
               activeOpacity={0.7}
             >
-              <Text style={styles.publishFallbackText}>Publicar en lista general sin asignar</Text>
+              <Text style={styles.publishFallbackText}>{t('chat.publish_general')}</Text>
             </TouchableOpacity>
           </ScrollView>
         </>
@@ -595,9 +595,9 @@ export default function SolicitarScreen() {
       {faseBusqueda === 'expired' && (
         <View style={styles.expiredContainer}>
           <Ionicons name="hourglass-outline" size={64} color="#e53935" style={{ marginBottom: 16 }} />
-          <Text style={styles.expiredTitle}>¡Tiempo de espera agotado!</Text>
+          <Text style={styles.expiredTitle}>{t('chat.time_out_title')}</Text>
           <Text style={styles.expiredSubtitle}>
-            Los proveedores cercanos de {servicio} no respondieron a tiempo. Puedes reintentar la búsqueda o publicar tu solicitud en la lista general.
+            {t('chat.time_out_desc')}
           </Text>
           <View style={styles.expiredActions}>
             <TouchableOpacity 
@@ -605,7 +605,7 @@ export default function SolicitarScreen() {
               onPress={reintentarBusqueda}
               activeOpacity={0.7}
             >
-              <Text style={{ color: '#475569', fontWeight: '600' }}>Reintentar</Text>
+              <Text style={{ color: '#475569', fontWeight: '600' }}>{t('chat.retry')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -613,7 +613,7 @@ export default function SolicitarScreen() {
               onPress={publicarSinAsignar}
               activeOpacity={0.7}
             >
-              <Text style={[styles.confirmButtonText, isBusiness ? { color: '#fff' } : { color: '#2F2F2F' }]}>Publicar en Lista General</Text>
+              <Text style={[styles.confirmButtonText, isBusiness ? { color: '#fff' } : { color: '#2F2F2F' }]}>{t('chat.publish_btn')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -642,7 +642,7 @@ export default function SolicitarScreen() {
               onPress={concluirChatYCrearPedido}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>Ver Pedidos</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{t('chat.view_orders')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -702,7 +702,7 @@ export default function SolicitarScreen() {
               >
                 <ActivityIndicator size="small" color="#6366f1" />
                 <Text style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>
-                  {selectedProvider.name} está escribiendo...
+                  {selectedProvider.name} {t('chat.typing')}
                 </Text>
               </View>
             )}
@@ -731,7 +731,7 @@ export default function SolicitarScreen() {
                 color: '#1e293b',
                 outlineStyle: 'none'
               } as any}
-              placeholder="Escribe tu mensaje a la empresa..."
+              placeholder={t('chat.type_message')}
               value={nuevoMensaje}
               onChangeText={setNuevoMensaje}
               onSubmitEditing={enviarMensajeChat}
