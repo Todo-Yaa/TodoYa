@@ -1,5 +1,7 @@
 // Importar base de datos si estuviera activa
-import { db } from '../../db';
+import { db, isDbConnected } from '../../db';
+import { users } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 // Datos de prueba locales para la simulación del Matching si no hay base de datos real
 const PROVEEDORES_MOCK = [
@@ -91,24 +93,37 @@ export async function POST(request: Request) {
     let urgencia: 'Normal' | 'Alta' = 'Normal';
     const textLower = descripcion.toLowerCase();
 
-    // Detección simple basada en palabras clave
-    if (textLower.match(/(tubo|agua|gotera|fuga|grifo|lavaplatos|inodoro|caño|inundacion|inundación)/)) {
-      categoria = 'Plomería';
-      if (textLower.match(/(inundacion|inundación|fuga grave|revent|urgente|rapido|rápido|inmediat)/)) {
-        urgencia = 'Alta';
+    // Diccionarios de palabras clave para "Todas las Probabilidades" (Sistema de Puntaje)
+    const categoriasBase = {
+      'Plomería': ['tubo', 'agua', 'gotera', 'fuga', 'grifo', 'lavaplatos', 'inodoro', 'caño', 'inundacion', 'inundación', 'cañeria', 'desague', 'baño', 'bomba', 'pileta', 'filtracion'],
+      'Electricidad': ['luz', 'enchufe', 'corto', 'cable', 'cortocircuito', 'corriente', 'toma', 'llave', 'termica', 'térmica', 'tablero', 'apagon', 'foco', 'iluminacion', 'lampara', 'chispa', 'electrocutado'],
+      'Pintura': ['pintar', 'pared', 'techo', 'fachada', 'rodillo', 'brocha', 'humedad', 'color', 'acabado', 'pintor', 'barniz', 'pintura', 'descacarado', 'latex'],
+      'Climatización': ['aire', 'acondicionado', 'clima', 'frio', 'frío', 'calor', 'gotea', 'enfria', 'enfría', 'split', 'gas', 'compresor', 'ventilador', 'climatizador'],
+      'Papelería & Oficina': ['papel', 'resma', 'oficina', 'boligrafo', 'carpeta', 'escritorio', 'impresion', 'impresora', 'tinta', 'toner', 'lapiz', 'cuaderno', 'archivo', 'fotocopia'],
+      'Branding & Lettering': ['letrero', 'banner', 'diseño', 'logo', 'vinilo', 'grafica', 'corporeo', 'rotulado', 'marca', 'identidad', 'letras', 'iluminado', 'fachada', 'vidriera'],
+      'Decoración & Eventos': ['decoracion', 'evento', 'globo', 'fiesta', 'aniversario', 'cumpleaños', 'arreglo', 'flores', 'ambientacion', 'salon', 'sillas', 'mesas', 'catering'],
+      'Servicios B2B': ['limpieza', 'mantenimiento', 'empresa', 'corporativo', 'guardia', 'seguridad', 'consultoria', 'asesoria', 'contable', 'fiscal', 'legal']
+    };
+
+    let maxPuntaje = 0;
+    
+    // Evaluar cada categoria sumando puntos por cada coincidencia
+    for (const [catName, palabras] of Object.entries(categoriasBase)) {
+      let puntaje = 0;
+      for (const palabra of palabras) {
+        if (textLower.includes(palabra)) {
+          puntaje++;
+        }
       }
-    } else if (textLower.match(/(luz|enchufe|corto|cable|cortocircuito|corriente|toma|llave|termica|térmica|tablero)/)) {
-      categoria = 'Electricidad';
-      if (textLower.match(/(humo|chispa|fuego|peligro|urgente|sin luz|cortocircuito)/)) {
-        urgencia = 'Alta';
+      if (puntaje > maxPuntaje) {
+        maxPuntaje = puntaje;
+        categoria = catName;
       }
-    } else if (textLower.match(/(pintar|pared|techo|fachada|rodillo|brocha|humedad|color|acabado)/)) {
-      categoria = 'Pintura';
-    } else if (textLower.match(/(aire|acondicionado|clima|frio|frío|calor|gotea aire|no enfria|no enfría|split)/)) {
-      categoria = 'Climatización';
-      if (textLower.match(/(calor insoportable|urgente|oficina caliente)/)) {
-        urgencia = 'Alta';
-      }
+    }
+    
+    // Urgencia heurística de amplio espectro
+    if (textLower.match(/(urgente|rapido|rápido|inmediat|ya|emergencia|peligro|humo|fuego|inundacion|revent|auxilio|urgencia)/)) {
+      urgencia = 'Alta';
     }
 
     // Calcular distancia de Harvesine simplificada
@@ -129,7 +144,46 @@ export async function POST(request: Request) {
     // Algoritmo de Scoring:
     // score = (rating * 0.4) + (factor_distancia * 0.4) + (factor_experiencia * 0.2)
     // El mejor score se posiciona primero.
-    const proveedoresFiltrados = PROVEEDORES_MOCK.filter(p => p.especialidad === categoria);
+    
+    // Extraer proveedores desde la Base de Datos Real de Neon.db (o fallback al Mock si está desconectado)
+    let proveedoresFuente = PROVEEDORES_MOCK;
+    if (isDbConnected() && db) {
+      try {
+        const bdProviders = await db.select().from(users).where(eq(users.rol, 'provider'));
+        const mappedProviders = bdProviders.map(p => {
+          let especialidad = 'Plomería'; // default genérico
+          if (p.serviciosOfrecidos && Array.isArray(p.serviciosOfrecidos) && p.serviciosOfrecidos.length > 0) {
+            especialidad = p.serviciosOfrecidos[0];
+          } else if (p.ofreceB2B && p.rubro) {
+            especialidad = p.rubro;
+          }
+
+          // Convertir años de experiencia a número para la formula
+          let expAnos = 3; 
+          if (p.anosExperiencia === '1 a 3 años') expAnos = 2;
+          else if (p.anosExperiencia === 'Más de 3 años') expAnos = 5;
+
+          return {
+            id: String(p.id),
+            nombre: p.nombre,
+            especialidad: especialidad,
+            rating: 4.8, // En una versión futura se sacaría del promedio de calificacionEstrellas
+            experiencia: expAnos,
+            lat: -17.780 + (Math.random() * 0.02 - 0.01), // Coordenada simulada en radio de SCZ
+            lng: -63.180 + (Math.random() * 0.02 - 0.01),
+            descripcion: p.descripcionProveedor || 'Proveedor de servicios verificado'
+          };
+        });
+
+        if (mappedProviders.length > 0) {
+          proveedoresFuente = mappedProviders;
+        }
+      } catch(e) {
+        console.error('Error al obtener proveedores de BD, usando Mock', e);
+      }
+    }
+
+    const proveedoresFiltrados = proveedoresFuente.filter(p => p.especialidad === categoria);
     
     const proveedoresConScore = proveedoresFiltrados.map(p => {
       const distancia = calcularDistancia(latCliente, lngCliente, p.lat, p.lng);

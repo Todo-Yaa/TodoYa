@@ -43,5 +43,23 @@
     "accept": "Néi",
     "cancel": "Ani",
     "save": "Eñongatu"
+  },
+  "chat": {
+    "provider_offers": "Mbaapoharakuera ñemomarandu",
+    "received_offers": "Mbaapohara ojejuhúva ({{count}} de {{total}})",
+    "free_providers": "Mbaapoharakuera isãso ({{count}})",
+    "distance": "{{dist}} mbyrype",
+    "accept_offer": "Eñongatu tembiapo",
+    "accept_and_chat": "Eñongatu ha emongeta",
+    "counter_offer": "Ambue tembiapo (Pirapire: Bs. {{budget}})",
+    "accept_budget": "Eñongatu nde pirapire",
+    "publish_general": "Eñongatu lista guasupe",
+    "time_out_title": "¡Ara opami!",
+    "time_out_desc": "Mbaapoharakuera jakápe ndokutichiri. Eheka jeypota térã eñongatu lista guasupe.",
+    "retry": "Eheka jey",
+    "publish_btn": "Eñongatu Lista Guasupe",
+    "typing": "ohai...",
+    "type_message": "Ehai nde marandu...",
+    "view_orders": "Ehecha tembiapokuera"
   }
 }

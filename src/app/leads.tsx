@@ -1,10 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState, useCallback, useEffect } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, RefreshControl, Image, ActivityIndicator } from 'react-native';
 import { useUser } from '../context/user-context';
 
 export default function LeadsScreen() {
-  const { orders, coins, applyToLead, activeUser } = useUser();
+  const { orders, coins, applyToLead, activeUser, syncOrders, addCoins, usuariosRegistrados } = useUser();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // VeriPagos payment states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<'packages' | 'loading' | 'qr' | 'success' | 'error'>('packages');
+  const [selectedPackage, setSelectedPackage] = useState<{ coins: number; priceBs: number } | null>(null);
+  const [qrData, setQrData] = useState<{ qr: string; movimiento_id: any } | null>(null);
+  const [paymentError, setPaymentError] = useState<string>('');
+  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
 
   // Nombre e iniciales dinámicas del proveedor activo basados en el tipo de entidad registrado
   const providerName = activeUser?.nombre || 'Juan Ríos';
@@ -59,6 +68,7 @@ export default function LeadsScreen() {
         const success = applyToLead(leadId, cost, providerName);
         if (success) {
           setTimeout(() => {
+            loadTransactionHistory(); // Actualizar historial de transacciones en la UI
             setConfirmConfig({
               title: '🎉 ¡Postulado con éxito!',
               message: 'Te has postulado al trabajo. El pedido ahora está en tu pestaña de "Trabajos" en estado "En progreso".',
@@ -72,6 +82,120 @@ export default function LeadsScreen() {
     });
     setShowConfirmModal(true);
   };
+
+  const loadTransactionHistory = useCallback(async () => {
+    let finalUserId = activeUser?.id;
+    if (!finalUserId && activeUser?.correoOTelefono) {
+      const found = usuariosRegistrados.find(u => u.correoOTelefono === activeUser.correoOTelefono);
+      if (found?.id) finalUserId = found.id;
+    }
+    if (finalUserId) {
+      try {
+        const res = await fetch(`/api/wallet?userId=${finalUserId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'success') {
+            setTransactionHistory(data.history || []);
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching transaction history:', e);
+      }
+    }
+  }, [activeUser, usuariosRegistrados]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await syncOrders();
+    await loadTransactionHistory();
+    setRefreshing(false);
+  }, [syncOrders, loadTransactionHistory]);
+
+  // Load history on load or user changes
+  useEffect(() => {
+    loadTransactionHistory();
+  }, [activeUser, loadTransactionHistory]);
+
+  // Function to call /api/veripagos and generate QR
+  const handleGenerateQR = async (pkg: { coins: number; priceBs: number }) => {
+    setSelectedPackage(pkg);
+    setPaymentStep('loading');
+    setPaymentError('');
+
+    let finalUserId = activeUser?.id;
+    if (!finalUserId && activeUser?.correoOTelefono) {
+      const found = usuariosRegistrados.find(u => u.correoOTelefono === activeUser.correoOTelefono);
+      if (found?.id) finalUserId = found.id;
+    }
+
+    if (!finalUserId) {
+      setPaymentError('No se pudo identificar el ID del usuario en la base de datos.');
+      setPaymentStep('error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/veripagos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: finalUserId,
+          monedas: pkg.coins,
+          detalle: `Recarga de ${pkg.coins} monedas (Pago de prueba 1 Bs.)`
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Error al generar el QR');
+      }
+
+      const data = await res.json();
+      if (data.status === 'success') {
+        setQrData({ qr: data.qr, movimiento_id: data.movimiento_id });
+        setPaymentStep('qr');
+      } else {
+        throw new Error('Respuesta inesperada del servidor');
+      }
+    } catch (e: any) {
+      setPaymentError(e.message || 'Error de conexión');
+      setPaymentStep('error');
+    }
+  };
+
+  // Effect to poll payment status when QR is visible
+  useEffect(() => {
+    let intervalId: any;
+    if (showPaymentModal && paymentStep === 'qr' && qrData?.movimiento_id && activeUser) {
+      let finalUserId = activeUser.id;
+      if (!finalUserId && activeUser.correoOTelefono) {
+        const found = usuariosRegistrados.find(u => u.correoOTelefono === activeUser.correoOTelefono);
+        if (found?.id) finalUserId = found.id;
+      }
+
+      intervalId = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/veripagos?movimiento_id=${qrData.movimiento_id}&userId=${finalUserId}&monedas=${selectedPackage?.coins || 10}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === 'success' && data.paymentStatus === 'Completado') {
+              setPaymentStep('success');
+              clearInterval(intervalId);
+              // Actualizar saldo local
+              if (selectedPackage && typeof addCoins === 'function') {
+                await addCoins(selectedPackage.coins, `Recarga VeriPagos #${qrData.movimiento_id}`);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error polling VeriPagos status:', e);
+        }
+      }, 3000);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [showPaymentModal, paymentStep, qrData, activeUser, selectedPackage, usuariosRegistrados]);
 
   return (
     <View style={styles.container}>
@@ -95,7 +219,12 @@ export default function LeadsScreen() {
         />
       </View>
 
-      <ScrollView style={styles.body}>
+      <ScrollView 
+        style={styles.body}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFB400" />
+        }
+      >
         {/* Saldo de Monedas con Estilos Adaptativos según el tipo de Proveedor */}
         <View style={[styles.monedasCard, isB2BProvider && { borderColor: '#6366f1', shadowColor: '#6366f1' }]}>
           <View style={[styles.monedasIcon, isB2BProvider && { backgroundColor: '#6366f1' }]}>
@@ -108,13 +237,11 @@ export default function LeadsScreen() {
           <TouchableOpacity 
             style={[styles.comprarBtn, isB2BProvider && { backgroundColor: '#6366f1' }]} 
             onPress={() => {
-              setConfirmConfig({
-                title: 'Comprar Monedas',
-                message: 'Pasarela de pago simulada: Hemos recargado +10 monedas a tu saldo.',
-                singleButton: true,
-                onConfirm: () => {}
-              });
-              setShowConfirmModal(true);
+              setPaymentStep('packages');
+              setSelectedPackage(null);
+              setQrData(null);
+              setPaymentError('');
+              setShowPaymentModal(true);
             }}
             activeOpacity={0.7}
           >
@@ -209,6 +336,42 @@ export default function LeadsScreen() {
             <Text style={styles.emptySubtext}>Las nuevas solicitudes de los clientes aparecerán aquí en tiempo real.</Text>
           </View>
         )}
+        {/* Historial de Transacciones */}
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Historial de Transacciones (Nube)</Text>
+        <View style={styles.historyCard}>
+          {transactionHistory.length === 0 ? (
+            <Text style={styles.emptyHistoryText}>No hay transacciones registradas aún.</Text>
+          ) : (
+            transactionHistory.map((t, idx) => (
+              <View key={t.id || idx} style={styles.historyItem}>
+                <View style={styles.historyItemLeft}>
+                  <View style={[
+                    styles.historyItemIcon, 
+                    { backgroundColor: t.tipo === 'recarga' ? '#e8f5e9' : '#ffebee' }
+                  ]}>
+                    <Ionicons 
+                      name={t.tipo === 'recarga' ? 'arrow-down-circle' : 'arrow-up-circle'} 
+                      size={20} 
+                      color={t.tipo === 'recarga' ? '#2e7d32' : '#c62828'} 
+                    />
+                  </View>
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={styles.historyItemDetail}>{t.detalle}</Text>
+                    <Text style={styles.historyItemDate}>
+                      {t.createdAt ? new Date(t.createdAt).toLocaleString('es-BO') : 'Fecha y hora cargadas'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[
+                  styles.historyItemAmount,
+                  { color: t.tipo === 'recarga' ? '#2e7d32' : '#c62828', fontWeight: 'bold' }
+                ]}>
+                  {t.tipo === 'recarga' ? '+' : '-'}{t.monto_monedas}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
       </ScrollView>
 
       {/* Custom Modal */}
@@ -240,6 +403,136 @@ export default function LeadsScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      )}
+
+      {/* VeriPagos Payment Modal */}
+      {showPaymentModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 400 }]}>
+            
+            {/* Header / Cerrar */}
+            <View style={styles.paymentModalHeader}>
+              <Text style={styles.modalTitle}>Comprar Monedas</Text>
+              {paymentStep !== 'loading' && paymentStep !== 'success' && (
+                <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Paso 1: Selección de Paquetes */}
+            {paymentStep === 'packages' && (
+              <View>
+                <Text style={styles.paymentModalSubtitle}>Selecciona un paquete de monedas:</Text>
+                
+                {[
+                  { coins: 10, priceBs: 50, desc: 'Ideal para 3-5 postulaciones' },
+                  { coins: 25, priceBs: 120, desc: 'Recomendado para profesionales' },
+                  { coins: 50, priceBs: 200, desc: 'Máximo ahorro para empresas' }
+                ].map((pkg, idx) => (
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={styles.packageCard}
+                    onPress={() => handleGenerateQR(pkg)}
+                  >
+                    <View style={styles.packageCardLeft}>
+                      <Ionicons name="cash-outline" size={24} color="#FFB400" />
+                      <View style={{ marginLeft: 12, flex: 1 }}>
+                        <Text style={styles.packageName}>{pkg.coins} Monedas</Text>
+                        <Text style={styles.packageDesc}>{pkg.desc}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.packageCardRight}>
+                      <Text style={styles.packagePrice}>Bs. {pkg.priceBs}</Text>
+                      <Text style={styles.packageNote}>Paga Bs. 1.00</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+
+                <Text style={styles.disclaimerText}>
+                  Nota: Durante la demostración del Hackatón, todos los códigos QR cobrarán únicamente <Text style={{ fontWeight: 'bold', color: '#FFB400' }}>Bs. 1.00</Text> real para realizar pruebas bancarias completas de forma segura.
+                </Text>
+              </View>
+            )}
+
+            {/* Paso 2: Cargando */}
+            {paymentStep === 'loading' && (
+              <View style={styles.centerContent}>
+                <ActivityIndicator size="large" color="#FFB400" />
+                <Text style={styles.loadingText}>Generando código QR con VeriPagos...</Text>
+                <Text style={styles.subLoadingText}>Esto tomará un momento.</Text>
+              </View>
+            )}
+
+            {/* Paso 3: Código QR Generado */}
+            {paymentStep === 'qr' && qrData && selectedPackage && (
+              <View style={styles.centerContent}>
+                <Text style={styles.qrTitle}>Escanea para pagar</Text>
+                <Text style={styles.qrSubtitle}>Monto: Bs. {selectedPackage.priceBs} | <Text style={{ fontWeight: 'bold', color: '#e53935' }}>Cobro real: Bs. 1.00</Text></Text>
+                
+                {/* Imagen del QR */}
+                <Image 
+                  source={{ uri: qrData.qr }} 
+                  style={styles.qrImage} 
+                  resizeMode="contain"
+                />
+
+                <View style={styles.statusBadge}>
+                  <ActivityIndicator size="small" color="#FFB400" style={{ marginRight: 8 }} />
+                  <Text style={styles.statusBadgeText}>Esperando pago del banco...</Text>
+                </View>
+
+                <Text style={styles.qrInstructions}>
+                  Abre la aplicación de tu banco (BCP, BNB, etc.), selecciona "Pago Simple / QR" y escanea la imagen para acreditar {selectedPackage.coins} monedas.
+                </Text>
+
+                <TouchableOpacity 
+                  style={styles.cancelPaymentBtn}
+                  onPress={() => setShowPaymentModal(false)}
+                >
+                  <Text style={styles.cancelPaymentText}>Cancelar Transacción</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Paso 4: Pago Exitoso */}
+            {paymentStep === 'success' && selectedPackage && (
+              <View style={styles.centerContent}>
+                <View style={styles.successIconContainer}>
+                  <Ionicons name="checkmark-circle" size={80} color="#4caf50" />
+                </View>
+                <Text style={styles.successTitle}>¡Pago Exitoso!</Text>
+                <Text style={styles.successMessage}>
+                  Hemos detectado tu transferencia de Bs. 1.00. Se han acreditado +{selectedPackage.coins} monedas a tu billetera y la transacción ha sido registrada en la nube.
+                </Text>
+                
+                <TouchableOpacity 
+                  style={styles.successDoneBtn}
+                  onPress={() => setShowPaymentModal(false)}
+                >
+                  <Text style={styles.successDoneText}>Entendido</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Paso 5: Error */}
+            {paymentStep === 'error' && (
+              <View style={styles.centerContent}>
+                <Ionicons name="alert-circle" size={70} color="#e53935" />
+                <Text style={styles.errorTitle}>Error al Procesar</Text>
+                <Text style={styles.errorMessage}>{paymentError || 'No se pudo generar la transacción. Intenta nuevamente.'}</Text>
+                
+                <TouchableOpacity 
+                  style={styles.errorRetryBtn}
+                  onPress={() => setPaymentStep('packages')}
+                >
+                  <Text style={styles.errorRetryText}>Volver a intentar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
           </View>
         </View>
       )}
@@ -481,6 +774,242 @@ const styles = StyleSheet.create({
   },
   modalConfirmText: {
     color: '#2F2F2F',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // VeriPagos modal styles
+  paymentModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    width: '100%',
+  },
+  paymentModalSubtitle: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 14,
+  },
+  packageCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  packageCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  packageCardRight: {
+    alignItems: 'flex-end',
+  },
+  packageName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2f2f2f',
+  },
+  packageDesc: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 2,
+  },
+  packagePrice: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2F2F2F',
+  },
+  packageNote: {
+    fontSize: 10,
+    color: '#e53935',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: '#666',
+    lineHeight: 16,
+    marginTop: 12,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  centerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    width: '100%',
+  },
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2f2f2f',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  subLoadingText: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
+  qrTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2f2f2f',
+    marginBottom: 4,
+  },
+  qrSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  qrImage: {
+    width: 200,
+    height: 200,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff8dc',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ffeb3b',
+    marginBottom: 16,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#b78103',
+  },
+  qrInstructions: {
+    fontSize: 12,
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  cancelPaymentBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  cancelPaymentText: {
+    color: '#e53935',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  successIconContainer: {
+    marginBottom: 16,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4caf50',
+    marginBottom: 10,
+  },
+  successMessage: {
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 10,
+  },
+  successDoneBtn: {
+    backgroundColor: '#4caf50',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+  },
+  successDoneText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#e53935',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 13,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  errorRetryBtn: {
+    backgroundColor: '#e53935',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  errorRetryText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // Transaction history styles
+  historyCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#eee',
+    marginBottom: 40,
+  },
+  emptyHistoryText: {
+    fontSize: 13,
+    color: '#888',
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  historyItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  historyItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyItemDetail: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2f2f2f',
+  },
+  historyItemDate: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 2,
+  },
+  historyItemAmount: {
     fontSize: 14,
     fontWeight: '700',
   },

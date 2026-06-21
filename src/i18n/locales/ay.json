@@ -43,5 +43,23 @@
     "accept": "Iyau",
     "cancel": "Janiw",
     "save": "Imaña"
+  },
+  "chat": {
+    "provider_offers": "Irnaqirinakana churawinaka",
+    "received_offers": "Katuqata churawinaka ({{count}} / {{total}})",
+    "free_providers": "Kha irnaqirinaka ({{count}})",
+    "distance": "{{dist}} jayankiwa",
+    "accept_offer": "Churawita iyau saña",
+    "accept_and_chat": "Iyau saña ukat parlaña",
+    "counter_offer": "Mayni churawi (Qullqi munata: Bs. {{budget}})",
+    "accept_budget": "Qullqim iyau si",
+    "publish_general": "Jach'a listaru yatiyawi janiw kumpita",
+    "time_out_title": "¡Pacha tukuyxiwa!",
+    "time_out_desc": "Jak'a irnaqirinaka janiw kutichipxiti. Mayampi thaqham ukat jach'a listaru yatiyawi.",
+    "retry": "Mayampi thaqhaña",
+    "publish_btn": "Jach'a Listaru Yatiyawi",
+    "typing": "qillqaskiwa...",
+    "type_message": "Qillqam...",
+    "view_orders": "Mayt'awinaka Uñjaña"
   }
 }

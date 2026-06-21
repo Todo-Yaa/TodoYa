@@ -6,6 +6,7 @@ export type UserRole = 'client' | 'provider' | 'business';
 
 // Representación de un usuario registrado en la aplicación (en español)
 export interface UsuarioRegistrado {
+  id?: number;
   nombre: string;
   correoOTelefono: string;
   rol: UserRole;
@@ -66,10 +67,12 @@ interface UserContextType {
   configurarProveedor: (servicios: string[], experiencia: string, descripcion: string, cobertura?: string) => Promise<void>;
   rateOrder: (orderId: number, estrellas: number, etiquetas: string[]) => void;
   isSwitchingRole: boolean; // Indica si se está realizando una transición de rol
+  syncOrders: () => Promise<void>; // Fuerza la sincronización de pedidos con la DB
+  addCoins: (amount: number, detail: string) => Promise<void>; // Agrega o quita monedas en DB
 }
 
 // Creación del React Context
-const UserContext = createContext<UserContextType | undefined>(undefined);
+const UserContext = React.createContext<UserContextType | undefined>(undefined);
 
 // Datos semilla iniciales para dar vida a la interfaz en el primer uso
 const initialSeedOrders: Order[] = [
@@ -210,6 +213,35 @@ export function UserProvider({ children }: { children: ReactNode }) {
             const usrData = await usrRes.json();
             if (usrData.status === 'success') {
               setUsuariosRegistrados(usrData.data);
+              
+              // Migración automática del usuario activo a Neon DB
+              if (savedActiveUser) {
+                let parsedUser: UsuarioRegistrado | null = null;
+                try { parsedUser = JSON.parse(savedActiveUser); } catch(e) {}
+                
+                if (parsedUser && !parsedUser.id) {
+                   const regRes = await fetch('/api/users', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify(parsedUser)
+                   });
+                   if (regRes.ok) {
+                     const regData = await regRes.json();
+                     if (regData.status === 'success' && regData.user) {
+                       parsedUser.id = regData.user.id;
+                       setActiveUser(parsedUser);
+                       await Storage.setItem('todo_ya_active_user', JSON.stringify(parsedUser));
+                       
+                       // Refrescar billetera tras crear
+                       const wRes = await fetch(`/api/wallet?userId=${parsedUser.id}`);
+                       if (wRes.ok) {
+                         const wData = await wRes.json();
+                         if (wData.status === 'success') setCoins(wData.coins);
+                       }
+                     }
+                   }
+                }
+              }
             }
           }
         } catch (e) {
@@ -387,7 +419,21 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setCoins(updatedCoins);
     Storage.setItem('todo_ya_coins', String(updatedCoins));
 
+    let finalUserId = activeUser?.id;
+    if (!finalUserId && activeUser?.correoOTelefono) {
+       const found = usuariosRegistrados.find(u => u.correoOTelefono === activeUser.correoOTelefono);
+       if (found?.id) finalUserId = found.id;
+    }
+
     if (isDbOnline) {
+      if (finalUserId) {
+        fetch('/api/wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: finalUserId, tipo: 'gasto', monto: coinsCost, detalle: `Postulación a pedido #${orderId}` })
+        }).catch(err => console.error('Error al descontar monedas en Neon.db:', err));
+      }
+
       fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -621,6 +667,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setUserRole(usuarioFinal.rol);
     setActiveUser(usuarioFinal);
 
+    // Sincronizar billetera al loguear
+    if (isDbOnline && usuarioFinal.id) {
+      try {
+        const walletRes = await fetch(`/api/wallet?userId=${usuarioFinal.id}`);
+        if (walletRes.ok) {
+          const wData = await walletRes.json();
+          if (wData.status === 'success') {
+            setCoins(wData.coins);
+            await Storage.setItem('todo_ya_coins', String(wData.coins));
+          }
+        }
+      } catch (err) {
+        console.error('Error sincronizando billetera:', err);
+      }
+    }
+
     await Storage.setItem('todo_ya_auth', 'true');
     await Storage.setItem('todo_ya_username', usuarioFinal.nombre);
     await Storage.setItem('todo_ya_role', usuarioFinal.rol);
@@ -831,6 +893,69 @@ export function UserProvider({ children }: { children: ReactNode }) {
     Storage.setItem('todo_ya_registered_users', JSON.stringify(initialSeedUsers));
   };
 
+  /**
+   * Agrega monedas a la billetera local y a la base de datos
+   */
+  const addCoins = async (amount: number, detail: string) => {
+    const updatedCoins = coins + amount;
+    setCoins(updatedCoins);
+    await Storage.setItem('todo_ya_coins', String(updatedCoins));
+
+    let finalUserId = activeUser?.id;
+    if (!finalUserId && activeUser?.correoOTelefono) {
+       const found = usuariosRegistrados.find(u => u.correoOTelefono === activeUser.correoOTelefono);
+       if (found?.id) finalUserId = found.id;
+    }
+
+    if (isDbOnline && finalUserId) {
+      try {
+        await fetch('/api/wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: finalUserId, tipo: 'recarga', monto: amount, detalle: detail })
+        });
+      } catch (e) {
+        console.error('Error al agregar monedas:', e);
+      }
+    }
+  };
+
+  /**
+   * Fuerza la recarga de pedidos (Leads) desde la base de datos o el almacenamiento local
+   */
+  const syncOrders = async () => {
+    if (isDbOnline) {
+      try {
+        const ordRes = await fetch('/api/orders');
+        if (ordRes.ok) {
+          const ordData = await ordRes.json();
+          if (ordData.status === 'success') {
+            setOrders(ordData.data);
+          }
+        }
+        
+        // También sincronizamos la billetera
+        if (activeUser?.id) {
+          const walletRes = await fetch(`/api/wallet?userId=${activeUser.id}`);
+          if (walletRes.ok) {
+            const wData = await walletRes.json();
+            if (wData.status === 'success') {
+              setCoins(wData.coins);
+              await Storage.setItem('todo_ya_coins', String(wData.coins));
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error forzando sincronización:', e);
+      }
+    } else {
+      const savedOrders = await Storage.getItem('todo_ya_orders');
+      if (savedOrders) {
+        setOrders(JSON.parse(savedOrders));
+      }
+    }
+  };
+
   return (
     <UserContext.Provider value={{ 
       userRole, 
@@ -852,7 +977,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       activeUser,
       configurarProveedor,
       rateOrder,
-      isSwitchingRole
+      isSwitchingRole,
+      syncOrders,
+      addCoins
     }}>
       {children}
     </UserContext.Provider>

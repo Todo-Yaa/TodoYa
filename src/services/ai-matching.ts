@@ -33,24 +33,35 @@ export const analizarTextoNLP = (descripcion: string) => {
   let urgencia: 'Normal' | 'Alta' = 'Normal';
   const textLower = descripcion.toLowerCase();
 
-  // Reglas léxicas para categorías
-  if (textLower.match(/(tubo|agua|gotera|fuga|grifo|lavaplatos|inodoro|caño|inundacion|inundación)/)) {
-    categoria = 'Plomería';
-    if (textLower.match(/(inundacion|inundación|fuga grave|revent|urgente|rapido|rápido|inmediat)/)) {
-      urgencia = 'Alta';
+  // Diccionarios de palabras clave para "Todas las Probabilidades" (Sistema de Puntaje)
+  const categoriasBase = {
+    'Plomería': ['tubo', 'agua', 'gotera', 'fuga', 'grifo', 'lavaplatos', 'inodoro', 'caño', 'inundacion', 'inundación', 'cañeria', 'desague', 'baño', 'bomba', 'pileta', 'filtracion'],
+    'Electricidad': ['luz', 'enchufe', 'corto', 'cable', 'cortocircuito', 'corriente', 'toma', 'llave', 'termica', 'térmica', 'tablero', 'apagon', 'foco', 'iluminacion', 'lampara', 'chispa', 'electrocutado'],
+    'Pintura': ['pintar', 'pared', 'techo', 'fachada', 'rodillo', 'brocha', 'humedad', 'color', 'acabado', 'pintor', 'barniz', 'pintura', 'descacarado', 'latex'],
+    'Climatización': ['aire', 'acondicionado', 'clima', 'frio', 'frío', 'calor', 'gotea', 'enfria', 'enfría', 'split', 'gas', 'compresor', 'ventilador', 'climatizador'],
+    'Papelería & Oficina': ['papel', 'resma', 'oficina', 'boligrafo', 'carpeta', 'escritorio', 'impresion', 'impresora', 'tinta', 'toner', 'lapiz', 'cuaderno', 'archivo', 'fotocopia'],
+    'Branding & Lettering': ['letrero', 'banner', 'diseño', 'logo', 'vinilo', 'grafica', 'corporeo', 'rotulado', 'marca', 'identidad', 'letras', 'iluminado', 'fachada', 'vidriera'],
+    'Decoración & Eventos': ['decoracion', 'evento', 'globo', 'fiesta', 'aniversario', 'cumpleaños', 'arreglo', 'flores', 'ambientacion', 'salon', 'sillas', 'mesas', 'catering'],
+    'Servicios B2B': ['limpieza', 'mantenimiento', 'empresa', 'corporativo', 'guardia', 'seguridad', 'consultoria', 'asesoria', 'contable', 'fiscal', 'legal']
+  };
+
+  let maxPuntaje = 0;
+  
+  for (const [catName, palabras] of Object.entries(categoriasBase)) {
+    let puntaje = 0;
+    for (const palabra of palabras) {
+      if (textLower.includes(palabra)) {
+        puntaje++;
+      }
     }
-  } else if (textLower.match(/(luz|enchufe|corto|cable|cortocircuito|corriente|toma|llave|termica|térmica|tablero)/)) {
-    categoria = 'Electricidad';
-    if (textLower.match(/(humo|chispa|fuego|peligro|urgente|sin luz|cortocircuito)/)) {
-      urgencia = 'Alta';
+    if (puntaje > maxPuntaje) {
+      maxPuntaje = puntaje;
+      categoria = catName;
     }
-  } else if (textLower.match(/(pintar|pared|techo|fachada|rodillo|brocha|humedad|color|acabado)/)) {
-    categoria = 'Pintura';
-  } else if (textLower.match(/(aire|acondicionado|clima|frio|frío|calor|gotea aire|no enfria|no enfría|split)/)) {
-    categoria = 'Climatización';
-    if (textLower.match(/(calor insoportable|urgente|oficina caliente)/)) {
-      urgencia = 'Alta';
-    }
+  }
+
+  if (textLower.match(/(urgente|rapido|rápido|inmediat|ya|emergencia|peligro|humo|fuego|inundacion|revent|auxilio|urgencia)/)) {
+    urgencia = 'Alta';
   }
 
   return { categoria, urgencia };

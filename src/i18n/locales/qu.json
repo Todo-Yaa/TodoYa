@@ -43,5 +43,23 @@
     "accept": "Ari",
     "cancel": "Mana",
     "save": "Waqaychay"
+  },
+  "chat": {
+    "provider_offers": "Llank'aqkunaq munachiynin",
+    "received_offers": "Chaskisqa munachiykuna ({{count}} / {{total}})",
+    "free_providers": "Kachkasqan Llank'aqkuna ({{count}})",
+    "distance": "{{dist}} karupi",
+    "accept_offer": "Munachiyta Ari Niy",
+    "accept_and_chat": "Ari Niy ha Rimanakuy",
+    "counter_offer": "Watiq munachiy (Qullqi mask'asqa: Bs. {{budget}})",
+    "accept_budget": "Qullqiykita chaskin",
+    "publish_general": "Hatun listapi churaspa mana pitapas akllay",
+    "time_out_title": "¡Pacha tukukapun!",
+    "time_out_desc": "Qaylla llank'aqkuna mana kutichimurqankuchu. Watiqmanta mask'ayta atinki utaq hatun listapi mañakuyta atinki.",
+    "retry": "Watiqmanta ruway",
+    "publish_btn": "Hatun Listapi Churay",
+    "typing": "qillqachkan...",
+    "type_message": "Qillqariway...",
+    "view_orders": "Mañakuykunata Qhaway"
   }
 }
