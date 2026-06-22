@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUser } from '../context/user-context';
 
 // Configura los enlaces de tus redes sociales aquí:
-const FACEBOOK_LINK = 'https://www.facebook.com/tu_pagina';
-const INSTAGRAM_LINK = 'https://www.instagram.com/tu_pagina';
+const FACEBOOK_LINK = 'https://www.instagram.com/todoo__ya';
+const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
 
 /**
  * Componente PperfilScreen (Vista del Proveedor PRO):
@@ -18,10 +18,10 @@ export default function PperfilScreen() {
 
   // Controladores del modal de confirmación personalizado
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmConfig, setConfirmConfig] = useState({ 
-    title: '', 
-    message: '', 
-    onConfirm: () => {},
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: '',
+    message: '',
+    onConfirm: () => { },
     singleButton: false
   });
 
@@ -53,7 +53,7 @@ export default function PperfilScreen() {
   const providerName = activeUser?.nombre || 'Juan Ríos';
   const providerInitials = providerName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
-  const professionText = isB2BProvider 
+  const professionText = isB2BProvider
     ? `Empresa Proveedora de ${activeUser?.serviciosOfrecidos?.join(', ') || activeUser?.rubro || 'Branding & Lettering'} · Cobertura: ${activeUser?.coberturaB2B || 'Nacional'}`
     : `${activeUser?.serviciosOfrecidos?.join(', ') || 'Plomería'} · Experiencia: ${activeUser?.anosExperiencia || 'Más de 3 años'}`;
 
@@ -117,15 +117,15 @@ export default function PperfilScreen() {
 
           {/* Redes Sociales */}
           <View style={styles.socialRow}>
-            <TouchableOpacity 
-              onPress={() => Linking.openURL(FACEBOOK_LINK)} 
+            <TouchableOpacity
+              onPress={() => Linking.openURL(FACEBOOK_LINK)}
               style={styles.socialIconBtn}
               activeOpacity={0.7}
             >
               <Ionicons name="logo-facebook" size={22} color={isB2BProvider ? '#818cf8' : '#3b5998'} />
             </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => Linking.openURL(INSTAGRAM_LINK)} 
+            <TouchableOpacity
+              onPress={() => Linking.openURL(INSTAGRAM_LINK)}
               style={styles.socialIconBtn}
               activeOpacity={0.7}
             >
@@ -147,8 +147,8 @@ export default function PperfilScreen() {
             ))}
           </View>
           <Text style={styles.infoText}>
-            {activeUser?.descripcionProveedor || (isB2BProvider 
-              ? 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.' 
+            {activeUser?.descripcionProveedor || (isB2BProvider
+              ? 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.'
               : 'Proveedor de servicios residenciales certificado y de confianza.')}
           </Text>
         </View>
@@ -158,18 +158,18 @@ export default function PperfilScreen() {
         <View style={styles.toggleCard}>
           <TouchableOpacity style={styles.toggleRow} onPress={handleSwitchRole} activeOpacity={0.7}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 }}>
-              <Ionicons 
-                name={isB2BProvider ? "business-outline" : "people-outline"} 
-                size={24} 
-                color={isB2BProvider ? "#6366f1" : "#FFB400"} 
+              <Ionicons
+                name={isB2BProvider ? "business-outline" : "people-outline"}
+                size={24}
+                color={isB2BProvider ? "#6366f1" : "#FFB400"}
               />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.accountText, { fontWeight: '600' }]}>
                   {isB2BProvider ? 'Volver a modo Empresa' : 'Volver a modo Cliente residencial'}
                 </Text>
                 <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-                  {isB2BProvider 
-                    ? 'Publica requerimientos B2B para tu empresa' 
+                  {isB2BProvider
+                    ? 'Publica requerimientos B2B para tu empresa'
                     : 'Busca profesionales para solucionar tus problemas'}
                 </Text>
               </View>
@@ -180,7 +180,7 @@ export default function PperfilScreen() {
 
         {/* Tarjeta de Acceso a Estadísticas Detalladas */}
         <Text style={styles.sectionTitle}>Rendimiento Financiero</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.statsShortcutCard}
           onPress={() => router.replace('/stats')}
           activeOpacity={0.7}
@@ -226,7 +226,7 @@ export default function PperfilScreen() {
             <Text style={styles.modalMessage}>{confirmConfig.message}</Text>
             <View style={styles.modalButtons}>
               {!confirmConfig.singleButton && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.modalCancelBtn}
                   onPress={() => setShowConfirmModal(false)}
                   activeOpacity={0.7}
@@ -234,7 +234,7 @@ export default function PperfilScreen() {
                   <Text style={styles.modalCancelText}>Cancelar</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalConfirmBtn, isB2BProvider && { backgroundColor: '#6366f1' }]}
                 onPress={() => {
                   setShowConfirmModal(false);

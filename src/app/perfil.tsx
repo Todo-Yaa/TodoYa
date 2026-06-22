@@ -5,8 +5,8 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linkin
 import { useTranslation } from 'react-i18next';
 
 // Configura los enlaces de tus redes sociales aquí:
-const FACEBOOK_LINK = 'https://www.facebook.com/tu_pagina';
-const INSTAGRAM_LINK = 'https://www.instagram.com/tu_pagina';
+const FACEBOOK_LINK = 'https://www.instagram.com/todoo__ya';
+const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
 
