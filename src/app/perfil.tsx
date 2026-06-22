@@ -25,6 +25,7 @@ export default function PerfilScreen() {
 
   // Estados del onboarding
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(1);
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([]);
   const [experiencia, setExperiencia] = useState('1 a 3 años');
   const [cobertura, setCobertura] = useState('Local');
@@ -180,6 +181,7 @@ export default function PerfilScreen() {
                         setRole('provider');
                         router.replace('/leads');
                       } else {
+                        setOnboardingStep(1);
                         setShowOnboarding(true);
                       }
                     } else {
@@ -346,24 +348,35 @@ export default function PerfilScreen() {
       {/* Modal de Onboarding de Proveedor */}
       {showOnboarding && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxWidth: 420, width: '90%', maxHeight: '90%' }]}>
+          <View style={[styles.modalContent, { maxWidth: 440, width: '92%', maxHeight: '90%' }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={styles.modalTitle}>
-                  {activeUser?.tipoEntidad === 'empresa' 
-                    ? 'Registro de Proveedor B2B' 
-                    : 'Registro de Proveedor'}
+              
+              {/* Stepper Header */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <Text style={[styles.modalTitle, { fontSize: 13, color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase' }]}>
+                  Paso {onboardingStep} de 3
                 </Text>
                 <TouchableOpacity onPress={() => setShowOnboarding(false)} style={{ padding: 4 }}>
                   <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
-              
-              <Text style={styles.modalMessage}>
-                {activeUser?.tipoEntidad === 'empresa'
-                  ? 'Completa los siguientes datos comerciales para habilitar la oferta de servicios a otras empresas.'
-                  : 'Completa los siguientes datos para comenzar a postularte a solicitudes de clientes residenciales.'}
+
+              <Text style={[styles.modalTitle, { marginTop: 0, marginBottom: 12 }]}>
+                {onboardingStep === 1 && "Especialidades y Categorías"}
+                {onboardingStep === 2 && (activeUser?.tipoEntidad === 'empresa' ? "Cobertura Comercial" : "Años de Experiencia")}
+                {onboardingStep === 3 && "Presentación Profesional"}
               </Text>
+
+              {/* Progress Stepper Bar */}
+              <View style={{ height: 6, backgroundColor: '#e2e8f0', borderRadius: 3, marginBottom: 20, overflow: 'hidden' }}>
+                <View 
+                  style={{ 
+                    height: '100%', 
+                    width: `${onboardingStep * 33.3}%`, 
+                    backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400' 
+                  }} 
+                />
+              </View>
 
               {errorOnboarding ? (
                 <View style={styles.errorBanner}>
@@ -372,143 +385,203 @@ export default function PerfilScreen() {
                 </View>
               ) : null}
 
-              {/* Categorías de Servicios */}
-              <Text style={styles.fieldLabel}>
-                {activeUser?.tipoEntidad === 'empresa'
-                  ? '¿Qué categorías B2B/insumos ofrece tu empresa?'
-                  : '¿Qué servicios residenciales ofreces?'}
-              </Text>
-              <View style={styles.chipsContainer}>
-                {(activeUser?.tipoEntidad === 'empresa'
-                  ? ['Papelería', 'Decoración', 'Branding', 'Servicios B2B']
-                  : ['Plomería', 'Electricidad', 'Pintura', 'Climatización']
-                ).map((serv) => {
-                  const selected = serviciosSeleccionados.includes(serv);
-                  return (
-                    <TouchableOpacity
-                      key={serv}
-                      style={[
-                        styles.chip,
-                        selected && {
-                          backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
-                          borderColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
-                        }
-                      ]}
-                      onPress={() => toggleServicio(serv)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.chipText,
-                        selected && {
-                          color: activeUser?.tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F',
-                          fontWeight: 'bold',
-                        }
-                      ]}>
-                        {serv}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Pregunta Condicional */}
-              {activeUser?.tipoEntidad === 'empresa' ? (
-                <>
-                  <Text style={styles.fieldLabel}>Cobertura de servicio / entrega:</Text>
-                  <View style={styles.segmentContainer}>
-                    {['Local', 'Nacional'].map((cob) => {
-                      const selected = cobertura === cob;
+              {/* Paso 1: Categorías */}
+              {onboardingStep === 1 && (
+                <View>
+                  <Text style={[styles.modalMessage, { marginBottom: 16 }]}>
+                    {activeUser?.tipoEntidad === 'empresa'
+                      ? 'Selecciona qué categorías de insumos o servicios ofrece tu empresa para los clientes corporativos.'
+                      : 'Elige las categorías de servicios técnicos residenciales en las que te especializas.'}
+                  </Text>
+                  <Text style={styles.fieldLabel}>Categorías disponibles:</Text>
+                  <View style={styles.chipsContainer}>
+                    {(activeUser?.tipoEntidad === 'empresa'
+                      ? ['Papelería', 'Decoración', 'Branding', 'Servicios B2B']
+                      : ['Plomería', 'Electricidad', 'Pintura', 'Climatización']
+                    ).map((serv) => {
+                      const selected = serviciosSeleccionados.includes(serv);
                       return (
                         <TouchableOpacity
-                          key={cob}
+                          key={serv}
                           style={[
-                            styles.segmentBtn,
-                            selected && { backgroundColor: '#6366f1', borderColor: '#6366f1' }
+                            styles.chip,
+                            selected && {
+                              backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
+                              borderColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
+                            }
                           ]}
-                          onPress={() => setCobertura(cob)}
+                          onPress={() => toggleServicio(serv)}
                           activeOpacity={0.7}
                         >
-                          <Text style={[styles.segmentText, selected && { color: '#fff', fontWeight: 'bold' }]}>
-                            {cob}
+                          <Text style={[
+                            styles.chipText,
+                            selected && {
+                              color: activeUser?.tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F',
+                              fontWeight: 'bold',
+                            }
+                          ]}>
+                            {serv}
                           </Text>
                         </TouchableOpacity>
                       );
                     })}
                   </View>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.fieldLabel}>Años de experiencia:</Text>
-                  <View style={styles.segmentContainer}>
-                    {['Menos de 1 año', '1 a 3 años', 'Más de 3 años'].map((exp) => {
-                      const selected = experiencia === exp;
-                      return (
-                        <TouchableOpacity
-                          key={exp}
-                          style={[
-                            styles.segmentBtn,
-                            selected && { backgroundColor: '#FFB400', borderColor: '#FFB400' }
-                          ]}
-                          onPress={() => setExperiencia(exp)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[styles.segmentText, selected && { color: '#2F2F2F', fontWeight: 'bold' }]}>
-                            {exp}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </>
+                </View>
               )}
 
-              {/* Descripción */}
-              <Text style={styles.fieldLabel}>
-                {activeUser?.tipoEntidad === 'empresa'
-                  ? 'Presentación comercial de la empresa (mín. 10 caracteres):'
-                  : 'Breve descripción de tu especialidad (mín. 10 caracteres):'}
-              </Text>
-              <TextInput
-                style={styles.textArea}
-                multiline
-                numberOfLines={4}
-                value={descripcion}
-                onChangeText={setDescripcion}
-                placeholder={activeUser?.tipoEntidad === 'empresa'
-                  ? "Ej: Somos una distribuidora autorizada de papelería corporativa y material escolar a nivel nacional..."
-                  : "Ej: Plomero matriculado con experiencia en detección de fugas de agua y gas..."}
-                placeholderTextColor="#999"
-              />
-
-              {/* Acciones */}
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setShowOnboarding(false)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalCancelText}>Cancelar</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.modalConfirmBtn,
-                    {
-                      backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
-                    }
-                  ]}
-                  onPress={handleSaveOnboarding}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.modalConfirmText,
-                    {
-                      color: activeUser?.tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F',
-                    }
-                  ]}>
-                    Guardar y Activar
+              {/* Paso 2: Experiencia / Cobertura */}
+              {onboardingStep === 2 && (
+                <View>
+                  <Text style={[styles.modalMessage, { marginBottom: 16 }]}>
+                    {activeUser?.tipoEntidad === 'empresa'
+                      ? 'Define el alcance geográfico de los envíos o servicios comerciales de tu empresa.'
+                      : 'Indica cuántos años de experiencia tienes prestando estos servicios.'}
                   </Text>
-                </TouchableOpacity>
+
+                  {activeUser?.tipoEntidad === 'empresa' ? (
+                    <>
+                      <Text style={styles.fieldLabel}>Cobertura geográfica:</Text>
+                      <View style={styles.segmentContainer}>
+                        {['Local', 'Nacional'].map((cob) => {
+                          const selected = cobertura === cob;
+                          return (
+                            <TouchableOpacity
+                              key={cob}
+                              style={[
+                                styles.segmentBtn,
+                                selected && { backgroundColor: '#6366f1', borderColor: '#6366f1' }
+                              ]}
+                              onPress={() => setCobertura(cob)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.segmentText, selected && { color: '#fff', fontWeight: 'bold' }]}>
+                                {cob}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.fieldLabel}>Años de trayectoria:</Text>
+                      <View style={styles.segmentContainer}>
+                        {['Menos de 1 año', '1 a 3 años', 'Más de 3 años'].map((exp) => {
+                          const selected = experiencia === exp;
+                          return (
+                            <TouchableOpacity
+                              key={exp}
+                              style={[
+                                styles.segmentBtn,
+                                selected && { backgroundColor: '#FFB400', borderColor: '#FFB400' }
+                              ]}
+                              onPress={() => setExperiencia(exp)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.segmentText, selected && { color: '#2F2F2F', fontWeight: 'bold' }]}>
+                                {exp}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
+                  )}
+                </View>
+              )}
+
+              {/* Paso 3: Descripción */}
+              {onboardingStep === 3 && (
+                <View>
+                  <Text style={[styles.modalMessage, { marginBottom: 16 }]}>
+                    {activeUser?.tipoEntidad === 'empresa'
+                      ? 'Escribe una breve presentación de tu negocio para que las empresas conozcan su trayectoria.'
+                      : 'Describe brevemente tus principales habilidades. Esta información la verán los clientes.'}
+                  </Text>
+                  
+                  <Text style={styles.fieldLabel}>Presentación (mín. 10 caracteres):</Text>
+                  <TextInput
+                    style={styles.textArea}
+                    multiline
+                    numberOfLines={4}
+                    value={descripcion}
+                    onChangeText={setDescripcion}
+                    placeholder={activeUser?.tipoEntidad === 'empresa'
+                      ? "Ej: Somos una distribuidora autorizada de papelería corporativa y material escolar a nivel nacional..."
+                      : "Ej: Plomero matriculado con experiencia en detección de fugas de agua y gas..."}
+                    placeholderTextColor="#999"
+                  />
+                </View>
+              )}
+
+              {/* Acciones del Stepper */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 30, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 16 }}>
+                {onboardingStep > 1 ? (
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setOnboardingStep(prev => prev - 1)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.modalCancelText}>Atrás</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setShowOnboarding(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.modalCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+                )}
+
+                {onboardingStep < 3 ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.modalConfirmBtn,
+                      {
+                        backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
+                      }
+                    ]}
+                    onPress={() => {
+                      if (onboardingStep === 1 && serviciosSeleccionados.length === 0) {
+                        setErrorOnboarding('Selecciona al menos una categoría.');
+                        return;
+                      }
+                      setErrorOnboarding('');
+                      setOnboardingStep(prev => prev + 1);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.modalConfirmText,
+                      {
+                        color: activeUser?.tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F',
+                      }
+                    ]}>
+                      Siguiente
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      styles.modalConfirmBtn,
+                      {
+                        backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
+                      }
+                    ]}
+                    onPress={handleSaveOnboarding}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.modalConfirmText,
+                      {
+                        color: activeUser?.tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F',
+                      }
+                    ]}>
+                      Guardar y Activar
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </ScrollView>
           </View>

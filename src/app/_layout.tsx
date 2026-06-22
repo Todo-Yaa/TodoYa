@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useEffect, useState } from 'react';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'; // Para una animación fluida de desvanecimiento
 import { UserProvider, useUser } from '../context/user-context';
 import LoginScreen from '../components/login-screen';
@@ -11,10 +12,19 @@ import RatingOverlayModal from '../components/rating-overlay-modal';
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
  */
 function NavigationLayout() {
-  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser } = useUser();
+  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification } = useUser();
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        clearNotification();
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // CORRECCIÓN: Unificamos el color y fondo de la barra de pestañas de acuerdo al tipo de entidad del usuario activo.
   // Si el usuario es de tipo 'empresa' (como Corporación Alfa S.A. o Imprenta Beta), se le asignan los tonos B2B (índigo/slate oscuro)
@@ -138,6 +148,43 @@ function NavigationLayout() {
         />
       )}
 
+      {/* Banner de Notificación In-App Global */}
+      {notification && (
+        <Animated.View
+          entering={FadeIn.duration(300)}
+          exiting={FadeOut.duration(200)}
+          style={[
+            styles.notificationToast,
+            notification.type === 'success' && styles.toastSuccess,
+            notification.type === 'warning' && styles.toastWarning,
+            isBusiness && styles.toastBusiness,
+          ]}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={styles.toastIconBg}>
+              <Ionicons
+                name={
+                  notification.type === 'success'
+                    ? 'checkmark-circle'
+                    : notification.type === 'warning'
+                    ? 'warning'
+                    : 'flash'
+                }
+                size={22}
+                color="#fff"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.toastTitle} numberOfLines={1}>{notification.title}</Text>
+              <Text style={styles.toastMessage} numberOfLines={2}>{notification.message}</Text>
+            </View>
+            <TouchableOpacity onPress={clearNotification} style={styles.toastClose}>
+              <Ionicons name="close-circle" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
+
       {/* Pantalla flotante de transición de rol con micro-animación de desvanecimiento */}
       {isSwitchingRole && (
         <Animated.View 
@@ -174,7 +221,6 @@ function NavigationLayout() {
   );
 }
 
-import { useEffect, useState } from 'react';
 import '../i18n'; // Inicializar i18n
 import { loadSavedLanguage } from '../i18n';
 
@@ -206,3 +252,54 @@ export default function RootLayout() {
     </UserProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  notificationToast: {
+    position: 'absolute',
+    top: 50,
+    left: 16,
+    right: 16,
+    backgroundColor: '#2F2F2F', // Default neutral dark charcoal
+    borderRadius: 20,
+    padding: 16,
+    zIndex: 999999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  toastSuccess: {
+    backgroundColor: '#10b981',
+  },
+  toastWarning: {
+    backgroundColor: '#f59e0b',
+  },
+  toastBusiness: {
+    backgroundColor: '#6366f1',
+  },
+  toastIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toastTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  toastMessage: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 2,
+    opacity: 0.9,
+  },
+  toastClose: {
+    padding: 4,
+  },
+});

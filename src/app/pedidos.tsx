@@ -182,6 +182,9 @@ export default function PedidosScreen() {
   const [activeTrackingOrder, setActiveTrackingOrder] = useState<Order | null>(null);
   const [etaSeconds, setEtaSeconds] = useState(300);
   const [currentStep, setCurrentStep] = useState<'driving' | 'arrived'>('driving');
+  
+  // Invoice states
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     if (!activeTrackingOrder) return;
@@ -279,6 +282,19 @@ export default function PedidosScreen() {
                   ]} 
                 />
               </View>
+
+              {pedido.estado === 'Completado' && (
+                <TouchableOpacity
+                  style={[styles.invoiceBtn, isBusiness && { backgroundColor: '#e0e7ff', borderColor: '#818cf8' }]}
+                  onPress={() => setSelectedInvoiceOrder(pedido)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="document-text-outline" size={16} color={isBusiness ? '#4f46e5' : '#4caf50'} />
+                  <Text style={[styles.invoiceBtnText, isBusiness && { color: '#4f46e5' }]}>
+                    Ver Factura Digital
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               {pedido.estado === 'En progreso' && (
                 <TouchableOpacity
@@ -449,6 +465,112 @@ export default function PedidosScreen() {
                   </View>
                 </View>
               </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {selectedInvoiceOrder && (
+        <View style={styles.invoiceModalOverlay}>
+          <View style={styles.invoiceModalContent}>
+            {/* Cabecera */}
+            <View style={styles.invoiceHeader}>
+              <View>
+                <Text style={styles.invoiceLogoText}>Todo Ya!</Text>
+                <Text style={styles.invoiceSubtitleText}>Servicios Rápidos S.R.L.</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.invoiceDocTitle}>FACTURA DIGITAL</Text>
+                <Text style={styles.invoiceDocNumber}>N° TY-2026-00{selectedInvoiceOrder.id}</Text>
+              </View>
+            </View>
+
+            <ScrollView style={{ maxHeight: 380, marginVertical: 16 }} showsVerticalScrollIndicator={false}>
+              {/* Información de Transacción */}
+              <View style={styles.invoiceMetaGrid}>
+                <View style={styles.invoiceMetaItem}>
+                  <Text style={styles.invoiceMetaLabel}>Fecha y Hora:</Text>
+                  <Text style={styles.invoiceMetaValue}>{selectedInvoiceOrder.completedAt ? new Date(selectedInvoiceOrder.completedAt).toLocaleString() : 'Reciente'}</Text>
+                </View>
+                <View style={styles.invoiceMetaItem}>
+                  <Text style={styles.invoiceMetaLabel}>NIT Emisor:</Text>
+                  <Text style={styles.invoiceMetaValue}>10293028301</Text>
+                </View>
+                <View style={styles.invoiceMetaItem}>
+                  <Text style={styles.invoiceMetaLabel}>Cliente:</Text>
+                  <Text style={styles.invoiceMetaValue}>{userName}</Text>
+                </View>
+                <View style={styles.invoiceMetaItem}>
+                  <Text style={styles.invoiceMetaLabel}>NIT/CI Cliente:</Text>
+                  <Text style={styles.invoiceMetaValue}>{isBusiness ? '481920028' : 'Consumidor Final'}</Text>
+                </View>
+              </View>
+
+              {/* Divisor */}
+              <View style={styles.invoiceDivider} />
+
+              {/* Detalles del Servicio */}
+              <Text style={styles.invoiceSectionTitle}>DETALLE DE SERVICIO</Text>
+              <View style={styles.invoiceRowDetail}>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.invoiceDetailTitle}>{selectedInvoiceOrder.servicio}</Text>
+                  <Text style={styles.invoiceDetailDesc}>{selectedInvoiceOrder.titulo}</Text>
+                </View>
+                <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                  <Text style={styles.invoiceDetailPrice}>{selectedInvoiceOrder.precio}</Text>
+                </View>
+              </View>
+
+              <View style={styles.invoiceRowDetail}>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.invoiceDetailTitle}>Proveedor Asignado</Text>
+                  <Text style={styles.invoiceDetailDesc}>{selectedInvoiceOrder.proveedor || 'Profesional certificado'}</Text>
+                </View>
+                <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                  <Text style={styles.invoiceDetailSub}>{selectedInvoiceOrder.tiempoEjecucion || 'Completado'}</Text>
+                </View>
+              </View>
+
+              {/* Divisor */}
+              <View style={styles.invoiceDivider} />
+
+              {/* Totales */}
+              <View style={styles.invoiceTotalRow}>
+                <Text style={styles.invoiceTotalLabel}>TOTAL PAGADO:</Text>
+                <Text style={styles.invoiceTotalValue}>{selectedInvoiceOrder.precio}</Text>
+              </View>
+
+              <Text style={styles.invoiceDisclaimer}>
+                ESTA FACTURA CUENTA CON VALIDEZ DIGITAL SIMPLIFICADA Y ESTÁ RESPALDADA POR LA TRANSACCIÓN DE PAGO ELECTRÓNICO PROCESADA A TRAVÉS DE VERIPAGOS S.A.
+              </Text>
+
+              {/* QR Code Mock de Impuestos */}
+              <View style={styles.invoiceQrWrap}>
+                <Ionicons name="qr-code-outline" size={80} color="#334155" />
+                <Text style={{ fontSize: 9, color: '#64748b', marginTop: 4, fontWeight: '700' }}>
+                  VALIDACIÓN DIGITAL DE IMPUESTOS BO
+                </Text>
+              </View>
+            </ScrollView>
+
+            {/* Acciones */}
+            <View style={{ flexDirection: 'row', gap: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 16 }}>
+              <TouchableOpacity
+                style={[styles.invoicePrintBtn, { flex: 1 }]}
+                onPress={() => alert('Factura descargada en formato PDF de manera exitosa.')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="download-outline" size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Descargar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.invoiceCloseBtn, { flex: 1 }]}
+                onPress={() => setSelectedInvoiceOrder(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: '#475569', fontWeight: '700', fontSize: 13 }}>Cerrar</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -732,5 +854,187 @@ const styles = StyleSheet.create({
     width: 2,
     backgroundColor: '#cbd5e1',
     zIndex: 1,
+  },
+  invoiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#e8f5e9',
+    borderWidth: 1,
+    borderColor: '#4caf50',
+    borderRadius: 14,
+    paddingVertical: 10,
+    marginTop: 12,
+  },
+  invoiceBtnText: {
+    color: '#1b5e20',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  invoiceModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    padding: 20,
+  },
+  invoiceModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  invoiceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: '#334155',
+    paddingBottom: 12,
+  },
+  invoiceLogoText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.5,
+  },
+  invoiceSubtitleText: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  invoiceDocTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  invoiceDocNumber: {
+    fontSize: 11,
+    color: '#ef4444',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  invoiceMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 12,
+  },
+  invoiceMetaItem: {
+    width: '47%',
+  },
+  invoiceMetaLabel: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  invoiceMetaValue: {
+    fontSize: 12,
+    color: '#1e293b',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  invoiceDivider: {
+    height: 1,
+    backgroundColor: '#cbd5e1',
+    marginVertical: 14,
+  },
+  invoiceSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    marginBottom: 10,
+    letterSpacing: 0.5,
+  },
+  invoiceRowDetail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  invoiceDetailTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  invoiceDetailDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  invoiceDetailPrice: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  invoiceDetailSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  invoiceTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+  },
+  invoiceTotalLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  invoiceTotalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#10b981',
+  },
+  invoiceDisclaimer: {
+    fontSize: 9,
+    color: '#94a3b8',
+    textAlign: 'center',
+    lineHeight: 13,
+    marginTop: 14,
+  },
+  invoiceQrWrap: {
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 10,
+  },
+  invoicePrintBtn: {
+    backgroundColor: '#10b981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  invoiceCloseBtn: {
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
   },
 });

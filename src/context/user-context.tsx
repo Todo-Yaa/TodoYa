@@ -69,6 +69,9 @@ interface UserContextType {
   isSwitchingRole: boolean; // Indica si se está realizando una transición de rol
   syncOrders: () => Promise<void>; // Fuerza la sincronización de pedidos con la DB
   addCoins: (amount: number, detail: string) => Promise<void>; // Agrega o quita monedas en DB
+  notification: { title: string; message: string; type: 'info' | 'success' | 'warning' } | null;
+  showNotification: (title: string, message: string, type: 'info' | 'success' | 'warning') => void;
+  clearNotification: () => void;
 }
 
 // Creación del React Context
@@ -153,6 +156,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [activeUser, setActiveUser] = useState<UsuarioRegistrado | null>(null);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   const [isDbOnline, setIsDbOnline] = useState<boolean>(false);
+  const [notification, setNotification] = useState<{ title: string; message: string; type: 'info' | 'success' | 'warning' } | null>(null);
+
+  const showNotification = (title: string, message: string, type: 'info' | 'success' | 'warning') => {
+    setNotification({ title, message, type });
+  };
+
+  const clearNotification = () => {
+    setNotification(null);
+  };
 
   // Efecto inicial: Carga los datos guardados en la memoria persistente al iniciar la app
   useEffect(() => {
@@ -300,8 +312,82 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-    loadData();
   }, []);
+
+  // Polling para Notificaciones Reales sobre Neon DB
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let lastMaxId = 0;
+    
+    // Inicializar el ID máximo al arrancar
+    if (orders.length > 0) {
+      lastMaxId = Math.max(...orders.map(o => o.id));
+    }
+
+    const checkUpdates = async () => {
+      if (!isDbOnline) return;
+
+      try {
+        const res = await fetch('/api/orders');
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data.status !== 'success') return;
+
+        const remoteOrders: Order[] = data.data;
+
+        // 1. Detección para Proveedores: Nuevas solicitudes publicadas
+        if (userRole === 'provider') {
+          const newOrders = remoteOrders.filter(o => o.id > lastMaxId && o.estado === 'Buscando proveedor');
+          
+          if (newOrders.length > 0) {
+            // Filtrar si el proveedor configuró servicios
+            const providerServices = activeUser?.serviciosOfrecidos || [];
+            
+            for (const order of newOrders) {
+              const matchesService = providerServices.length === 0 || providerServices.includes(order.servicio);
+              if (matchesService) {
+                showNotification(
+                  "💼 ¡Nuevo Lead Disponible!",
+                  `${order.titulo} en la categoría ${order.servicio}. Presupuesto: ${order.precio}`,
+                  "info"
+                );
+              }
+            }
+            lastMaxId = Math.max(...remoteOrders.map(o => o.id));
+          }
+        }
+
+        // 2. Detección para Clientes: Proveedor acepta solicitud
+        if (userRole === 'client' || userRole === 'business') {
+          // Buscar transiciones de 'Buscando proveedor' a 'En progreso'
+          orders.forEach(localOrder => {
+            if (localOrder.estado === 'Buscando proveedor') {
+              const remoteMatch = remoteOrders.find(ro => ro.id === localOrder.id);
+              if (remoteMatch && remoteMatch.estado === 'En progreso' && remoteMatch.proveedor) {
+                showNotification(
+                  "✅ ¡Proveedor Asignado!",
+                  `Tu solicitud "${localOrder.titulo}" fue aceptada por ${remoteMatch.proveedor}. Va en camino.`,
+                  "success"
+                );
+              }
+            }
+          });
+        }
+
+        // Actualizar la lista local de pedidos en segundo plano para reflejar los cambios
+        setOrders(remoteOrders);
+      } catch (err) {
+        console.warn('Error en polling de notificaciones:', err);
+      }
+    };
+
+    // Ejecutar la primera revisión y luego programar el intervalo
+    const interval = setInterval(checkUpdates, 6000); // Cada 6 segundos
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, userRole, orders, activeUser, isDbOnline]);
 
   /**
    * Alterna de rol de usuario (Cliente <-> Proveedor) y guarda la selección.
@@ -1007,7 +1093,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       rateOrder,
       isSwitchingRole,
       syncOrders,
-      addCoins
+      addCoins,
+      notification,
+      showNotification,
+      clearNotification
     }}>
       {children}
     </UserContext.Provider>
