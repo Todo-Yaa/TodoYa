@@ -1,8 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
+
+// Configura los enlaces de tus redes sociales aquí:
+const FACEBOOK_LINK = 'https://www.facebook.com/tu_pagina';
+const INSTAGRAM_LINK = 'https://www.instagram.com/tu_pagina';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
 
@@ -119,6 +123,24 @@ export default function PerfilScreen() {
               <Text style={styles.statNumber}>4.9 ★</Text>
               <Text style={styles.statLabel}>Calificación</Text>
             </View>
+          </View>
+
+          {/* Redes Sociales */}
+          <View style={styles.socialRow}>
+            <TouchableOpacity 
+              onPress={() => Linking.openURL(FACEBOOK_LINK)} 
+              style={styles.socialIconBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="logo-facebook" size={22} color={isBusiness ? '#818cf8' : '#3b5998'} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => Linking.openURL(INSTAGRAM_LINK)} 
+              style={styles.socialIconBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="logo-instagram" size={22} color={isBusiness ? '#818cf8' : '#e1306c'} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -787,4 +809,26 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     outlineStyle: 'none',
   } as any,
+  socialRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  socialIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
 });
