@@ -175,7 +175,7 @@ const generateTrackingMapHtml = (orderId: number, providerName: string, serviceN
 };
 
 export default function PedidosScreen() {
-  const { orders: pedidos, userRole } = useUser();
+  const { orders: pedidos, userRole, userName } = useUser();
   const isBusiness = userRole === 'business';
   
   // Tracking states

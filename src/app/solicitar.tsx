@@ -480,7 +480,7 @@ export default function SolicitarScreen() {
             ) : (
               <TouchableOpacity 
                 style={[styles.sendButton, isBusiness && { backgroundColor: '#818cf8' }]} 
-                onPress={processNLP}
+                onPress={() => processNLP()}
                 activeOpacity={0.7}
               >
                 <Ionicons name="send" size={22} color={isBusiness ? '#fff' : '#FFB400'} />
