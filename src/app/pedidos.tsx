@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, View, Platform, TouchableOpacity } from 'react-native';
 import { useState, useEffect } from 'react';
+import { router } from 'expo-router';
 import { useUser, Order } from '../context/user-context';
 
 const generateTrackingMapHtml = (orderId: number, providerName: string, serviceName: string) => {
@@ -297,20 +298,35 @@ export default function PedidosScreen() {
               )}
 
               {pedido.estado === 'En progreso' && (
-                <TouchableOpacity
-                  style={[styles.trackingBtn, isBusiness && { backgroundColor: '#e0e7ff', borderColor: '#818cf8' }]}
-                  onPress={() => {
-                    setEtaSeconds(300);
-                    setCurrentStep('driving');
-                    setActiveTrackingOrder(pedido);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="map-outline" size={16} color={isBusiness ? '#4f46e5' : '#b68000'} />
-                  <Text style={[styles.trackingBtnText, isBusiness && { color: '#4f46e5' }]}>
-                    Seguimiento en Vivo
-                  </Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[styles.trackingBtn, isBusiness && { backgroundColor: '#e0e7ff', borderColor: '#818cf8' }, { flex: 1 }]}
+                    onPress={() => {
+                      setEtaSeconds(300);
+                      setCurrentStep('driving');
+                      setActiveTrackingOrder(pedido);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="map-outline" size={16} color={isBusiness ? '#4f46e5' : '#b68000'} />
+                    <Text style={[styles.trackingBtnText, isBusiness && { color: '#4f46e5' }]}>
+                      GPS Vivo
+                    </Text>
+                  </TouchableOpacity>
+
+                  {pedido.proveedor && (
+                    <TouchableOpacity
+                      style={[styles.trackingBtn, { backgroundColor: '#ecfdf5', borderColor: '#10b981', flex: 1 }]}
+                      onPress={() => router.push(`/chat-room?orderId=${pedido.id}&titulo=${encodeURIComponent(pedido.titulo)}&providerName=${encodeURIComponent(pedido.proveedor || 'Proveedor')}`)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="chatbubble-ellipses-outline" size={16} color="#059669" />
+                      <Text style={[styles.trackingBtnText, { color: '#059669' }]}>
+                        Chat
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               )}
 
               {/* Calificación otorgada */}

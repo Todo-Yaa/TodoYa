@@ -140,6 +140,8 @@ function NavigationLayout() {
 
       {/* Pantalla Explore (Desactivada y oculta para todos los usuarios) */}
       <Tabs.Screen name="explore" options={{ href: null }} />
+      {/* Pantalla de Chat en Tiempo Real (accesible via router.push, oculta del tab bar) */}
+      <Tabs.Screen name="chat-room" options={{ href: null }} />
       </Tabs>
       {unratedOrder && (
         <RatingOverlayModal 

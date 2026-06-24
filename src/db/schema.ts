@@ -25,7 +25,20 @@ export const users = pgTable('users', {
   descripcionProveedor: text('descripcion_provider'),
   coberturaB2B: varchar('cobertura_b2b', { length: 100 }), // Local o Nacional
   monedas: integer('monedas').default(24), // Sistema de billetera (saldo de monedas)
-  
+
+  // Verificación de Identidad KYC (Powered by Claude Sonnet 4.5 via decouple-services)
+  kycVerificado: boolean('kyc_verificado').default(false),
+  kycDetalles: text('kyc_detalles'), // Resultado de Claude: descripción del documento analizado
+
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Tabla de Mensajes de Chat en Tiempo Real (por orden)
+export const messages = pgTable('messages', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull(), // ID del pedido al que pertenece el chat
+  senderName: varchar('sender_name', { length: 256 }).notNull(), // Nombre del remitente
+  messageText: text('message_text').notNull(), // Contenido del mensaje
   createdAt: timestamp('created_at').defaultNow(),
 });
 

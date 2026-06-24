@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     const allUsers = await db.select().from(users);
     return Response.json({ status: 'success', data: allUsers });
   } catch (error: any) {
+    console.error('Error in GET /api/users:', error);
     return Response.json({ error: 'Error al obtener usuarios', details: error.message }, { status: 500 });
   }
 }
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
 
     return Response.json({ status: 'success', action: 'created', user: nuevoUsuario[0] });
   } catch (error: any) {
+    console.error('Error in POST /api/users:', error);
     return Response.json({ error: 'Error al registrar usuario', details: error.message }, { status: 500 });
   }
 }
@@ -98,6 +100,7 @@ export async function PUT(request: Request) {
 
     return Response.json({ status: 'success', user: updated[0] });
   } catch (error: any) {
+    console.error('Error in PUT /api/users:', error);
     return Response.json({ error: 'Error al actualizar perfil del proveedor', details: error.message }, { status: 500 });
   }
 }
