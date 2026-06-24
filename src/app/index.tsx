@@ -137,10 +137,10 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>LM</Text>
+            <Text style={styles.avatarText}>{getInitials(userName)}</Text>
           </View>
           <View>
-            <Text style={styles.greeting}>Hola, Luis 👋</Text>
+            <Text style={styles.greeting}>Hola, {userName || 'Usuario'} 👋</Text>
             <Text style={styles.location}>Santa Cruz de la Sierra</Text>
           </View>
         </View>

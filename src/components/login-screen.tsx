@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useUser, UserRole } from '../context/user-context';
 import { router } from 'expo-router'; // Importar enrutador para redireccionar tras login dinámico
+import KYCVerifierModal from './kyc-verifier-modal';
 
 /**
  * Componente LoginScreen:
@@ -27,6 +28,10 @@ export default function LoginScreen() {
   const [rubro, setRubro] = useState('Papelería');
   const [b2bRol, setB2bRol] = useState<'client' | 'provider'>('client');
   const [naturalRol, setNaturalRol] = useState<'client' | 'provider'>('client');
+
+  // Estado del Modal de Verificación KYC
+  const [mostrarKYC, setMostrarKYC] = useState(false);
+  const [pendingRegistroData, setPendingRegistroData] = useState<any>(null); // Datos del registro pendiente de KYC
 
   // Configuración del modal de error/éxito personalizado
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -90,9 +95,24 @@ export default function LoginScreen() {
       }
     }
 
+    // Si es empresa o proveedor, primero verificamos identidad con KYC
+    if (tipoEntidad === 'empresa') {
+      setPendingRegistroData({
+        nombre: nombreRegistro.trim(),
+        correo: correoOTelefonoRegistro.trim(),
+        contrasena: contrasenaRegistro,
+        tipoEntidad,
+        nit: nit.trim(),
+        correoFacturacion: correoFacturacion.trim(),
+        rubro,
+      });
+      setMostrarKYC(true);
+      return;
+    }
+
     setCargando(true);
     setTimeout(async () => {
-      const finalRole: UserRole = tipoEntidad === 'empresa' ? 'business' : 'client';
+      const finalRole: UserRole = 'client';
 
       const exito = await registrarUsuario(
         nombreRegistro.trim(),
@@ -100,11 +120,10 @@ export default function LoginScreen() {
         finalRole,
         contrasenaRegistro,
         tipoEntidad,
-        tipoEntidad === 'empresa' ? nit.trim() : undefined,
-        tipoEntidad === 'empresa' ? correoFacturacion.trim() : undefined,
-        tipoEntidad === 'empresa' ? rubro : undefined,
-        // CORRECCIÓN: Si es una entidad de tipo empresa, se establece ofreceB2B como true por defecto
-        tipoEntidad === 'empresa'
+        undefined,
+        undefined,
+        undefined,
+        false
       );
 
       setCargando(false);
@@ -118,8 +137,6 @@ export default function LoginScreen() {
         setNombreRegistro('');
         setCorreoOTelefonoRegistro('');
         setContrasenaRegistro('');
-        setNit('');
-        setCorreoFacturacion('');
       } else {
         setConfiguracionModal({
           titulo: '❌ Error de Registro',
@@ -128,6 +145,42 @@ export default function LoginScreen() {
         setMostrarModal(true);
       }
     }, 1200);
+  };
+
+  /**
+   * Callback que ejecuta el registro definitivo después de verificar KYC con éxito.
+   */
+  const completarRegistroConKYC = async (kycDetalles: string) => {
+    setMostrarKYC(false);
+    if (!pendingRegistroData) return;
+
+    setCargando(true);
+    const { nombre, correo, contrasena, tipoEntidad: te, nit: n, correoFacturacion: cf, rubro: rb } = pendingRegistroData;
+    const finalRole: UserRole = 'business';
+
+    const exito = await registrarUsuario(nombre, correo, finalRole, contrasena, te, n, cf, rb, true);
+    setCargando(false);
+    setPendingRegistroData(null);
+
+    if (exito) {
+      setConfiguracionModal({
+        titulo: '🎉 ¡Registro y KYC Exitoso!',
+        mensaje: `Identidad verificada con IA. Tu cuenta empresarial ha sido activada. ¡Bienvenido a Todo Ya, ${nombre}!`
+      });
+      setMostrarModal(true);
+      setEsRegistro(false);
+      setNombreRegistro('');
+      setCorreoOTelefonoRegistro('');
+      setContrasenaRegistro('');
+      setNit('');
+      setCorreoFacturacion('');
+    } else {
+      setConfiguracionModal({
+        titulo: '❌ Error de Registro',
+        mensaje: 'El correo o teléfono ingresado ya existe. Inténtalo con otro.'
+      });
+      setMostrarModal(true);
+    }
   };
 
   /**
@@ -328,7 +381,11 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView 
+      style={{ flex: 1, backgroundColor: '#f5f5f5' }} 
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Círculos decorativos en el fondo con transparencias */}
       <View style={styles.topCircle} />
       <View style={styles.bottomCircle} />
@@ -350,7 +407,7 @@ export default function LoginScreen() {
 
           {esRegistro ? (
             // FORMULARIO DE REGISTRO MANUAL
-            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={true}>
+            <ScrollView style={{ maxHeight: Platform.OS === 'web' ? 550 : 320 }} showsVerticalScrollIndicator={Platform.OS !== 'web'}>
               {/* Selector de Tipo de Entidad (Persona Natural vs Empresa) */}
               <Text style={styles.inputLabel}>¿Cómo te registras?</Text>
               <View style={styles.entityToggleContainer}>
@@ -625,6 +682,14 @@ export default function LoginScreen() {
         </View>
       </View>
 
+      {/* MODAL KYC — Verificación de Identidad para Empresas y Proveedores */}
+      <KYCVerifierModal
+        visible={mostrarKYC}
+        userName={pendingRegistroData?.nombre}
+        onVerified={completarRegistroConKYC}
+        onClose={() => { setMostrarKYC(false); setPendingRegistroData(null); }}
+      />
+
       {/* MODAL DE ERROR/ALERTA PERSONALIZADO */}
       {mostrarModal && (
         <View style={styles.modalOverlay}>
@@ -839,16 +904,17 @@ export default function LoginScreen() {
           </View>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#f5f5f5',
     justifyContent: 'center',
-    padding: 24,
+    paddingVertical: Platform.OS === 'web' ? 40 : 24,
+    paddingHorizontal: 24,
   },
   topCircle: {
     position: 'absolute',
@@ -876,13 +942,13 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 36,
+    marginBottom: 20,
   },
   logoImage: {
-    width: 140,
-    height: 175,
-    borderRadius: 24,
-    marginBottom: 12,
+    width: 100,
+    height: 125,
+    borderRadius: 20,
+    marginBottom: 8,
   },
   logoIconBg: {
     width: 80,
@@ -962,6 +1028,8 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
     fontSize: 15,
     outlineStyle: 'none',
+    height: '100%',
+    paddingVertical: 0,
   } as any,
   loginBtn: {
     flexDirection: 'row',
