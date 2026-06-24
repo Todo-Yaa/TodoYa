@@ -45,6 +45,21 @@ const CANDIDATOS_DATABASE: Record<string, CandidateProvider[]> = {
     { name: "Andrés Silva", lat: -17.7890, lng: -63.2050, service: "Climatización", rating: "4.9 ★", price: "Bs. 160", experience: "Más de 3 años", description: "Instalación y mantenimiento de AC split", distance: "2.5 km" },
     { name: "Ramiro Paz", lat: -17.7780, lng: -63.1750, service: "Climatización", rating: "4.7 ★", price: "Bs. 140", experience: "1 a 3 años", description: "Limpieza profunda y carga de gas", distance: "0.9 km" }
   ],
+  'Mecánico': [
+    { name: "Luis Gómez", lat: -17.7850, lng: -63.1850, service: "Mecánico", rating: "4.8 ★", price: "Bs. 150", experience: "Más de 3 años", description: "Mecánico automotriz a domicilio", distance: "1.2 km" }
+  ],
+  'Cerrajero': [
+    { name: "Mario Roca", lat: -17.7820, lng: -63.1790, service: "Cerrajero", rating: "4.9 ★", price: "Bs. 80", experience: "Más de 3 años", description: "Cerrajero residencial de emergencia", distance: "0.5 km" }
+  ],
+  'Carpintero': [
+    { name: "Pedro Silva", lat: -17.7880, lng: -63.1810, service: "Carpintero", rating: "4.7 ★", price: "Bs. 130", experience: "Más de 3 años", description: "Carpintería fina y reparación", distance: "2.0 km" }
+  ],
+  'Técnico de laptop-celulares': [
+    { name: "Julio Vera", lat: -17.7780, lng: -63.1860, service: "Técnico de laptop-celulares", rating: "4.9 ★", price: "Bs. 100", experience: "Más de 3 años", description: "Reparación de celulares y laptops", distance: "1.8 km" }
+  ],
+  'Sastrería': [
+    { name: "Elena Paz", lat: -17.7810, lng: -63.1890, service: "Sastrería", rating: "4.8 ★", price: "Bs. 60", experience: "Más de 3 años", description: "Ajustes, costura y confección", distance: "1.1 km" }
+  ],
   'Papelería & Oficina': [
     { name: "Librería Alfa Insumos", lat: -17.7910, lng: -63.1790, service: "Papelería & Oficina", rating: "4.9 ★", price: "Bs. 320", experience: "Más de 3 años", description: "Papelería e insumos por mayor para oficinas", distance: "0.9 km" },
     { name: "Imprenta Beta B2B", lat: -17.7710, lng: -63.1890, service: "Papelería & Oficina", rating: "4.8 ★", price: "Bs. 350", experience: "Más de 3 años", description: "Servicios gráficos y material corporativo", distance: "1.5 km" }

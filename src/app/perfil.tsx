@@ -398,7 +398,7 @@ export default function PerfilScreen() {
                   <View style={styles.chipsContainer}>
                     {(activeUser?.tipoEntidad === 'empresa'
                       ? ['Papelería', 'Decoración', 'Branding', 'Servicios B2B']
-                      : ['Plomería', 'Electricidad', 'Pintura', 'Climatización']
+                      : ['Plomería', 'Electricidad', 'Pintura', 'Climatización', 'Mecánico', 'Cerrajero', 'Carpintero', 'Técnico de laptop-celulares', 'Sastrería']
                     ).map((serv) => {
                       const selected = serviciosSeleccionados.includes(serv);
                       return (
