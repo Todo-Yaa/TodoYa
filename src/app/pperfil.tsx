@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
+import Storage from '../utils/storage';
 
 // Configura los enlaces de tus redes sociales aquí:
 const FACEBOOK_LINK = 'https://www.instagram.com/todoo__ya';
@@ -14,6 +16,7 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
  * los detalles de su membresía PRO y permite regresar al "Modo Cliente".
  */
 export default function PperfilScreen() {
+  const { t, i18n } = useTranslation();
   const { toggleRole, coins, orders, logout, activeUser } = useUser();
 
   // Controladores del modal de confirmación personalizado
@@ -39,8 +42,8 @@ export default function PperfilScreen() {
    */
   const handleLogout = () => {
     setConfirmConfig({
-      title: '¿Cerrar Sesión?',
-      message: '¿Estás seguro de que deseas cerrar tu sesión en Todo Ya?',
+      title: t('profile.logout_confirm_title'),
+      message: t('profile.logout_confirm_msg'),
       singleButton: false,
       onConfirm: () => {
         logout();
@@ -85,7 +88,7 @@ export default function PperfilScreen() {
     <View style={styles.container}>
       {/* CORRECCIÓN: Encabezado adaptativo. Si es empresa proveedora (B2B), se colorea con Slate oscuro (#1e293b) e Índigo (#818cf8). */}
       <View style={[styles.header, isB2BProvider && { backgroundColor: '#1e293b' }]}>
-        <Text style={[styles.headerTitle, isB2BProvider && { color: '#818cf8' }]}>Mi perfil profesional</Text>
+        <Text style={[styles.headerTitle, isB2BProvider && { color: '#818cf8' }]}>{t('profile.provider_title')}</Text>
       </View>
 
       <ScrollView style={styles.body}>
@@ -102,16 +105,16 @@ export default function PperfilScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{trabajosCount}</Text>
-              <Text style={styles.statLabel}>Trabajos</Text>
+              <Text style={styles.statLabel}>{t('profile.jobs')}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{averageRating} ★</Text>
-              <Text style={styles.statLabel}>Calificación</Text>
+              <Text style={styles.statLabel}>{t('profile.rating')}</Text>
             </View>
             <View style={styles.statItem}>
               {/* Despliega el saldo de monedas reactivo útil para postularse a leads */}
               <Text style={styles.statNumber}>{coins}</Text>
-              <Text style={styles.statLabel}>Monedas</Text>
+              <Text style={styles.statLabel}>{t('profile.coins')}</Text>
             </View>
           </View>
 
@@ -136,7 +139,7 @@ export default function PperfilScreen() {
 
         {/* Presentación del Proveedor */}
         <Text style={styles.sectionTitle}>
-          {isB2BProvider ? 'Detalles de la Empresa' : 'Especialidades & Presentación'}
+          {isB2BProvider ? t('profile.company_details') : t('profile.specialties_presentation')}
         </Text>
         <View style={styles.infoCard}>
           <View style={styles.tagsRow}>
@@ -148,13 +151,13 @@ export default function PperfilScreen() {
           </View>
           <Text style={styles.infoText}>
             {activeUser?.descripcionProveedor || (isB2BProvider
-              ? 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.'
-              : 'Proveedor de servicios residenciales certificado y de confianza.')}
+              ? t('profile.default_desc_business')
+              : t('profile.default_desc_provider'))}
           </Text>
         </View>
 
         {/* Tarjeta de Cambio de Rol a Cliente */}
-        <Text style={styles.sectionTitle}>Modo Cliente</Text>
+        <Text style={styles.sectionTitle}>{t('profile.client_mode_title')}</Text>
         <View style={styles.toggleCard}>
           <TouchableOpacity style={styles.toggleRow} onPress={handleSwitchRole} activeOpacity={0.7}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 }}>
@@ -165,12 +168,12 @@ export default function PperfilScreen() {
               />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.accountText, { fontWeight: '600' }]}>
-                  {isB2BProvider ? 'Volver a modo Empresa' : 'Volver a modo Cliente residencial'}
+                  {isB2BProvider ? t('profile.back_to_client_biz') : t('profile.back_to_client_res')}
                 </Text>
                 <Text style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
                   {isB2BProvider
-                    ? 'Publica requerimientos B2B para tu empresa'
-                    : 'Busca profesionales para solucionar tus problemas'}
+                    ? t('profile.back_to_client_biz_desc')
+                    : t('profile.back_to_client_res_desc')}
                 </Text>
               </View>
             </View>
@@ -179,7 +182,7 @@ export default function PperfilScreen() {
         </View>
 
         {/* Tarjeta de Acceso a Estadísticas Detalladas */}
-        <Text style={styles.sectionTitle}>Rendimiento Financiero</Text>
+        <Text style={styles.sectionTitle}>{t('profile.financial_performance')}</Text>
         <TouchableOpacity
           style={styles.statsShortcutCard}
           onPress={() => router.replace('/stats')}
@@ -190,31 +193,78 @@ export default function PperfilScreen() {
               <Ionicons name="bar-chart-outline" size={24} color="#FFB400" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.statsShortcutTitle}>Ver Estadísticas Detalladas</Text>
-              <Text style={styles.statsShortcutDesc}>Ingresos del mes: Bs. {totalEarnings.toLocaleString()} · Meta 95% completada</Text>
+              <Text style={styles.statsShortcutTitle}>{t('profile.view_detailed_stats')}</Text>
+              <Text style={styles.statsShortcutDesc}>{t('profile.monthly_earnings_desc', { earnings: totalEarnings.toLocaleString() })}</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
 
         {/* Información sobre el Estado de Membresía de Pago PRO */}
-        <Text style={styles.sectionTitle}>Membresía</Text>
+        <Text style={styles.sectionTitle}>{t('profile.membership')}</Text>
         {/* Tarjeta de membresía adaptada con bordes y sombra de color de marca */}
         <View style={[styles.proCard, isB2BProvider && { borderColor: '#6366f1', shadowColor: '#6366f1' }]}>
           <View style={styles.proHeader}>
             <Ionicons name={"crown" as any} size={32} color={isB2BProvider ? "#6366f1" : "#FFB400"} />
             <View style={{ marginLeft: 12 }}>
-              <Text style={styles.proTitle}>Plan PRO activo</Text>
-              <Text style={styles.proSubtitle}>Acceso a leads exclusivos</Text>
+              <Text style={styles.proTitle}>{t('profile.active_pro_plan')}</Text>
+              <Text style={styles.proSubtitle}>{t('profile.pro_leads_access')}</Text>
             </View>
           </View>
-          <Text style={styles.renovacion}>Renueva el 15 de Julio 2026</Text>
+          <Text style={styles.renovacion}>{t('profile.renews_on', { date: '15 de Julio 2026' })}</Text>
+        </View>
+
+        {/* Configuración de Idioma de la App */}
+        <Text style={styles.sectionTitle}>{t('profile.language')}</Text>
+        <View style={styles.toggleCard}>
+          <View style={styles.languageRow}>
+            <Ionicons name="globe-outline" size={24} color="#666" style={{ marginRight: 16 }} />
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <Text style={styles.accountText}>{t('profile.language')}</Text>
+              <View style={{ flexDirection: 'row', gap: 4 }}>
+                {[
+                  { code: 'es', name: 'ES' },
+                  { code: 'en', name: 'EN' },
+                  { code: 'pt', name: 'PT' },
+                  { code: 'qu', name: 'QU' },
+                  { code: 'ay', name: 'AY' },
+                  { code: 'gn', name: 'GN' }
+                ].map((lang) => {
+                  const isActive = i18n.language === lang.code;
+                  return (
+                    <TouchableOpacity
+                      key={lang.code}
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 5,
+                        borderRadius: 8,
+                        backgroundColor: isActive ? (isB2BProvider ? '#6366f1' : '#FFB400') : '#e2e8f0',
+                      }}
+                      onPress={async () => {
+                        await i18n.changeLanguage(lang.code);
+                        await Storage.setItem('user-language', lang.code);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ 
+                        fontSize: 10, 
+                        fontWeight: 'bold', 
+                        color: isActive ? (isB2BProvider ? '#fff' : '#2F2F2F') : '#475569' 
+                      }}>
+                        {lang.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* Botón de Cierre de Sesión */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
           <Ionicons name="log-out-outline" size={22} color="#e53935" />
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
+          <Text style={styles.logoutText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -231,7 +281,7 @@ export default function PperfilScreen() {
                   onPress={() => setShowConfirmModal(false)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.modalCancelText}>Cancelar</Text>
+                  <Text style={styles.modalCancelText}>{t('profile.cancel')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -243,7 +293,7 @@ export default function PperfilScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.modalConfirmText, isB2BProvider && { color: '#fff' }]}>
-                  {confirmConfig.singleButton ? 'Entendido' : 'Confirmar'}
+                  {confirmConfig.singleButton ? t('profile.understood') : t('profile.confirm')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -506,5 +556,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 5,
     elevation: 2,
+  },
+  languageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
   },
 });

@@ -8,6 +8,7 @@ import en from './locales/en.json';
 import qu from './locales/qu.json';
 import ay from './locales/ay.json';
 import gn from './locales/gn.json';
+import pt from './locales/pt.json';
 
 const resources = {
   es: { translation: es },
@@ -15,6 +16,7 @@ const resources = {
   qu: { translation: qu },
   ay: { translation: ay },
   gn: { translation: gn },
+  pt: { translation: pt },
 };
 
 // 1. Obtener idioma del dispositivo como fallback predeterminado
@@ -37,7 +39,7 @@ i18n
 export const loadSavedLanguage = async () => {
   try {
     const savedLanguage = await Storage.getItem('user-language');
-    if (savedLanguage && ['es', 'en', 'qu', 'ay', 'gn'].includes(savedLanguage)) {
+    if (savedLanguage && ['es', 'en', 'qu', 'ay', 'gn', 'pt'].includes(savedLanguage)) {
       await i18n.changeLanguage(savedLanguage);
     }
   } catch (error) {
