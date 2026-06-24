@@ -1,0 +1,65 @@
+{
+  "welcome": "Bem-vindo ao Todo Ya!",
+  "tagline": "Serviços Locais em Minutos",
+  "search_placeholder": "Qual serviço você precisa hoje? (Ex: Meu cano está vazando)",
+  "search_btn": "Buscar Prestador",
+  "role_client": "Cliente Residencial",
+  "role_provider": "Prestador de Serviços",
+  "role_business": "Empresa / Corporativo",
+  "role_selector_title": "Selecione seu Perfil",
+  "solicitud": {
+    "title_b2b": "Nova solicitação B2B",
+    "title": "Nova solicitação",
+    "subtitle_b2b": "Publique as necessidades corporativas da sua empresa",
+    "subtitle": "Conte-nos o que você precisa",
+    "ai_classification": "A IA classificará seu pedido corporativo",
+    "placeholder_b2b": "Ex: Precisamos de decoração corporativa com balões para o aniversário do escritório, e 15 resmas de papel A4...",
+    "placeholder": "Ex: tenho um vazamento embaixo da pia, é urgente...",
+    "analyze_btn": "Analisar e buscar parceiros B2B",
+    "confirm_btn": "Confirmar e buscar prestadores",
+    "scanning_title": "Transmitindo Solicitação",
+    "scanning_subtitle": "Enviando solicitação de {{servicio}} para prestadores disponíveis em um raio de 5km..."
+  },
+  "profile": {
+    "title": "Meu Perfil",
+    "edit": "Editar Dados",
+    "save": "Salvar Alterações",
+    "logout": "Sair",
+    "language": "Idioma do App",
+    "experience": "Anos de Experiência",
+    "description": "Descrição Profissional"
+  },
+  "matching": {
+    "scanning": "Procurando prestadores próximos...",
+    "found": "Prestadores encontrados!",
+    "no_provider": "Nenhum prestador encontrado. Deseja tentar novamente?",
+    "suggested_price": "Preço sugerido pelo mercado",
+    "urgency": "Urgência",
+    "urgency_normal": "Normal",
+    "urgency_high": "Alta"
+  },
+  "common": {
+    "back": "Voltar",
+    "accept": "Aceitar",
+    "cancel": "Cancelar",
+    "save": "Salvar"
+  },
+  "chat": {
+    "provider_offers": "Ofertas de Prestadores",
+    "received_offers": "Propostas recebidas ({{count}} de {{total}})",
+    "free_providers": "Prestadores Disponíveis ({{count}})",
+    "distance": "a {{dist}} de distância",
+    "accept_offer": "Aceitar Oferta",
+    "accept_and_chat": "Aceitar e Conversar",
+    "counter_offer": "Contraproposta (Orçamento: R$ {{budget}})",
+    "accept_budget": "Aceita seu orçamento",
+    "publish_general": "Publicar na lista geral sem atribuir",
+    "time_out_title": "Tempo de espera esgotado!",
+    "time_out_desc": "Os prestadores próximos não responderam a tempo. Você pode tentar novamente ou publicar na lista geral.",
+    "retry": "Tentar Novamente",
+    "publish_btn": "Publicar na Lista Geral",
+    "typing": "está digitando...",
+    "type_message": "Digite sua mensagem...",
+    "view_orders": "Ver Pedidos"
+  }
+}

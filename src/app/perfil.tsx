@@ -267,6 +267,7 @@ export default function PerfilScreen() {
                 {[
                   { code: 'es', name: 'ES' },
                   { code: 'en', name: 'EN' },
+                  { code: 'pt', name: 'PT' },
                   { code: 'qu', name: 'QU' },
                   { code: 'ay', name: 'AY' },
                   { code: 'gn', name: 'GN' }
