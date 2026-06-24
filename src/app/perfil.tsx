@@ -396,10 +396,21 @@ export default function PerfilScreen() {
                   </Text>
                   <Text style={styles.fieldLabel}>Categorías disponibles:</Text>
                   <View style={styles.chipsContainer}>
-                    {(activeUser?.tipoEntidad === 'empresa'
-                      ? ['Papelería', 'Decoración', 'Branding', 'Servicios B2B']
-                      : ['Plomería', 'Electricidad', 'Pintura', 'Climatización', 'Mecánico', 'Cerrajero', 'Carpintero', 'Técnico de laptop-celulares', 'Sastrería']
-                    ).map((serv) => {
+                    {[
+                      'Plomería',
+                      'Electricidad',
+                      'Pintura',
+                      'Climatización',
+                      'Mecánico',
+                      'Cerrajero',
+                      'Carpintero',
+                      'Técnico de laptop-celulares',
+                      'Sastrería',
+                      'Papelería',
+                      'Decoración',
+                      'Branding',
+                      'Servicios B2B'
+                    ].map((serv) => {
                       const selected = serviciosSeleccionados.includes(serv);
                       return (
                         <TouchableOpacity
