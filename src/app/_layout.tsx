@@ -6,13 +6,14 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'; // Para una
 import { UserProvider, useUser } from '../context/user-context';
 import LoginScreen from '../components/login-screen';
 import RatingOverlayModal from '../components/rating-overlay-modal';
+import NotificationBanner from '../components/notification-banner';
 
 /**
  * Componente NavigationLayout:
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
  */
 function NavigationLayout() {
-  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification, isDbOnline, isSyncing, triggerSync } = useUser();
+  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification, isDbOnline, isSyncing, triggerSync, activeToast, dismissToast } = useUser();
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
@@ -165,41 +166,7 @@ function NavigationLayout() {
       )}
 
       {/* Banner de Notificación In-App Global */}
-      {notification && (
-        <Animated.View
-          entering={FadeIn.duration(300)}
-          exiting={FadeOut.duration(200)}
-          style={[
-            styles.notificationToast,
-            notification.type === 'success' && styles.toastSuccess,
-            notification.type === 'warning' && styles.toastWarning,
-            isBusiness && styles.toastBusiness,
-          ]}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={styles.toastIconBg}>
-              <Ionicons
-                name={
-                  notification.type === 'success'
-                    ? 'checkmark-circle'
-                    : notification.type === 'warning'
-                    ? 'warning'
-                    : 'flash'
-                }
-                size={22}
-                color="#fff"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.toastTitle} numberOfLines={1}>{notification.title}</Text>
-              <Text style={styles.toastMessage} numberOfLines={2}>{notification.message}</Text>
-            </View>
-            <TouchableOpacity onPress={clearNotification} style={styles.toastClose}>
-              <Ionicons name="close-circle" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
+      <NotificationBanner toast={activeToast} onDismiss={dismissToast} />
 
       {/* Pantalla flotante de transición de rol con micro-animación de desvanecimiento */}
       {isSwitchingRole && (

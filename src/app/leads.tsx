@@ -2,10 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useCallback, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, RefreshControl, Image, ActivityIndicator } from 'react-native';
 import { useUser } from '../context/user-context';
+import NotificationTray from '../components/notification-tray';
 
 export default function LeadsScreen() {
-  const { orders, coins, applyToLead, activeUser, syncOrders, addCoins, usuariosRegistrados } = useUser();
+  const { orders, coins, applyToLead, activeUser, syncOrders, addCoins, usuariosRegistrados, notificationsList, markAllNotificationsRead, clearAllNotifications } = useUser();
   const [refreshing, setRefreshing] = useState(false);
+  const [isTrayOpen, setIsTrayOpen] = useState(false);
 
   // VeriPagos payment states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -37,6 +39,8 @@ export default function LeadsScreen() {
     // Las empresas proveedoras solo ven requerimientos B2B, y los proveedores naturales solo ven requerimientos residenciales
     return isB2BProvider ? isOrderB2B : !isOrderB2B;
   });
+
+  const unreadCount = notificationsList.filter(n => !n.read).length;
 
   // Custom modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -247,11 +251,14 @@ export default function LeadsScreen() {
             <Text style={styles.status}>{professionText} · <Text style={{ color: '#4caf50' }}>Disponible</Text></Text>
           </View>
         </View>
-        <Ionicons 
-          name="notifications-outline" 
-          size={28} 
-          color={isB2BProvider ? '#818cf8' : '#FFB400'} 
-        />
+        <TouchableOpacity onPress={() => setIsTrayOpen(true)} style={styles.bellContainer} activeOpacity={0.7}>
+          <Ionicons 
+            name="notifications-outline" 
+            size={28} 
+            color={isB2BProvider ? '#818cf8' : '#FFB400'} 
+          />
+          {unreadCount > 0 && <View style={[styles.bellBadge, isB2BProvider && styles.bellBadgeDark]} />}
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -579,6 +586,14 @@ export default function LeadsScreen() {
           </View>
         </View>
       )}
+      <NotificationTray
+        visible={isTrayOpen}
+        onClose={() => setIsTrayOpen(false)}
+        notifications={notificationsList}
+        onMarkAllAsRead={markAllNotificationsRead}
+        onClearAll={clearAllNotifications}
+        isDarkTheme={isB2BProvider}
+      />
     </View>
   );
 }
@@ -1055,5 +1070,23 @@ const styles = StyleSheet.create({
   historyItemAmount: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  bellContainer: {
+    position: 'relative',
+    padding: 4,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#ef4444',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  bellBadgeDark: {
+    borderColor: '#2F2F2F',
   },
 });

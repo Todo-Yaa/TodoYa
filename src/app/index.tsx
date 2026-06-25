@@ -5,12 +5,14 @@ import { router } from 'expo-router';
 import MapView from '../components/map-view';
 import { useUser } from '../context/user-context';
 import { matchProviders } from '../services/ai-matching';
+import NotificationTray from '../components/notification-tray';
 
 export default function HomeScreen() {
-  const { userRole, userName, orders, addOrder } = useUser();
+  const { userRole, userName, orders, addOrder, notificationsList, markAllNotificationsRead, clearAllNotifications } = useUser();
   const [showModal, setShowModal] = useState(false);
   const [panicDesc, setPanicDesc] = useState('');
   const [isPanicLoading, setIsPanicLoading] = useState(false);
+  const [isTrayOpen, setIsTrayOpen] = useState(false);
 
   // Filtramos pedidos de esta empresa
   const businessOrders = orders.filter(o => 
@@ -73,7 +75,10 @@ export default function HomeScreen() {
               <Text style={styles.b2bLocation}>Cuenta Empresa · Santa Cruz</Text>
             </View>
           </View>
-          <Ionicons name="notifications-outline" size={28} color="#818cf8" />
+          <TouchableOpacity onPress={() => setIsTrayOpen(true)} style={styles.bellContainer} activeOpacity={0.7}>
+            <Ionicons name="notifications-outline" size={28} color="#818cf8" />
+            {unreadCount > 0 && <View style={[styles.bellBadge, styles.bellBadgeDark]} />}
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.body}>
@@ -126,6 +131,14 @@ export default function HomeScreen() {
             <MapView />
           </View>
         </ScrollView>
+        <NotificationTray
+          visible={isTrayOpen}
+          onClose={() => setIsTrayOpen(false)}
+          notifications={notificationsList}
+          onMarkAllAsRead={markAllNotificationsRead}
+          onClearAll={clearAllNotifications}
+          isDarkTheme={true}
+        />
       </View>
     );
   }
@@ -144,7 +157,10 @@ export default function HomeScreen() {
             <Text style={styles.location}>Santa Cruz de la Sierra</Text>
           </View>
         </View>
-        <Ionicons name="notifications-outline" size={28} color="#2F2F2F" />
+        <TouchableOpacity onPress={() => setIsTrayOpen(true)} style={styles.bellContainer} activeOpacity={0.7}>
+          <Ionicons name="notifications-outline" size={28} color="#2F2F2F" />
+          {unreadCount > 0 && <View style={styles.bellBadge} />}
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.body}>
@@ -255,6 +271,14 @@ export default function HomeScreen() {
           </View>
         </View>
       )}
+      <NotificationTray
+        visible={isTrayOpen}
+        onClose={() => setIsTrayOpen(false)}
+        notifications={notificationsList}
+        onMarkAllAsRead={markAllNotificationsRead}
+        onClearAll={clearAllNotifications}
+        isDarkTheme={false}
+      />
     </View>
   );
 }
@@ -481,5 +505,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1e293b',
+  },
+  bellContainer: {
+    position: 'relative',
+    padding: 4,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#ef4444',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  bellBadgeDark: {
+    borderColor: '#1e293b',
   },
 });

@@ -75,6 +75,12 @@ interface UserContextType {
   isDbOnline: boolean;       // ¿Está conectado a Neon?
   isSyncing: boolean;        // ¿Sincronizando datos offline → Neon?
   triggerSync: () => Promise<void>; // Fuerza sincronización manual
+  notificationsList: any[];
+  activeToast: any | null;
+  addTrayNotification: (title: string, message: string, type: 'chat' | 'application' | 'system' | 'wallet') => void;
+  markAllNotificationsRead: () => void;
+  clearAllNotifications: () => void;
+  dismissToast: () => void;
 }
 
 // Creación del React Context
@@ -161,15 +167,54 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isDbOnline, setIsDbOnline] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ title: string; message: string; type: 'info' | 'success' | 'warning' } | null>(null);
+  const [notificationsList, setNotificationsList] = useState<any[]>([]);
+  const [activeToast, setActiveToast] = useState<any | null>(null);
   const lastMaxMsgIdRef = useRef(0);
   const wasOnlineRef = useRef(false); // Rastrear estado previo para detectar reconexión
 
   const showNotification = (title: string, message: string, type: 'info' | 'success' | 'warning') => {
     setNotification({ title, message, type });
+    // También disparar el toast premium e insertarlo en el tray
+    const mappedType = type === 'success' ? 'application' : (type === 'info' ? 'chat' : 'system');
+    addTrayNotification(title, message, mappedType);
   };
 
   const clearNotification = () => {
     setNotification(null);
+  };
+
+  const addTrayNotification = (title: string, message: string, type: 'chat' | 'application' | 'system' | 'wallet') => {
+    const newNotif = {
+      id: String(Date.now()),
+      title,
+      message,
+      type,
+      read: false,
+      timestamp: 'Ahora'
+    };
+    setNotificationsList(prev => {
+      const updated = [newNotif, ...prev];
+      Storage.setItem('todo_ya_notifications', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+    setActiveToast({ id: newNotif.id, title, message, type });
+  };
+
+  const markAllNotificationsRead = () => {
+    setNotificationsList(prev => {
+      const updated = prev.map(n => ({ ...n, read: true }));
+      Storage.setItem('todo_ya_notifications', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
+  };
+
+  const clearAllNotifications = () => {
+    setNotificationsList([]);
+    Storage.setItem('todo_ya_notifications', JSON.stringify([])).catch(() => {});
+  };
+
+  const dismissToast = () => {
+    setActiveToast(null);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -275,6 +320,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
 
       // Cargar otros valores locales del dispositivo que son fijos de la sesión
+      const savedNotifs = await Storage.getItem('todo_ya_notifications');
+      if (savedNotifs) {
+        try { setNotificationsList(JSON.parse(savedNotifs)); } catch(_) {}
+      }
+
       const savedRole = await Storage.getItem('todo_ya_role');
       if (savedRole) setUserRole(savedRole as UserRole);
 
@@ -1249,6 +1299,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       isDbOnline,        // ✅ Estado de conexión a Neon
       isSyncing,         // ✅ Indicador de sync en progreso
       triggerSync,       // ✅ Sincronización manual forzada
+      notificationsList,
+      activeToast,
+      addTrayNotification,
+      markAllNotificationsRead,
+      clearAllNotifications,
+      dismissToast,
     }}>
       {children}
     </UserContext.Provider>
