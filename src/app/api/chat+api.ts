@@ -1,26 +1,34 @@
 import { db, isDbConnected } from '../../db';
 import { messages } from '../../db/schema';
 import { eq, asc } from 'drizzle-orm';
+import { localDb } from '../../db/localDb';
 
-// GET: Obtener todos los mensajes de una orden específica
+// GET: Obtener todos los mensajes de una orden específica (o todos si all=true)
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const orderId = url.searchParams.get('orderId');
+    const isGlobal = url.searchParams.get('all') === 'true';
+
+    if (isGlobal) {
+      if (!isDbConnected() || !db) {
+        const allMessages = localDb.getMessages();
+        return Response.json({ status: 'success', data: allMessages });
+      }
+      const allMessages = await db
+        .select()
+        .from(messages)
+        .orderBy(asc(messages.createdAt));
+      return Response.json({ status: 'success', data: allMessages });
+    }
 
     if (!orderId) {
       return Response.json({ error: 'orderId es requerido' }, { status: 400 });
     }
 
     if (!isDbConnected() || !db) {
-      // Modo simulado: devolver mensajes de prueba
-      return Response.json({
-        status: 'simulated',
-        data: [
-          { id: 1, orderId: Number(orderId), senderName: 'Juan Ríos', messageText: '¡Hola! Soy Juan Ríos, plomero certificado. Ya voy en camino.', createdAt: new Date(Date.now() - 120000).toISOString() },
-          { id: 2, orderId: Number(orderId), senderName: 'Tú', messageText: 'Perfecto Juan, te espero. El lavabo está en el segundo piso.', createdAt: new Date(Date.now() - 60000).toISOString() },
-        ]
-      });
+      const orderMessages = localDb.getMessages(Number(orderId));
+      return Response.json({ status: 'success', data: orderMessages });
     }
 
     const allMessages = await db
@@ -39,21 +47,26 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { orderId, senderName, messageText } = body;
+    // ✅ senderId es opcional pero se guarda si viene (FK real al usuario)
+    const { orderId, senderName, messageText, senderId = null } = body;
 
     if (!orderId || !senderName || !messageText) {
       return Response.json({ error: 'orderId, senderName y messageText son requeridos' }, { status: 400 });
     }
 
     if (!isDbConnected() || !db) {
-      return Response.json({
-        status: 'simulated',
-        message: { id: Date.now(), orderId, senderName, messageText, createdAt: new Date().toISOString() }
+      const newMessage = localDb.insertMessage({
+        orderId: Number(orderId),
+        senderId: senderId ? Number(senderId) : null,  // ✅ FK al usuario
+        senderName,
+        messageText,
       });
+      return Response.json({ status: 'success', message: newMessage });
     }
 
     const newMessage = await db.insert(messages).values({
       orderId: Number(orderId),
+      senderId: senderId ? Number(senderId) : null,    // ✅ FK al usuario
       senderName,
       messageText,
     }).returning();

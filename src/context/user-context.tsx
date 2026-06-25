@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import Storage from '../utils/storage';
 
 // Definición de roles de usuario disponibles: cliente, proveedor o empresa (B2B)
@@ -72,6 +72,9 @@ interface UserContextType {
   notification: { title: string; message: string; type: 'info' | 'success' | 'warning' } | null;
   showNotification: (title: string, message: string, type: 'info' | 'success' | 'warning') => void;
   clearNotification: () => void;
+  isDbOnline: boolean;       // ¿Está conectado a Neon?
+  isSyncing: boolean;        // ¿Sincronizando datos offline → Neon?
+  triggerSync: () => Promise<void>; // Fuerza sincronización manual
 }
 
 // Creación del React Context
@@ -156,7 +159,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [activeUser, setActiveUser] = useState<UsuarioRegistrado | null>(null);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   const [isDbOnline, setIsDbOnline] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ title: string; message: string; type: 'info' | 'success' | 'warning' } | null>(null);
+  const lastMaxMsgIdRef = useRef(0);
+  const wasOnlineRef = useRef(false); // Rastrear estado previo para detectar reconexión
 
   const showNotification = (title: string, message: string, type: 'info' | 'success' | 'warning') => {
     setNotification({ title, message, type });
@@ -166,23 +172,106 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setNotification(null);
   };
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Sincronización bidireccional: local_db.json → Neon cuando vuelve el internet
+  // ─────────────────────────────────────────────────────────────────────────────
+  const triggerSync = async () => {
+    setIsSyncing(true);
+    try {
+      // 1. Primero sembrar Neon con datos demo si está vacío
+      await fetch('/api/seed', { method: 'POST' });
+
+      // 2. Sincronizar datos creados offline hacia Neon
+      const syncRes = await fetch('/api/sync', { method: 'POST' });
+      if (syncRes.ok) {
+        const syncData = await syncRes.json();
+        const total = syncData.synced 
+          ? Object.values(syncData.synced as Record<string, number>).reduce((a, b) => a + b, 0)
+          : 0;
+        if (total > 0) {
+          showNotification(
+            '☁️ Sincronización completada',
+            `${total} registros locales subidos a Neon.db exitosamente.`,
+            'success'
+          );
+        } else {
+          console.log('[Sync] Todo ya estaba sincronizado en Neon.');
+        }
+      }
+
+      // 3. Recargar datos frescos desde Neon
+      const [ordRes, usrRes] = await Promise.all([
+        fetch('/api/orders'),
+        fetch('/api/users')
+      ]);
+      if (ordRes.ok) {
+        const d = await ordRes.json();
+        if (d.status === 'success') setOrders(d.data);
+      }
+      if (usrRes.ok) {
+        const d = await usrRes.json();
+        if (d.status === 'success') setUsuariosRegistrados(d.data);
+      }
+    } catch (err) {
+      console.warn('[Sync] Error durante sincronización:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Polling de reconexión: cada 30 segundos verifica si el internet volvió
+  useEffect(() => {
+    const checkReconnection = async () => {
+      if (isDbOnline) return; // Ya está online, no es necesario
+      try {
+        const res = await fetch('/api/db-status');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'ok' && data.database === 'connected') {
+            console.log('[UserContext] 🌐 Internet restaurado — reconectando con Neon...');
+            setIsDbOnline(true);
+            showNotification(
+              '🌐 Conexión restaurada',
+              'Sincronizando datos locales con Neon.db...',
+              'info'
+            );
+            // Pequeña pausa para que el usuario vea la notificación
+            setTimeout(() => triggerSync(), 1500);
+          }
+        }
+      } catch (_) {
+        // Sigue sin internet, silencioso
+      }
+    };
+
+    if (!isDbOnline) {
+      const reconnectInterval = setInterval(checkReconnection, 30000); // Cada 30 segundos
+      return () => clearInterval(reconnectInterval);
+    }
+  }, [isDbOnline]);
+
   // Efecto inicial: Carga los datos guardados en la memoria persistente al iniciar la app
   useEffect(() => {
     async function loadData() {
-      // 1. Verificar si la base de datos Neon.db está conectada y activa en el servidor
+      // 1. Verificar si el servidor está respondiendo (Neon.db u offline local_db.json)
       let online = false;
       try {
         const response = await fetch('/api/db-status');
         if (response.ok) {
           const statusData = await response.json();
-          if (statusData.database === 'connected') {
+          if (statusData.status === 'ok') {
             online = true;
             setIsDbOnline(true);
-            console.log('[UserContext] Conexión establecida con Neon.db (Modo Online activo)');
+            wasOnlineRef.current = true;
+            console.log(`[UserContext] Conexión establecida con el servidor (Base de datos: ${statusData.database})`);
+            // Si acabamos de conectar con Neon, sembrar si está vacío
+            if (statusData.database === 'connected') {
+              fetch('/api/seed', { method: 'POST' }).catch(() => {});
+            }
           }
         }
       } catch (err) {
-        console.warn('[UserContext] Ejecutándose en modo local simulado (offline).');
+        console.warn('[UserContext] Ejecutándose en modo local de dispositivo (offline).');
       }
 
       // Cargar otros valores locales del dispositivo que son fijos de la sesión
@@ -312,6 +401,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
       }
     }
+    loadData();
   }, []);
 
   // Polling para Notificaciones Reales sobre Neon DB
@@ -378,6 +468,43 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         // Actualizar la lista local de pedidos en segundo plano para reflejar los cambios
         setOrders(remoteOrders);
+
+        // 3. Polling global de mensajes de chat para notificaciones in-app
+        try {
+          const chatRes = await fetch('/api/chat?all=true');
+          if (chatRes.ok) {
+            const chatData = await chatRes.json();
+            if (chatData.status === 'success' && Array.isArray(chatData.data)) {
+              const allMessages = chatData.data;
+              if (lastMaxMsgIdRef.current === 0) {
+                lastMaxMsgIdRef.current = allMessages.reduce((max: number, m: any) => Math.max(max, m.id || 0), 0);
+              } else {
+                const newMessages = allMessages.filter((m: any) => (m.id || 0) > lastMaxMsgIdRef.current);
+                if (newMessages.length > 0) {
+                  for (const msg of newMessages) {
+                    const msgOrder = remoteOrders.find(o => o.id === msg.orderId);
+                    if (msgOrder) {
+                      const isParticipant = 
+                        (userRole === 'provider' && msgOrder.proveedor === userName) || 
+                        (userRole !== 'provider' && msgOrder.estado === 'En progreso');
+                      
+                      if (isParticipant && msg.senderName !== userName && msg.senderName !== 'Tú') {
+                        showNotification(
+                          `💬 ${msg.senderName}:`,
+                          msg.messageText,
+                          'info'
+                        );
+                      }
+                    }
+                  }
+                  lastMaxMsgIdRef.current = allMessages.reduce((max: number, m: any) => Math.max(max, m.id || 0), 0);
+                }
+              }
+            }
+          }
+        } catch (chatErr) {
+          console.warn('Error en polling de mensajes de chat:', chatErr);
+        }
       } catch (err) {
         console.warn('Error en polling de notificaciones:', err);
       }
@@ -463,39 +590,45 @@ export function UserProvider({ children }: { children: ReactNode }) {
       acceptedAt: proveedor ? new Date().toISOString() : null,
     };
 
-    if (isDbOnline) {
-      try {
-        const res = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ titulo, servicio, description, precio, urgencia, proveedor })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === 'success') {
-            const syncedOrder: Order = {
-              id: data.order.id,
-              titulo: data.order.titulo,
-              proveedor: data.order.proveedor,
-              servicio: data.order.servicio,
-              description: data.order.descripcion,
-              estado: data.order.estado,
-              progreso: data.order.progreso,
-              hora: data.order.hora,
-              color: data.order.color,
-              precio: data.order.precio,
-              urgencia: data.order.urgencia,
-              acceptedAt: data.order.acceptedAt,
-              completedAt: data.order.completedAt,
-              tiempoEjecucion: data.order.tiempoEjecucion
-            };
-            setOrders(prev => [syncedOrder, ...prev]);
-            return;
-          }
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          titulo, 
+          servicio, 
+          description, 
+          precio, 
+          urgencia, 
+          proveedor,
+          clienteId: activeUser?.id || null, // ✅ FK real al cliente que crea el pedido
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'success') {
+          const syncedOrder: Order = {
+            id: data.order.id,
+            titulo: data.order.titulo,
+            proveedor: data.order.proveedor,
+            servicio: data.order.servicio,
+            description: data.order.descripcion,
+            estado: data.order.estado,
+            progreso: data.order.progreso,
+            hora: data.order.hora,
+            color: data.order.color,
+            precio: data.order.precio,
+            urgencia: data.order.urgencia,
+            acceptedAt: data.order.acceptedAt,
+            completedAt: data.order.completedAt,
+            tiempoEjecucion: data.order.tiempoEjecucion
+          };
+          setOrders(prev => [syncedOrder, ...prev]);
+          return;
         }
-      } catch (err) {
-        console.error('Error al guardar pedido en Neon.db, recurriendo a local:', err);
       }
+    } catch (err) {
+      console.warn('[addOrder] Error al guardar pedido en servidor, recurriendo a local:', err);
     }
 
     const updated = [newOrder, ...orders];
@@ -519,20 +652,37 @@ export function UserProvider({ children }: { children: ReactNode }) {
        if (found?.id) finalUserId = found.id;
     }
 
-    if (isDbOnline) {
-      if (finalUserId) {
-        fetch('/api/wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: finalUserId, tipo: 'gasto', monto: coinsCost, detalle: `Postulación a pedido #${orderId}` })
-        }).catch(err => console.error('Error al descontar monedas en Neon.db:', err));
-      }
-
-      fetch('/api/orders', {
-        method: 'PUT',
+    if (finalUserId) {
+      fetch('/api/wallet', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: orderId, action: 'apply', providerName })
-      }).catch(err => console.error('Error al sincronizar postulación en Neon.db:', err));
+        body: JSON.stringify({ userId: finalUserId, tipo: 'gasto', monto: coinsCost, detalle: `Postulación a pedido #${orderId}` })
+      }).catch(err => console.warn('[applyToLead] Error al descontar monedas en backend:', err));
+    }
+
+    fetch('/api/orders', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        id: orderId, 
+        action: 'apply', 
+        providerName,
+        proveedorId: finalUserId || null, // ✅ FK real del proveedor
+      })
+    }).catch(err => console.warn('[applyToLead] Error al sincronizar postulación en backend:', err));
+
+    // ✅ Registrar la postulación en la tabla applications (historial relacional)
+    if (finalUserId) {
+      fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          orderId, 
+          proveedorId: finalUserId, 
+          monedasGastadas: coinsCost,
+          notaPersonal: null
+        })
+      }).catch(err => console.warn('[applyToLead] Error al registrar postulación:', err));
     }
 
     const updatedOrders = orders.map(order => {
@@ -557,13 +707,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * Marca un trabajo/pedido como 'Completado' y eleva el progreso al 100%.
    */
   const completeJob = (orderId: number) => {
-    if (isDbOnline) {
-      fetch('/api/orders', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: orderId, action: 'complete' })
-      }).catch(err => console.error('Error al completar trabajo en Neon.db:', err));
-    }
+    fetch('/api/orders', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: orderId, action: 'complete' })
+    }).catch(err => console.warn('[completeJob] Error al completar trabajo en backend:', err));
 
     const updatedOrders = orders.map(order => {
       if (order.id === orderId) {
@@ -601,34 +749,32 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     const claveCorreo = telefonoOCorreo.trim().toLowerCase();
 
-    if (isDbOnline) {
-      try {
-        const response = await fetch('/api/users');
-        if (response.ok) {
-          const resData = await response.json();
-          if (resData.status === 'success') {
-            const dbUsers: UsuarioRegistrado[] = resData.data;
-            const usuarioEncontrado = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
-            
-            if (usuarioEncontrado) {
-              if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
-                return false;
-              }
-              setActiveUser(usuarioEncontrado);
-              setIsAuthenticated(true);
-              setUserName(usuarioEncontrado.nombre);
-              setUserRole(usuarioEncontrado.rol);
-              await Storage.setItem('todo_ya_auth', 'true');
-              await Storage.setItem('todo_ya_username', usuarioEncontrado.nombre);
-              await Storage.setItem('todo_ya_role', usuarioEncontrado.rol);
-              await Storage.setItem('todo_ya_active_user', JSON.stringify(usuarioEncontrado));
-              return true;
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.status === 'success') {
+          const dbUsers: UsuarioRegistrado[] = resData.data;
+          const usuarioEncontrado = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
+          
+          if (usuarioEncontrado) {
+            if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
+              return false;
             }
+            setActiveUser(usuarioEncontrado);
+            setIsAuthenticated(true);
+            setUserName(usuarioEncontrado.nombre);
+            setUserRole(usuarioEncontrado.rol);
+            await Storage.setItem('todo_ya_auth', 'true');
+            await Storage.setItem('todo_ya_username', usuarioEncontrado.nombre);
+            await Storage.setItem('todo_ya_role', usuarioEncontrado.rol);
+            await Storage.setItem('todo_ya_active_user', JSON.stringify(usuarioEncontrado));
+            return true;
           }
         }
-      } catch (err) {
-        console.error('Error en autenticación Neon.db, reintentando offline:', err);
       }
+    } catch (err) {
+      console.warn('[login] Error en autenticación con servidor, reintentando local:', err);
     }
 
     const usuarioEncontrado = usuariosRegistrados.find(u => {
@@ -686,13 +832,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setActiveUser(nuevoUsuario);
       await Storage.setItem('todo_ya_active_user', JSON.stringify(nuevoUsuario));
 
-      if (isDbOnline) {
-        fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nuevoUsuario)
-        }).catch(err => console.error(err));
-      }
+      fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoUsuario)
+      }).catch(err => console.warn('[login] Error al registrar usuario nuevo en servidor:', err));
     }
 
     setIsAuthenticated(true);
@@ -819,41 +963,46 @@ export function UserProvider({ children }: { children: ReactNode }) {
   ): Promise<boolean> => {
     const claveCorreo = correoOTelefono.trim().toLowerCase();
     
-    if (isDbOnline) {
-      try {
-        const response = await fetch('/api/users');
-        if (response.ok) {
-          const resData = await response.json();
-          if (resData.status === 'success') {
-            const dbUsers: UsuarioRegistrado[] = resData.data;
-            const usuarioExistente = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
-            if (usuarioExistente) return false;
-          }
+    try {
+      const response = await fetch('/api/users');
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.status === 'success') {
+          const dbUsers: UsuarioRegistrado[] = resData.data;
+          const usuarioExistente = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
+          if (usuarioExistente) return false;
         }
-
-        const res = await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre, correoOTelefono, rol, contrasena, tipoEntidad, nit, correoFacturacion, rubro, ofreceB2B })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === 'success') {
-            const registeredUser = data.user;
-            setIsAuthenticated(true);
-            setUserName(nombre);
-            setUserRole(rol);
-            setActiveUser(registeredUser);
-            await Storage.setItem('todo_ya_auth', 'true');
-            await Storage.setItem('todo_ya_username', nombre);
-            await Storage.setItem('todo_ya_role', rol);
-            await Storage.setItem('todo_ya_active_user', JSON.stringify(registeredUser));
-            return true;
-          }
-        }
-      } catch (err) {
-        console.error('Error registrando en Neon.db, recurriendo a local:', err);
       }
+
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, correoOTelefono, rol, contrasena, tipoEntidad, nit, correoFacturacion, rubro, ofreceB2B })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'success') {
+          const registeredUser = data.user;
+          setIsAuthenticated(true);
+          setUserName(nombre);
+          setUserRole(rol);
+          setActiveUser(registeredUser);
+          await Storage.setItem('todo_ya_auth', 'true');
+          await Storage.setItem('todo_ya_username', nombre);
+          await Storage.setItem('todo_ya_role', rol);
+          await Storage.setItem('todo_ya_active_user', JSON.stringify(registeredUser));
+
+          // Sincronizar la lista local y el storage
+          const nuevoUsuarioConClave = { ...registeredUser, contrasena };
+          const listaActualizada = [...usuariosRegistrados, nuevoUsuarioConClave];
+          setUsuariosRegistrados(listaActualizada);
+          await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
+
+          return true;
+        }
+      }
+    } catch (err) {
+      console.warn('[registrarUsuario] Error registrando en servidor, recurriendo a local:', err);
     }
 
     const usuarioExistente = usuariosRegistrados.find(u => 
@@ -1096,7 +1245,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       addCoins,
       notification,
       showNotification,
-      clearNotification
+      clearNotification,
+      isDbOnline,        // ✅ Estado de conexión a Neon
+      isSyncing,         // ✅ Indicador de sync en progreso
+      triggerSync,       // ✅ Sincronización manual forzada
     }}>
       {children}
     </UserContext.Provider>

@@ -12,7 +12,7 @@ import RatingOverlayModal from '../components/rating-overlay-modal';
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
  */
 function NavigationLayout() {
-  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification } = useUser();
+  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification, isDbOnline, isSyncing, triggerSync } = useUser();
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
@@ -47,6 +47,20 @@ function NavigationLayout() {
 
   return (
     <View style={{ flex: 1 }}>
+
+      {/* ✅ Badge de estado: Offline / Sincronizando */}
+      {(!isDbOnline || isSyncing) && (
+        <View style={[styles.statusBadge, isSyncing ? styles.badgeSyncing : styles.badgeOffline]}>
+          {isSyncing 
+            ? <ActivityIndicator size={10} color="#fff" style={{ marginRight: 5 }} />
+            : <Ionicons name="cloud-offline-outline" size={12} color="#fff" style={{ marginRight: 4 }} />
+          }
+          <Text style={styles.statusBadgeText}>
+            {isSyncing ? 'Sincronizando...' : '📡 Modo offline — Datos locales'}
+          </Text>
+        </View>
+      )}
+
       <Tabs
       screenOptions={{
         // Color activo de los iconos y texto adaptado dinámicamente
@@ -261,7 +275,7 @@ const styles = StyleSheet.create({
     top: 50,
     left: 16,
     right: 16,
-    backgroundColor: '#2F2F2F', // Default neutral dark charcoal
+    backgroundColor: '#2F2F2F',
     borderRadius: 20,
     padding: 16,
     zIndex: 999999,
@@ -303,5 +317,30 @@ const styles = StyleSheet.create({
   },
   toastClose: {
     padding: 4,
+  },
+  // ✅ Badge de estado de conexión
+  statusBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 99998,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+  },
+  badgeOffline: {
+    backgroundColor: '#ef4444', // rojo
+  },
+  badgeSyncing: {
+    backgroundColor: '#3b82f6', // azul
+  },
+  statusBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

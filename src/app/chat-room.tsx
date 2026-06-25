@@ -28,7 +28,7 @@ export default function ChatRoomScreen() {
     titulo: string;
     providerName: string;
   }>();
-  const { userName, userRole } = useUser();
+  const { userName, userRole, activeUser } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -110,6 +110,7 @@ export default function ChatRoomScreen() {
           orderId: Number(orderId),
           senderName: senderName,
           messageText: text,
+          senderId: activeUser?.id || null, // ✅ FK real al usuario remitente
         }),
       });
     } catch (e) {
