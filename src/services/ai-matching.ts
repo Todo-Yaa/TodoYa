@@ -10,6 +10,8 @@ export const PROVEEDORES_MOCK = [
   { id: 'p8', nombre: 'Pedro Silva', especialidad: 'Carpintero', rating: 4.7, experiencia: 6, lat: -17.788, lng: -63.181, descripcion: 'Carpintería en general, restauración y armado de muebles.' },
   { id: 'p9', nombre: 'Julio Vera', especialidad: 'Técnico de laptop-celulares', rating: 4.9, experiencia: 8, lat: -17.778, lng: -63.186, descripcion: 'Reparación de celulares y laptops. Cambio de pantalla y batería.' },
   { id: 'p10', nombre: 'Elena Paz', especialidad: 'Sastrería', rating: 4.8, experiencia: 12, lat: -17.781, lng: -63.189, descripcion: 'Arreglos de costura, entalles, confección a medida y bastas.' },
+  { id: 'p11', nombre: 'Pensionado Doña Flor', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 5, lat: -17.781, lng: -63.189, descripcion: 'Almuerzos completos y viandas a domicilio.' },
+  { id: 'p12', nombre: 'Pensionado El Buen Sabor', especialidad: 'Viandas y Pensiones', rating: 4.8, experiencia: 3, lat: -17.785, lng: -63.169, descripcion: 'Comida criolla y pensiones ejecutivas.' },
 ];
 
 /**
@@ -45,6 +47,7 @@ export const analizarTextoNLP = (descripcion: string) => {
     'Pintura': ['pintar', 'pared', 'techo', 'fachada', 'rodillo', 'brocha', 'humedad', 'color', 'acabado', 'pintor', 'barniz', 'pintura', 'descacarado', 'latex'],
     'Climatización': ['aire', 'acondicionado', 'clima', 'frio', 'frío', 'calor', 'gotea', 'enfria', 'enfría', 'split', 'gas', 'compresor', 'ventilador', 'climatizador'],
     'Mecánico': ['auto', 'carro', 'motor', 'freno', 'mecanico', 'mecánico', 'taller', 'aceite', 'suspension', 'bateria', 'llanta', 'ruido'],
+    'Viandas y Pensiones': ['comida', 'vianda', 'pension', 'pensión', 'almuerzo', 'cena', 'comedor', 'plato', 'menú', 'menu', 'viandas', 'casera', 'sopa', 'segundo', 'pensionado'],
     'Cerrajero': ['llave', 'cerradura', 'chapa', 'candado', 'puerta', 'cerrajero', 'abrir', 'perdi', 'traba', 'seguridad', 'copia'],
     'Carpintero': ['madera', 'mueble', 'silla', 'mesa', 'carpintero', 'puerta', 'cajon', 'estante', 'ropero', 'tablon', 'lijado', 'barniz'],
     'Técnico de laptop-celulares': ['pantalla', 'bateria', 'celular', 'laptop', 'computadora', 'cargador', 'teclado', 'no prende', 'tecnico', 'técnico', 'pantalla rota', 'iphone', 'android'],
@@ -125,12 +128,14 @@ export const matchProvidersOffline = async (descripcion: string, latCliente: num
   if (categoria === 'Carpintero') precioSugerido = '100 Bs. - 300 Bs. (según trabajo)';
   if (categoria === 'Técnico de laptop-celulares') precioSugerido = '80 Bs. - 250 Bs. (más repuestos)';
   if (categoria === 'Sastrería') precioSugerido = '40 Bs. - 100 Bs. (según prenda)';
+  if (categoria === 'Viandas y Pensiones') precioSugerido = '20 Bs. - 35 Bs. (por vianda/plato)';
 
   return {
     success: true,
     nlpAnalysis: {
       categoriaDetectada: categoria,
       urgenciaDetectada: urgencia,
+      correctedDescription: descripcion,
       confianza: 0.95,
     },
     precioSugerido,

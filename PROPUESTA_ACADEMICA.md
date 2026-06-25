@@ -33,7 +33,7 @@ Desarrollar un prototipo de aplicación universal multiplataforma (Móvil y Web)
 
 ### Objetivos Específicos:
 1.  Diseñar e implementar un sistema estricto de roles de usuario (Cliente natural vs. Empresa B2B) que filtre dinámicamente las pantallas de acuerdo al tipo de entidad registrada.
-2.  Desarrollar un formulario interactivo inteligente (IA NLP simulada) que interprete requerimientos en texto libre para categorizar la orden y estimar costos automáticamente.
+2.  Desarrollar un formulario interactivo inteligente con la API de Google Gemini (modelo gemini-1.5-flash) que interprete requerimientos en lenguaje natural, corrigiendo errores ortográficos y gramaticales (ej. 'tengo un fga de gua' -> 'Tengo una fuga de agua') y clasificando automáticamente la orden y estimando costos.
 3.  Implementar un flujo de búsqueda residencial (B2C) interactivo por mapa con una cuenta regresiva de 15 segundos mediante un radar de escaneo animado.
 4.  Crear un módulo corporativo (B2B) de subastas en vivo donde proveedores de insumos compitan enviando contraofertas progresivas (a la baja o al alza por servicios premium) con un chat de negociación en vivo.
 5.  Desarrollar un sistema de calificación forzada con bloqueo de interfaz raíz (Rating Overlay) para garantizar la retroalimentación de los trabajos completados.
@@ -48,7 +48,7 @@ La propuesta de valor de **Todo Ya** se segmenta de acuerdo a los tres actores p
 
 *   **Para Clientes Residenciales:** Ofrece rapidez, transparencia tarifaria (precios de mercado) y tranquilidad mediante un sistema de reputación verificado y geolocalización en tiempo real.
 *   **Para Empresas (Clientes B2B):** Proporciona un mecanismo ágil para publicar requerimientos y recibir múltiples ofertas y contraofertas competitivas en minutos, con facilidades para coordinar la facturación formal e insumos.
-*   **Para Proveedores (Técnicos y Empresas Proveedoras):** Les brinda una vitrina digital gratuita para captar clientes, establecer su propia reputación (independiente de su idioma de preferencia) y postularse mediante un sistema transparente de monedas.
+*   **Para Proveedores (Técnicos y Empresas Proveedoras):** Les brinda una vitrina digital gratuita para captar clientes, establecer su propia reputación (independiente de su idioma de preferencia) y postularse mediante un sistema de suscripción mensual estructurado en 3 niveles (Planes 1, 2 y 3 para naturales; Planes Empresa 1, 2 y 3 para corporativos) que regula el tipo y cantidad de accesos a leads.
 
 ---
 
@@ -120,9 +120,9 @@ Se alinea estrictamente al perfil de egreso del ingeniero, fomentando el desarro
 ---
 
 ## 💡 9. Recomendaciones
-1.  **Integración de Pasarelas de Pago Reales:** Para la fase productiva, se recomienda integrar APIs de pago locales (como Simple QR o pasarelas de tarjetas de crédito) para automatizar la compra de monedas de proveedores y el cobro de comisiones de la plataforma.
+1.  **Integración de Pasarelas de Pago Reales:** Para la fase productiva, se recomienda perfeccionar los canales de cobro (como pasarelas de tarjetas de crédito o integración de Simple QR real en producción) para automatizar la contratación y renovación de los planes de suscripción de proveedores.
 2.  **Geolocalización por GPS Nativo:** Reemplazar el motor de mapa Leaflet simulado por el SDK nativo de Google Maps (Android) y Apple Maps (iOS) utilizando `expo-location` para obtener coordenadas exactas en tiempo real.
-3.  **Uso de LLM Reales para NLP:** Conectar el formulario de IA a un modelo de lenguaje real (como Gemini API) mediante las Expo API Routes para dotar a la clasificación y presupuesto sugerido de una precisión absoluta.
+3.  **Modelos de Clasificación Híbridos:** Continuar afinando la calibración y el ajuste de temperatura en la llamada a la API de Gemini (modelo `gemini-1.5-flash`), expandiendo los esquemas JSON de respuesta para detectar sub-servicios y pre-diagnósticos técnicos automatizados de forma más detallada.
 
 ---
 

@@ -402,6 +402,7 @@ export default function PerfilScreen() {
                       'Pintura',
                       'Climatización',
                       'Mecánico',
+                      'Viandas y Pensiones',
                       'Cerrajero',
                       'Carpintero',
                       'Técnico de laptop-celulares',

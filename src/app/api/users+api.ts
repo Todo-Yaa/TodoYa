@@ -67,7 +67,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT: Actualizar configuración del perfil del Proveedor (Onboarding)
+// PUT: Actualizar configuración del perfil del Proveedor (Onboarding) o Plan de Suscripción
 export async function PUT(request: Request) {
   try {
     if (!isDbConnected() || !db) {
@@ -75,22 +75,30 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B } = body;
+    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId } = body;
 
     if (!correoOTelefono) {
       return Response.json({ error: 'El identificador de correo/teléfono es requerido' }, { status: 400 });
     }
 
+    const updateData: any = {};
+    if (planId !== undefined) {
+      updateData.planId = planId;
+    }
+    if (serviciosOfrecidos !== undefined) {
+      updateData.proveedorConfigurado = true;
+      updateData.rol = 'provider';
+      updateData.serviciosOfrecidos = serviciosOfrecidos;
+    }
+    if (anosExperiencia !== undefined) updateData.anosExperiencia = anosExperiencia;
+    if (descripcionProveedor !== undefined) updateData.descripcionProveedor = descripcionProveedor;
+    if (coberturaB2B !== undefined) {
+      updateData.coberturaB2B = coberturaB2B;
+      updateData.ofreceB2B = CoberturaB2BValida(coberturaB2B);
+    }
+
     const updated = await db.update(users)
-      .set({
-        proveedorConfigurado: true,
-        rol: 'provider',
-        serviciosOfrecidos,
-        anosExperiencia,
-        descripcionProveedor,
-        coberturaB2B,
-        ofreceB2B: CoberturaB2BValida(coberturaB2B), // Auxiliar para empresas
-      })
+      .set(updateData)
       .where(eq(users.correoOTelefono, correoOTelefono.trim().toLowerCase()))
       .returning();
 

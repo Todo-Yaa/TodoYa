@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useEffect, useState } from 'react';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'; // Para una animación fluida de desvanecimiento
+import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated'; // Para una animación fluida de desvanecimiento
 import { UserProvider, useUser } from '../context/user-context';
 import LoginScreen from '../components/login-screen';
 import RatingOverlayModal from '../components/rating-overlay-modal';
@@ -233,25 +233,85 @@ import { loadSavedLanguage } from '../i18n';
  */
 export default function RootLayout() {
   const [isI18nReady, setIsI18nReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     loadSavedLanguage().finally(() => {
       setIsI18nReady(true);
     });
+
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2000); // 2 segundos
+
+    return () => clearTimeout(timer);
   }, []);
 
-  if (!isI18nReady) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator size="large" color="#FFB400" />
-      </View>
-    );
+  if (!isI18nReady || showSplash) {
+    return <CustomSplashScreen />;
   }
 
   return (
     <UserProvider>
       <NavigationLayout />
     </UserProvider>
+  );
+}
+
+/**
+ * CustomSplashScreen:
+ * Pantalla de carga sofisticada y fluida con el logotipo brillante de Todo Ya.
+ */
+function CustomSplashScreen() {
+  return (
+    <Animated.View 
+      exiting={FadeOut.duration(400)}
+      style={{
+        flex: 1,
+        backgroundColor: '#1E1E1E', // Fondo oscuro sofisticado
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      {/* Resplandor del logo de Todo Ya */}
+      <Animated.Image 
+        entering={ZoomIn.duration(800).delay(100)}
+        source={require('../../assets/images/logo-glow.png')}
+        style={{
+          width: 250,
+          height: 250,
+          resizeMode: 'contain',
+        }}
+      />
+      
+      {/* Título de Marca */}
+      <Animated.View
+        entering={FadeIn.duration(800).delay(500)}
+        style={{ alignItems: 'center', marginTop: -10 }}
+      >
+        <Text style={{
+          color: '#FFB400',
+          fontSize: 32,
+          fontWeight: '900',
+          letterSpacing: 6,
+          textTransform: 'uppercase',
+          textShadowColor: 'rgba(255, 180, 0, 0.4)',
+          textShadowOffset: { width: 0, height: 4 },
+          textShadowRadius: 15,
+        }}>
+          Todo Ya
+        </Text>
+        <Text style={{
+          color: '#aaaaaa',
+          fontSize: 12,
+          fontWeight: '500',
+          marginTop: 8,
+          letterSpacing: 2,
+        }}>
+          SERVICIOS LOCALES EN MINUTOS
+        </Text>
+      </Animated.View>
+    </Animated.View>
   );
 }
 

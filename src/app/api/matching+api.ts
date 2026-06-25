@@ -15,7 +15,27 @@ const PROVEEDORES_MOCK = [
   { id: 'p8', nombre: 'Pedro Silva', especialidad: 'Carpintero', rating: 4.7, experiencia: 6, lat: -17.788, lng: -63.181, descripcion: 'Carpintería en general, restauración y armado de muebles.' },
   { id: 'p9', nombre: 'Julio Vera', especialidad: 'Técnico de laptop-celulares', rating: 4.9, experiencia: 8, lat: -17.778, lng: -63.186, descripcion: 'Reparación de celulares y laptops. Cambio de pantalla y batería.' },
   { id: 'p10', nombre: 'Elena Paz', especialidad: 'Sastrería', rating: 4.8, experiencia: 12, lat: -17.781, lng: -63.189, descripcion: 'Arreglos de costura, entalles, confección a medida y bastas.' },
+  { id: 'p11', nombre: 'Pensionado Doña Flor', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 5, lat: -17.781, lng: -63.189, descripcion: 'Almuerzos completos y viandas a domicilio.' },
+  { id: 'p12', nombre: 'Pensionado El Buen Sabor', especialidad: 'Viandas y Pensiones', rating: 4.8, experiencia: 3, lat: -17.785, lng: -63.169, descripcion: 'Comida criolla y pensiones ejecutivas.' },
 ];
+
+// Diccionarios de palabras clave para "Todas las Probabilidades" (Sistema de Puntaje)
+const CATEGORIAS_BASE: Record<string, string[]> = {
+  'Plomería': ['tubo', 'agua', 'gotera', 'fuga', 'grifo', 'lavaplatos', 'inodoro', 'caño', 'inundacion', 'inundación', 'cañeria', 'desague', 'baño', 'bomba', 'pileta', 'filtracion'],
+  'Electricidad': ['luz', 'enchufe', 'corto', 'cable', 'cortocircuito', 'corriente', 'toma', 'llave', 'termica', 'térmica', 'tablero', 'apagon', 'foco', 'iluminacion', 'lampara', 'chispa', 'electrocutado'],
+  'Pintura': ['pintar', 'pared', 'techo', 'fachada', 'rodillo', 'brocha', 'humedad', 'color', 'acabado', 'pintor', 'barniz', 'pintura', 'descacarado', 'latex'],
+  'Climatización': ['aire', 'acondicionado', 'clima', 'frio', 'frío', 'calor', 'gotea', 'enfria', 'enfría', 'split', 'gas', 'compresor', 'ventilador', 'climatizador'],
+  'Mecánico': ['auto', 'carro', 'motor', 'freno', 'mecanico', 'mecánico', 'taller', 'aceite', 'suspension', 'bateria', 'llanta', 'ruido'],
+  'Viandas y Pensiones': ['comida', 'vianda', 'pension', 'pensión', 'almuerzo', 'cena', 'comedor', 'plato', 'menú', 'menu', 'viandas', 'casera', 'sopa', 'segundo', 'pensionado'],
+  'Cerrajero': ['llave', 'cerradura', 'chapa', 'candado', 'puerta', 'cerrajero', 'abrir', 'perdi', 'traba', 'seguridad', 'copia'],
+  'Carpintero': ['madera', 'mueble', 'silla', 'mesa', 'carpintero', 'puerta', 'cajon', 'estante', 'ropero', 'tablon', 'lijado', 'barniz'],
+  'Técnico de laptop-celulares': ['pantalla', 'bateria', 'celular', 'laptop', 'computadora', 'cargador', 'teclado', 'no prende', 'tecnico', 'técnico', 'pantalla rota', 'iphone', 'android'],
+  'Sastrería': ['ropa', 'sastre', 'sastrería', 'costura', 'pantalon', 'camisa', 'entallar', 'cierre', 'vestido', 'tela', 'doblez', 'aguja', 'botón'],
+  'Papelería & Oficina': ['papel', 'resma', 'oficina', 'boligrafo', 'carpeta', 'escritorio', 'impresion', 'impresora', 'tinta', 'toner', 'lapiz', 'cuaderno', 'archivo', 'fotocopia'],
+  'Branding & Lettering': ['letrero', 'banner', 'diseño', 'logo', 'vinilo', 'grafica', 'corporeo', 'rotulado', 'marca', 'identidad', 'letras', 'iluminado', 'fachada', 'vidriera'],
+  'Decoración & Eventos': ['decoracion', 'evento', 'globo', 'fiesta', 'aniversario', 'cumpleaños', 'arreglo', 'flores', 'ambientacion', 'salon', 'sillas', 'mesas', 'catering'],
+  'Servicios B2B': ['limpieza', 'mantenimiento', 'empresa', 'corporativo', 'guardia', 'seguridad', 'consultoria', 'asesoria', 'contable', 'fiscal', 'legal']
+};
 
 export async function POST(request: Request) {
   try {
@@ -28,112 +48,118 @@ export async function POST(request: Request) {
 
     console.log(`[Matching API] Iniciando análisis para: "${descripcion}"`);
 
+    let categoria = 'Plomería'; // Default fallback
+    let urgencia: 'Normal' | 'Alta' = 'Normal';
+    let descripcionCorregida = descripcion;
+
     // =========================================================================
-    // 🧠 ESPACIO PARA INTEGRACIÓN DE APIS DE INTELIGENCIA ARTIFICIAL (OpenAI / Gemini)
+    // 🧠 INTEGRACIÓN CON GOOGLE GEMINI API (CON CORRECCIÓN GRAMATICAL)
     // =========================================================================
-    /*
-    // EJEMPLO: Integración con Google Gemini API
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    let categoriaDetectadaPorIA = null;
-    let urgenciaDetectadaPorIA = 'Normal';
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+    let categoriaDetectadaPorIA: string | null = null;
+    let urgenciaDetectadaPorIA: 'Normal' | 'Alta' | null = null;
+    let descripcionCorregidaPorIA: string | null = null;
 
     if (GEMINI_API_KEY) {
       try {
+        const prompt = `Analiza la siguiente descripción de un servicio solicitado por un cliente o empresa.
+Corrige cualquier error gramatical, ortográfico o de tipeo en la descripción (por ejemplo, si dice "tengo un fga de gua" corrígelo a "Tengo una fuga de agua").
+Clasifica el servicio en una de las siguientes categorías válidas EXACTAS:
+${Object.keys(CATEGORIAS_BASE).map(c => `- "${c}"`).join('\n')}
+
+Determina la urgencia del servicio como "Normal" o "Alta" según la gravedad o palabras clave de urgencia descritas.
+
+Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (no envíes Markdown block, solo el objeto JSON como texto plano):
+{
+  "categoria": "Nombre de la categoría clasificada",
+  "urgencia": "Normal" o "Alta",
+  "descripcionCorregida": "La descripción corregida y con buena ortografía"
+}
+
+Descripción del servicio: "${descripcion}"`;
+
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{
               parts: [{
-                text: `Analiza la siguiente solicitud de servicio y responde ÚNICAMENTE en formato JSON con la estructura {"categoria": "Plomería" | "Electricidad" | "Pintura" | "Climatización", "urgencia": "Normal" | "Alta"}.
-                Solicitud: "${descripcion}"`
+                text: prompt
               }]
-            }]
+            }],
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
           })
         });
-        const data = await response.json();
-        const textoRespuesta = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const parsed = JSON.parse(textoRespuesta.trim());
-        categoriaDetectadaPorIA = parsed.categoria;
-        urgenciaDetectadaPorIA = parsed.urgencia;
+
+        if (response.ok) {
+          const data = await response.json();
+          let textoRespuesta = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          textoRespuesta = textoRespuesta.trim();
+          
+          if (textoRespuesta.startsWith('```')) {
+            textoRespuesta = textoRespuesta.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+          }
+
+          const parsed = JSON.parse(textoRespuesta);
+          if (parsed && typeof parsed === 'object') {
+            categoriaDetectadaPorIA = parsed.categoria;
+            urgenciaDetectadaPorIA = (parsed.urgencia === 'Alta' || parsed.urgencia === 'Normal') ? parsed.urgencia : 'Normal';
+            descripcionCorregidaPorIA = parsed.descripcionCorregida;
+          }
+        } else {
+          console.warn(`[Matching API] Gemini API retornó código de estado: ${response.status}`);
+        }
       } catch (err) {
-        console.error('Error llamando a Gemini API:', err);
+        console.error('[Matching API] Error llamando a Gemini API:', err);
       }
     }
 
-    // EJEMPLO: Integración con OpenAI API (GPT-4o-mini)
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (OPENAI_API_KEY && !categoriaDetectadaPorIA) {
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: 'Eres un clasificador de tareas. Responde solo JSON con llaves "categoria" (Plomería, Electricidad, Pintura, Climatización) y "urgencia" (Normal, Alta)' },
-              { role: 'user', content: descripcion }
-            ],
-            response_format: { type: 'json_object' }
-          })
-        });
-        const data = await response.json();
-        const parsed = JSON.parse(data.choices[0].message.content);
-        categoriaDetectadaPorIA = parsed.categoria;
-        urgenciaDetectadaPorIA = parsed.urgencia;
-      } catch (err) {
-        console.error('Error llamando a OpenAI API:', err);
+    // Normalización de la categoría recomendada por IA
+    let iaMatchSuccessful = false;
+    if (categoriaDetectadaPorIA) {
+      const exactCategory = Object.keys(CATEGORIAS_BASE).find(
+        c => c.toLowerCase() === categoriaDetectadaPorIA?.toLowerCase() ||
+             c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 
+             categoriaDetectadaPorIA?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+      );
+      if (exactCategory) {
+        categoria = exactCategory;
+        urgencia = urgenciaDetectadaPorIA || 'Normal';
+        descripcionCorregida = descripcionCorregidaPorIA || descripcion;
+        iaMatchSuccessful = true;
+        console.log(`[Matching API] Gemini detectó exitosamente: Categoría: "${categoria}", Urgencia: "${urgencia}", Descripción corregida: "${descripcionCorregida}"`);
+      } else {
+        console.warn(`[Matching API] Gemini recomendó una categoría no válida: "${categoriaDetectadaPorIA}". Usando fallback.`);
       }
     }
-    */
-    // =========================================================================
 
     // =========================================================================
     // ⚙️ ALGORITMO DE MATCHING SIMULADO / FALLBACK (PROCESAMIENTO NLP BÁSICO)
     // =========================================================================
-    let categoria = 'Plomería'; // Default
-    let urgencia: 'Normal' | 'Alta' = 'Normal';
-    const textLower = descripcion.toLowerCase();
-
-    // Diccionarios de palabras clave para "Todas las Probabilidades" (Sistema de Puntaje)
-    const categoriasBase = {
-      'Plomería': ['tubo', 'agua', 'gotera', 'fuga', 'grifo', 'lavaplatos', 'inodoro', 'caño', 'inundacion', 'inundación', 'cañeria', 'desague', 'baño', 'bomba', 'pileta', 'filtracion'],
-      'Electricidad': ['luz', 'enchufe', 'corto', 'cable', 'cortocircuito', 'corriente', 'toma', 'llave', 'termica', 'térmica', 'tablero', 'apagon', 'foco', 'iluminacion', 'lampara', 'chispa', 'electrocutado'],
-      'Pintura': ['pintar', 'pared', 'techo', 'fachada', 'rodillo', 'brocha', 'humedad', 'color', 'acabado', 'pintor', 'barniz', 'pintura', 'descacarado', 'latex'],
-      'Climatización': ['aire', 'acondicionado', 'clima', 'frio', 'frío', 'calor', 'gotea', 'enfria', 'enfría', 'split', 'gas', 'compresor', 'ventilador', 'climatizador'],
-      'Mecánico': ['auto', 'carro', 'motor', 'freno', 'mecanico', 'mecánico', 'taller', 'aceite', 'suspension', 'bateria', 'llanta', 'ruido'],
-      'Cerrajero': ['llave', 'cerradura', 'chapa', 'candado', 'puerta', 'cerrajero', 'abrir', 'perdi', 'traba', 'seguridad', 'copia'],
-      'Carpintero': ['madera', 'mueble', 'silla', 'mesa', 'carpintero', 'puerta', 'cajon', 'estante', 'ropero', 'tablon', 'lijado', 'barniz'],
-      'Técnico de laptop-celulares': ['pantalla', 'bateria', 'celular', 'laptop', 'computadora', 'cargador', 'teclado', 'no prende', 'tecnico', 'técnico', 'pantalla rota', 'iphone', 'android'],
-      'Sastrería': ['ropa', 'sastre', 'sastrería', 'costura', 'pantalon', 'camisa', 'entallar', 'cierre', 'vestido', 'tela', 'doblez', 'aguja', 'botón'],
-      'Papelería & Oficina': ['papel', 'resma', 'oficina', 'boligrafo', 'carpeta', 'escritorio', 'impresion', 'impresora', 'tinta', 'toner', 'lapiz', 'cuaderno', 'archivo', 'fotocopia'],
-      'Branding & Lettering': ['letrero', 'banner', 'diseño', 'logo', 'vinilo', 'grafica', 'corporeo', 'rotulado', 'marca', 'identidad', 'letras', 'iluminado', 'fachada', 'vidriera'],
-      'Decoración & Eventos': ['decoracion', 'evento', 'globo', 'fiesta', 'aniversario', 'cumpleaños', 'arreglo', 'flores', 'ambientacion', 'salon', 'sillas', 'mesas', 'catering'],
-      'Servicios B2B': ['limpieza', 'mantenimiento', 'empresa', 'corporativo', 'guardia', 'seguridad', 'consultoria', 'asesoria', 'contable', 'fiscal', 'legal']
-    };
-
-    let maxPuntaje = 0;
-    
-    // Evaluar cada categoria sumando puntos por cada coincidencia
-    for (const [catName, palabras] of Object.entries(categoriasBase)) {
-      let puntaje = 0;
-      for (const palabra of palabras) {
-        if (textLower.includes(palabra)) {
-          puntaje++;
+    if (!iaMatchSuccessful) {
+      const textLower = descripcion.toLowerCase();
+      let maxPuntaje = 0;
+      
+      for (const [catName, palabras] of Object.entries(CATEGORIAS_BASE)) {
+        let puntaje = 0;
+        for (const palabra of palabras) {
+          if (textLower.includes(palabra)) {
+            let matches = textLower.split(palabra).length - 1;
+            puntaje += matches;
+          }
+        }
+        if (puntaje > maxPuntaje) {
+          maxPuntaje = puntaje;
+          categoria = catName;
         }
       }
-      if (puntaje > maxPuntaje) {
-        maxPuntaje = puntaje;
-        categoria = catName;
+
+      if (textLower.match(/(urgente|rapido|rápido|inmediat|ya|emergencia|peligro|humo|fuego|inundacion|revent|auxilio|urgencia)/)) {
+        urgencia = 'Alta';
       }
-    }
-    
-    // Urgencia heurística de amplio espectro
-    if (textLower.match(/(urgente|rapido|rápido|inmediat|ya|emergencia|peligro|humo|fuego|inundacion|revent|auxilio|urgencia)/)) {
-      urgencia = 'Alta';
+      console.log(`[Matching API] Fallback NLP resolvió: Categoría: "${categoria}", Urgencia: "${urgencia}"`);
     }
 
     // Calcular distancia de Harvesine simplificada
@@ -226,12 +252,14 @@ export async function POST(request: Request) {
     if (categoria === 'Carpintero') precioSugerido = '100 Bs. - 300 Bs. (según trabajo)';
     if (categoria === 'Técnico de laptop-celulares') precioSugerido = '80 Bs. - 250 Bs. (más repuestos)';
     if (categoria === 'Sastrería') precioSugerido = '40 Bs. - 100 Bs. (según prenda)';
+    if (categoria === 'Viandas y Pensiones') precioSugerido = '20 Bs. - 35 Bs. (por vianda/plato)';
 
     return Response.json({
       success: true,
       nlpAnalysis: {
         categoriaDetectada: categoria,
         urgenciaDetectada: urgencia,
+        correctedDescription: descripcionCorregida,
         confianza: 0.95,
       },
       precioSugerido,

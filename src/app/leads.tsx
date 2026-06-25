@@ -4,13 +4,14 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, RefreshControl, I
 import { useUser } from '../context/user-context';
 
 export default function LeadsScreen() {
-  const { orders, coins, applyToLead, activeUser, syncOrders, addCoins, usuariosRegistrados } = useUser();
+  const { orders, coins, planId, subscribeToPlan, applyToLead, activeUser, syncOrders, addCoins, usuariosRegistrados, showNotification } = useUser();
   const [refreshing, setRefreshing] = useState(false);
 
   // VeriPagos payment states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'packages' | 'loading' | 'qr' | 'success' | 'error'>('packages');
   const [selectedPackage, setSelectedPackage] = useState<{ coins: number; priceBs: number } | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<{ id: string; name: string; priceBs: number } | null>(null);
   const [qrData, setQrData] = useState<{ qr: string; movimiento_id: any } | null>(null);
   const [paymentError, setPaymentError] = useState<string>('');
   const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
@@ -23,7 +24,38 @@ export default function LeadsScreen() {
     ? `Empresa de ${activeUser?.serviciosOfrecidos?.join(', ') || activeUser?.rubro || 'Branding & Lettering'}`
     : `${activeUser?.serviciosOfrecidos?.join(', ') || 'Plomería'}`;
 
-  // Filtramos las solicitudes de clientes de forma que correspondan a su tipo de cuenta (B2B vs Residencial)
+  const currentEntidad = activeUser?.tipoEntidad || 'natural';
+  const userPlan = planId || activeUser?.planId || (currentEntidad === 'empresa' ? 'business_1' : 'provider_1');
+
+  const getPlanDetails = (pId: string | null) => {
+    if (isB2BProvider) {
+      if (pId === 'business_2') return { name: 'Plan Empresa 2 - Pro', price: 'Bs. 300/mes', desc: 'Acceso Mixto e Ilimitado' };
+      if (pId === 'business_3') return { name: 'Plan Empresa 3 - Élite', price: 'Bs. 500/mes', desc: 'Acceso Nacional Realtime' };
+      return { name: 'Plan Empresa 1 - Básico', price: 'Bs. 150/mes', desc: 'Acceso Corporativo B2B' };
+    } else {
+      if (pId === 'provider_2') return { name: 'Plan 2 - Profesional', price: 'Bs. 120/mes', desc: 'Residenciales + 3 B2B/mes' };
+      if (pId === 'provider_3') return { name: 'Plan 3 - Élite', price: 'Bs. 200/mes', desc: 'Acceso Total Ilimitado' };
+      return { name: 'Plan 1 - Residencial', price: 'Bs. 50/mes', desc: 'Acceso Residencial Ilimitado' };
+    }
+  };
+
+  const planDetails = getPlanDetails(userPlan);
+
+  const now = new Date();
+  const b2bCountThisMonth = orders.filter(o => {
+    if (o.proveedor !== providerName) return false;
+    const isB2B = 
+      o.servicio === 'Decoración & Eventos' || 
+      o.servicio === 'Branding & Lettering' || 
+      o.servicio === 'Papelería & Oficina' || 
+      o.servicio === 'Servicios B2B';
+    if (!isB2B) return false;
+    if (!o.acceptedAt) return false;
+    const accDate = new Date(o.acceptedAt);
+    return accDate.getMonth() === now.getMonth() && accDate.getFullYear() === now.getFullYear();
+  }).length;
+
+  // Filtramos las solicitudes de clientes de forma que correspondan a su tipo de cuenta (B2B vs Residencial) y plan de suscripción
   const activeLeads = orders.filter(o => {
     if (o.estado !== 'Buscando proveedor') return false;
     
@@ -34,8 +66,23 @@ export default function LeadsScreen() {
       o.servicio === 'Papelería & Oficina' || 
       o.servicio === 'Servicios B2B';
       
-    // Las empresas proveedoras solo ven requerimientos B2B, y los proveedores naturales solo ven requerimientos residenciales
-    return isB2BProvider ? isOrderB2B : !isOrderB2B;
+    if (currentEntidad === 'natural') {
+      if (userPlan === 'provider_1') {
+        // Plan 1 solo ve residenciales
+        return !isOrderB2B;
+      } else {
+        // Plan 2 y 3 ven residenciales y corporativos
+        return true;
+      }
+    } else {
+      if (userPlan === 'business_1') {
+        // Plan Empresa 1 solo ve corporativos
+        return isOrderB2B;
+      } else {
+        // Plan Empresa 2 y 3 ven residenciales y corporativos
+        return true;
+      }
+    }
   });
 
   // Custom modal state
@@ -47,25 +94,86 @@ export default function LeadsScreen() {
     singleButton: false
   });
 
-  const handleApply = (leadId: number, cost: number, title: string) => {
-    if (coins < cost) {
-      setConfirmConfig({
-        title: '⚠️ Saldo Insuficiente',
-        message: `No tienes suficientes monedas para postularte a este lead. Costo: ${cost} monedas. Tu saldo: ${coins} monedas.`,
-        onConfirm: () => {},
-        singleButton: true
-      });
-      setShowConfirmModal(true);
-      return;
+  const handleApply = (leadId: number, cost: number, title: string, isB2BOrder: boolean) => {
+    // Reglas de negocio para Proveedor Natural
+    if (currentEntidad === 'natural') {
+      if (isB2BOrder && userPlan === 'provider_1') {
+        setConfirmConfig({
+          title: '⚠️ Plan Restringido',
+          message: 'Tu Plan 1 Residencial no permite acceder a solicitudes de empresas. ¿Deseas ver los planes de suscripción para actualizar tu plan?',
+          singleButton: false,
+          onConfirm: () => {
+            setPaymentStep('packages');
+            setSelectedPlan(null);
+            setQrData(null);
+            setPaymentError('');
+            setShowPaymentModal(true);
+          }
+        });
+        setShowConfirmModal(true);
+        return;
+      }
+
+      if (isB2BOrder && userPlan === 'provider_2') {
+        const now = new Date();
+        const b2bCountThisMonth = orders.filter(o => {
+          if (o.proveedor !== providerName) return false;
+          const isB2B = 
+            o.servicio === 'Decoración & Eventos' || 
+            o.servicio === 'Branding & Lettering' || 
+            o.servicio === 'Papelería & Oficina' || 
+            o.servicio === 'Servicios B2B';
+          if (!isB2B) return false;
+          if (!o.acceptedAt) return false;
+          const accDate = new Date(o.acceptedAt);
+          return accDate.getMonth() === now.getMonth() && accDate.getFullYear() === now.getFullYear();
+        }).length;
+
+        if (b2bCountThisMonth >= 3) {
+          setConfirmConfig({
+            title: '⚠️ Límite Excedido',
+            message: 'Has alcanzado el límite mensual de 3 solicitudes de empresas con tu Plan 2. ¿Deseas actualizar a Plan 3 para acceso ilimitado?',
+            singleButton: false,
+            onConfirm: () => {
+              setPaymentStep('packages');
+              setSelectedPlan(null);
+              setQrData(null);
+              setPaymentError('');
+              setShowPaymentModal(true);
+            }
+          });
+          setShowConfirmModal(true);
+          return;
+        }
+      }
+    }
+
+    // Reglas de negocio para Proveedor Empresa (B2B)
+    if (currentEntidad === 'empresa') {
+      if (!isB2BOrder && userPlan === 'business_1') {
+        setConfirmConfig({
+          title: '⚠️ Plan Restringido',
+          message: 'El Plan Empresa 1 Básico solo permite solicitudes de empresas. ¿Deseas ver planes de suscripción para recibir solicitudes residenciales de personas naturales?',
+          singleButton: false,
+          onConfirm: () => {
+            setPaymentStep('packages');
+            setSelectedPlan(null);
+            setQrData(null);
+            setPaymentError('');
+            setShowPaymentModal(true);
+          }
+        });
+        setShowConfirmModal(true);
+        return;
+      }
     }
 
     setConfirmConfig({
       title: 'Confirmar Postulación',
-      message: `¿Deseas postularte para "${title}" por ${cost} monedas?`,
+      message: `¿Deseas postularte para "${title}" de forma ilimitada bajo tu plan actual?`,
       singleButton: false,
       onConfirm: () => {
-        // Enviar la postulación utilizando el nombre dinámico del proveedor
-        const success = applyToLead(leadId, cost, providerName);
+        const success = applyToLead(leadId, 0, providerName);
         if (success) {
           setTimeout(() => {
             loadTransactionHistory(); // Actualizar historial de transacciones en la UI
@@ -117,8 +225,8 @@ export default function LeadsScreen() {
   }, [activeUser, loadTransactionHistory]);
 
   // Function to call /api/veripagos and generate QR
-  const handleGenerateQR = async (pkg: { coins: number; priceBs: number }) => {
-    setSelectedPackage(pkg);
+  const handleGenerateQR = async (plan: { id: string; name: string; priceBs: number }) => {
+    setSelectedPlan(plan);
     setPaymentStep('loading');
     setPaymentError('');
 
@@ -142,14 +250,14 @@ export default function LeadsScreen() {
     }
 
     try {
-      console.log('[LeadsScreen] Calling /api/veripagos POST for userId:', finalUserId, 'monedas:', pkg.coins);
+      console.log('[LeadsScreen] Calling /api/veripagos POST for userId:', finalUserId, 'plan:', plan.id);
       const res = await fetch('/api/veripagos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: finalUserId,
-          monedas: pkg.coins,
-          detalle: `Recarga de ${pkg.coins} monedas (Pago de prueba 1 Bs.)`
+          monedas: 0,
+          detalle: `Suscripción a ${plan.name} (Pago de prueba 1 Bs.)`
         })
       });
 
@@ -210,15 +318,15 @@ export default function LeadsScreen() {
 
       intervalId = setInterval(async () => {
         try {
-          const res = await fetch(`/api/veripagos?movimiento_id=${qrData.movimiento_id}&userId=${finalUserId}&monedas=${selectedPackage?.coins || 10}`);
+          const res = await fetch(`/api/veripagos?movimiento_id=${qrData.movimiento_id}&userId=${finalUserId}&monedas=0`);
           if (res.ok) {
             const data = await res.json();
             if (data.status === 'success' && data.paymentStatus === 'Completado') {
               setPaymentStep('success');
               clearInterval(intervalId);
-              // Actualizar saldo local
-              if (selectedPackage && typeof addCoins === 'function') {
-                await addCoins(selectedPackage.coins, `Recarga VeriPagos #${qrData.movimiento_id}`);
+              // Actualizar plan local y en base de datos
+              if (selectedPlan && typeof subscribeToPlan === 'function') {
+                await subscribeToPlan(selectedPlan.id as any);
               }
             }
           }
@@ -230,7 +338,7 @@ export default function LeadsScreen() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [showPaymentModal, paymentStep, qrData, activeUser, selectedPackage, usuariosRegistrados]);
+  }, [showPaymentModal, paymentStep, qrData, activeUser, selectedPlan, usuariosRegistrados, subscribeToPlan]);
 
   return (
     <View style={styles.container}>
@@ -260,27 +368,32 @@ export default function LeadsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFB400" />
         }
       >
-        {/* Saldo de Monedas con Estilos Adaptativos según el tipo de Proveedor */}
+        {/* Panel de Suscripción con Estilos Adaptativos según el tipo de Proveedor */}
         <View style={[styles.monedasCard, isB2BProvider && { borderColor: '#6366f1', shadowColor: '#6366f1' }]}>
           <View style={[styles.monedasIcon, isB2BProvider && { backgroundColor: '#6366f1' }]}>
-            <Ionicons name="cash-outline" size={28} color={isB2BProvider ? '#fff' : '#2F2F2F'} />
+            <Ionicons name="card-outline" size={28} color={isB2BProvider ? '#fff' : '#2F2F2F'} />
           </View>
-          <View>
-            <Text style={styles.monedasAmount}>{coins} <Text style={{ fontSize: 14, color: '#666' }}>monedas</Text></Text>
-            <Text style={styles.monedasLabel}>Saldo disponible · Bs. 5 c/u</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.monedasAmount, { fontSize: 18 }]} numberOfLines={1}>{planDetails.name}</Text>
+            <Text style={styles.monedasLabel}>{planDetails.price} · {planDetails.desc}</Text>
+            {userPlan === 'provider_2' && (
+              <Text style={{ fontSize: 12, color: '#e53935', marginTop: 4, fontWeight: 'bold' }}>
+                B2B usados este mes: {b2bCountThisMonth} / 3
+              </Text>
+            )}
           </View>
           <TouchableOpacity 
             style={[styles.comprarBtn, isB2BProvider && { backgroundColor: '#6366f1' }]} 
             onPress={() => {
               setPaymentStep('packages');
-              setSelectedPackage(null);
+              setSelectedPlan(null);
               setQrData(null);
               setPaymentError('');
               setShowPaymentModal(true);
             }}
             activeOpacity={0.7}
           >
-            <Text style={[styles.comprarText, isB2BProvider && { color: '#fff' }]}>+ Comprar</Text>
+            <Text style={[styles.comprarText, isB2BProvider && { color: '#fff' }]}>Planes</Text>
           </TouchableOpacity>
         </View>
 
@@ -337,11 +450,11 @@ export default function LeadsScreen() {
               <View style={styles.actions}>
                 <TouchableOpacity 
                   style={[styles.postularBtn, isB2B && { backgroundColor: '#6366f1' }]}
-                  onPress={() => handleApply(lead.id, cost, lead.titulo)}
+                  onPress={() => handleApply(lead.id, cost, lead.titulo, isB2B)}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="key-outline" size={16} color={isB2B ? '#fff' : '#2F2F2F'} />
-                  <Text style={[styles.postularText, isB2B && { color: '#fff' }]}>Postular ({cost} monedas)</Text>
+                  <Text style={[styles.postularText, isB2B && { color: '#fff' }]}>Postularse con mi Plan</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -407,6 +520,73 @@ export default function LeadsScreen() {
             ))
           )}
         </View>
+
+        {/* Sección de Cartera Nacional de Clientes en Tiempo Real (Solo para modo Empresa) */}
+        {isB2BProvider && (
+          <View style={styles.nacionalContainer}>
+            <Text style={styles.sectionTitle}>💼 Cartera Nacional de Clientes (Tiempo Real)</Text>
+            {userPlan === 'business_3' ? (
+              <View style={styles.nationalActiveCard}>
+                <View style={styles.nationalHeader}>
+                  <View style={styles.pulseContainer}>
+                    <View style={styles.pulseDot} />
+                    <Text style={styles.pulseText}>CONEXIÓN NACIONAL ACTIVA</Text>
+                  </View>
+                  <Text style={styles.nationalSubtitle}>Monitoreando licitaciones en todo Bolivia en vivo</Text>
+                </View>
+                {[
+                  { id: 101, ciudad: 'La Paz', cliente: 'Banco Mercantil S.A.', servicio: 'Servicios B2B', desc: 'Auditoría gráfica corporativa anual', precio: 'Bs. 5,000' },
+                  { id: 102, ciudad: 'Santa Cruz', cliente: 'Hotel Camino Real', servicio: 'Decoración & Eventos', desc: 'Decoración con globos helio para convención', precio: 'Bs. 3,500' },
+                  { id: 103, ciudad: 'Cochabamba', cliente: 'Fábrica PIL Andina', servicio: 'Papelería & Oficina', desc: '200 cajas de papel membretado oficial', precio: 'Bs. 8,200' },
+                ].map((nl) => (
+                  <View key={nl.id} style={styles.nationalLeadItem}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.nationalLeadCity}>📍 {nl.ciudad} · {nl.cliente}</Text>
+                      <Text style={styles.nationalLeadPrice}>{nl.precio}</Text>
+                    </View>
+                    <Text style={styles.nationalLeadTitle}>{nl.servicio}: {nl.desc}</Text>
+                    <TouchableOpacity 
+                      style={styles.nationalApplyBtn}
+                      onPress={() => {
+                        setConfirmConfig({
+                          title: '🎉 ¡Postulación Nacional!',
+                          message: `¿Deseas enviar una propuesta comercial inmediata a "${nl.cliente}" en ${nl.ciudad} por un valor de ${nl.precio}?`,
+                          singleButton: false,
+                          onConfirm: () => {
+                            showNotification('Propuesta Enviada', `Tu propuesta ha sido enviada con éxito al cliente en ${nl.ciudad}.`, 'success');
+                          }
+                        });
+                        setShowConfirmModal(true);
+                      }}
+                    >
+                      <Text style={styles.nationalApplyText}>Enviar Propuesta Inmediata</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.nationalLockedCard}>
+                <Ionicons name="lock-closed" size={40} color="#94a3b8" />
+                <Text style={styles.nationalLockedTitle}>Cartera Nacional Bloqueada</Text>
+                <Text style={styles.nationalLockedDesc}>
+                  Accede a una cartera nacional de clientes empresa y/o persona natural en todo Bolivia (La Paz, Cochabamba, Santa Cruz) en tiempo real.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.nationalUpgradeBtn}
+                  onPress={() => {
+                    setPaymentStep('packages');
+                    setSelectedPlan(null);
+                    setQrData(null);
+                    setPaymentError('');
+                    setShowPaymentModal(true);
+                  }}
+                >
+                  <Text style={styles.nationalUpgradeText}>Actualizar a Plan Empresa 3</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Custom Modal */}
@@ -449,7 +629,7 @@ export default function LeadsScreen() {
             
             {/* Header / Cerrar */}
             <View style={styles.paymentModalHeader}>
-              <Text style={styles.modalTitle}>Comprar Monedas</Text>
+              <Text style={styles.modalTitle}>Planes de Suscripción</Text>
               {paymentStep !== 'loading' && paymentStep !== 'success' && (
                 <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
                   <Ionicons name="close" size={24} color="#666" />
@@ -457,37 +637,48 @@ export default function LeadsScreen() {
               )}
             </View>
 
-            {/* Paso 1: Selección de Paquetes */}
+            {/* Paso 1: Selección de Planes */}
             {paymentStep === 'packages' && (
               <View>
-                <Text style={styles.paymentModalSubtitle}>Selecciona un paquete de monedas:</Text>
+                <Text style={styles.paymentModalSubtitle}>Elige tu plan de suscripción mensual:</Text>
                 
-                {[
-                  { coins: 10, priceBs: 50, desc: 'Ideal para 3-5 postulaciones' },
-                  { coins: 25, priceBs: 120, desc: 'Recomendado para profesionales' },
-                  { coins: 50, priceBs: 200, desc: 'Máximo ahorro para empresas' }
-                ].map((pkg, idx) => (
-                  <TouchableOpacity 
-                    key={idx} 
-                    style={styles.packageCard}
-                    onPress={() => handleGenerateQR(pkg)}
-                  >
-                    <View style={styles.packageCardLeft}>
-                      <Ionicons name="cash-outline" size={24} color="#FFB400" />
-                      <View style={{ marginLeft: 12, flex: 1 }}>
-                        <Text style={styles.packageName}>{pkg.coins} Monedas</Text>
-                        <Text style={styles.packageDesc}>{pkg.desc}</Text>
+                {(isB2BProvider ? [
+                  { id: 'business_1', name: 'Plan Empresa 1 - Básico', priceBs: 150, desc: 'Acceso ilimitado a solicitudes de empresas (B2B).' },
+                  { id: 'business_2', name: 'Plan Empresa 2 - Pro', priceBs: 300, desc: 'Acceso ilimitado a corporativos y residenciales.' },
+                  { id: 'business_3', name: 'Plan Empresa 3 - Élite', priceBs: 500, desc: 'Acceso ilimitado + Cartera Nacional en Tiempo Real.' }
+                ] : [
+                  { id: 'provider_1', name: 'Plan 1 - Residencial', priceBs: 50, desc: 'Acceso ilimitado a residenciales. Excluye B2B.' },
+                  { id: 'provider_2', name: 'Plan 2 - Profesional', priceBs: 120, desc: 'Residenciales ilimitados + 3 B2B/mes. Perfil Premium.' },
+                  { id: 'provider_3', name: 'Plan 3 - Élite', priceBs: 200, desc: 'Acceso ilimitado a residenciales y corporativos. Perfil Premium.' }
+                ]).map((plan, idx) => {
+                  const isActive = plan.id === userPlan;
+                  return (
+                    <TouchableOpacity 
+                      key={idx} 
+                      style={[
+                        styles.packageCard, 
+                        isActive && { borderColor: isB2BProvider ? '#6366f1' : '#FFB400', borderWidth: 2 }
+                      ]}
+                      disabled={isActive}
+                      onPress={() => handleGenerateQR(plan)}
+                    >
+                      <View style={styles.packageCardLeft}>
+                        <Ionicons name={isActive ? "checkmark-circle" : "card-outline"} size={24} color={isB2BProvider ? '#6366f1' : '#FFB400'} />
+                        <View style={{ marginLeft: 12, flex: 1 }}>
+                          <Text style={styles.packageName}>{plan.name}</Text>
+                          <Text style={styles.packageDesc}>{plan.desc}</Text>
+                        </View>
                       </View>
-                    </View>
-                    <View style={styles.packageCardRight}>
-                      <Text style={styles.packagePrice}>Bs. {pkg.priceBs}</Text>
-                      <Text style={styles.packageNote}>Paga Bs. 1.00</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                      <View style={styles.packageCardRight}>
+                        <Text style={styles.packagePrice}>Bs. {plan.priceBs}</Text>
+                        <Text style={styles.packageNote}>{isActive ? 'Activo' : 'Pagar Bs. 1.00'}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
 
                 <Text style={styles.disclaimerText}>
-                  Nota: Durante la demostración del Hackatón, todos los códigos QR cobrarán únicamente <Text style={{ fontWeight: 'bold', color: '#FFB400' }}>Bs. 1.00</Text> real para realizar pruebas bancarias completas de forma segura.
+                  Nota: Durante la demostración del Hackatón, el QR cobrará únicamente <Text style={{ fontWeight: 'bold', color: isB2BProvider ? '#6366f1' : '#FFB400' }}>Bs. 1.00</Text> real para realizar pruebas bancarias completas de forma segura.
                 </Text>
               </View>
             )}
@@ -495,17 +686,17 @@ export default function LeadsScreen() {
             {/* Paso 2: Cargando */}
             {paymentStep === 'loading' && (
               <View style={styles.centerContent}>
-                <ActivityIndicator size="large" color="#FFB400" />
+                <ActivityIndicator size="large" color={isB2BProvider ? "#6366f1" : "#FFB400"} />
                 <Text style={styles.loadingText}>Generando código QR con VeriPagos...</Text>
                 <Text style={styles.subLoadingText}>Esto tomará un momento.</Text>
               </View>
             )}
 
             {/* Paso 3: Código QR Generado */}
-            {paymentStep === 'qr' && qrData && selectedPackage && (
+            {paymentStep === 'qr' && qrData && selectedPlan && (
               <View style={styles.centerContent}>
-                <Text style={styles.qrTitle}>Escanea para pagar</Text>
-                <Text style={styles.qrSubtitle}>Monto: Bs. {selectedPackage.priceBs} | <Text style={{ fontWeight: 'bold', color: '#e53935' }}>Cobro real: Bs. 1.00</Text></Text>
+                <Text style={styles.qrTitle}>Escanea para activar plan</Text>
+                <Text style={styles.qrSubtitle}>Monto: Bs. {selectedPlan.priceBs} | <Text style={{ fontWeight: 'bold', color: '#e53935' }}>Prueba real: Bs. 1.00</Text></Text>
                 
                 {/* Imagen del QR */}
                 <Image 
@@ -515,12 +706,12 @@ export default function LeadsScreen() {
                 />
 
                 <View style={styles.statusBadge}>
-                  <ActivityIndicator size="small" color="#FFB400" style={{ marginRight: 8 }} />
+                  <ActivityIndicator size="small" color={isB2BProvider ? "#6366f1" : "#FFB400"} style={{ marginRight: 8 }} />
                   <Text style={styles.statusBadgeText}>Esperando pago del banco...</Text>
                 </View>
 
                 <Text style={styles.qrInstructions}>
-                  Abre la aplicación de tu banco (BCP, BNB, etc.), selecciona "Pago Simple / QR" y escanea la imagen para acreditar {selectedPackage.coins} monedas.
+                  Abre la aplicación de tu banco (BCP, BNB, etc.), selecciona "Pago Simple / QR" y escanea la imagen para activar tu plan: {selectedPlan.name}.
                 </Text>
 
                 <TouchableOpacity 
@@ -533,14 +724,14 @@ export default function LeadsScreen() {
             )}
 
             {/* Paso 4: Pago Exitoso */}
-            {paymentStep === 'success' && selectedPackage && (
+            {paymentStep === 'success' && selectedPlan && (
               <View style={styles.centerContent}>
                 <View style={styles.successIconContainer}>
                   <Ionicons name="checkmark-circle" size={80} color="#4caf50" />
                 </View>
-                <Text style={styles.successTitle}>¡Pago Exitoso!</Text>
+                <Text style={styles.successTitle}>¡Plan Activado!</Text>
                 <Text style={styles.successMessage}>
-                  Hemos detectado tu transferencia de Bs. 1.00. Se han acreditado +{selectedPackage.coins} monedas a tu billetera y la transacción ha sido registrada en la nube.
+                  Hemos detectado tu transferencia de Bs. 1.00. Tu suscripción a "{selectedPlan.name}" ha sido activada con éxito en la nube.
                 </Text>
                 
                 <TouchableOpacity 
@@ -1054,6 +1245,123 @@ const styles = StyleSheet.create({
   },
   historyItemAmount: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Estilos de la Cartera Nacional de Clientes
+  nacionalContainer: {
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  nationalActiveCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#818cf8',
+    shadowColor: '#818cf8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  nationalHeader: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+    paddingBottom: 12,
+  },
+  pulseContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+  },
+  pulseText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#10b981',
+    letterSpacing: 1.2,
+  },
+  nationalSubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
+  nationalLeadItem: {
+    backgroundColor: '#334155',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  nationalLeadCity: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#818cf8',
+  },
+  nationalLeadPrice: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#10b981',
+  },
+  nationalLeadTitle: {
+    fontSize: 13,
+    color: '#f1f5f9',
+    marginTop: 6,
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  nationalApplyBtn: {
+    backgroundColor: '#818cf8',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  nationalApplyText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  nationalLockedCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+  },
+  nationalLockedTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#475569',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  nationalLockedDesc: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 10,
+  },
+  nationalUpgradeBtn: {
+    backgroundColor: '#6366f1',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  nationalUpgradeText: {
+    color: '#fff',
+    fontSize: 13,
     fontWeight: '700',
   },
 });

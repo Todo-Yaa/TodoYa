@@ -48,6 +48,10 @@ const CANDIDATOS_DATABASE: Record<string, CandidateProvider[]> = {
   'Mecánico': [
     { name: "Luis Gómez", lat: -17.7850, lng: -63.1850, service: "Mecánico", rating: "4.8 ★", price: "Bs. 150", experience: "Más de 3 años", description: "Mecánico automotriz a domicilio", distance: "1.2 km" }
   ],
+  'Viandas y Pensiones': [
+    { name: "Pensionado Doña Flor", lat: -17.7810, lng: -63.1890, service: "Viandas y Pensiones", rating: "4.9 ★", price: "Bs. 25", experience: "Más de 3 años", description: "Almuerzos completos y viandas a domicilio", distance: "1.1 km" },
+    { name: "Pensionado El Buen Sabor", lat: -17.7850, lng: -63.1690, service: "Viandas y Pensiones", rating: "4.8 ★", price: "Bs. 22", experience: "1 a 3 años", description: "Comida criolla y pensiones ejecutivas", distance: "1.4 km" }
+  ],
   'Cerrajero': [
     { name: "Mario Roca", lat: -17.7820, lng: -63.1790, service: "Cerrajero", rating: "4.9 ★", price: "Bs. 80", experience: "Más de 3 años", description: "Cerrajero residencial de emergencia", distance: "0.5 km" }
   ],
@@ -90,6 +94,7 @@ export default function SolicitarScreen() {
   const { addOrder, userRole } = useUser();
   const isBusiness = userRole === 'business';
   const [inputText, setInputText] = useState('');
+  const [correctedText, setCorrectedText] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [servicio, setServicio] = useState('');
   const [urgencia, setUrgencia] = useState('');
@@ -175,10 +180,12 @@ export default function SolicitarScreen() {
       
       const cat = res.nlpAnalysis.categoriaDetectada;
       const urg = res.nlpAnalysis.urgenciaDetectada;
+      const corrected = res.nlpAnalysis.correctedDescription || targetText;
       
       setServicio(cat);
       setUrgencia(urg);
       setPrecio(res.precioSugerido);
+      setCorrectedText(corrected);
 
       // 2. Mapear los proveedores obtenidos al formato del estado de la pantalla
       let mapped = res.proveedoresEmparejados.map((p: any) => ({
@@ -330,13 +337,14 @@ export default function SolicitarScreen() {
     } else {
       // Flujo residencial estándar
       let title = `${servicio} — ${urgencia === 'Alta' ? 'Urgente' : 'Estándar'}`;
-      if (inputText.length < 30) {
-        title = inputText;
+      const descToUse = correctedText || inputText;
+      if (descToUse.length < 30) {
+        title = descToUse;
       } else {
-        title = inputText.substring(0, 25) + '...';
+        title = descToUse.substring(0, 25) + '...';
       }
 
-      addOrder(title, servicio, inputText, pro.price, urgencia, pro.name);
+      addOrder(title, servicio, descToUse, pro.price, urgencia, pro.name);
 
       setConfirmConfig({
         title: '🎉 ¡Oferta Aceptada!',
@@ -384,13 +392,14 @@ export default function SolicitarScreen() {
     if (!selectedProvider) return;
     
     let title = `${servicio} — ${urgencia === 'Alta' ? 'Urgente' : 'Estándar'}`;
-    if (inputText.length < 30) {
-      title = inputText;
+    const descToUse = correctedText || inputText;
+    if (descToUse.length < 30) {
+      title = descToUse;
     } else {
-      title = inputText.substring(0, 25) + '...';
+      title = descToUse.substring(0, 25) + '...';
     }
 
-    addOrder(title, servicio, inputText, selectedProvider.price, urgencia, selectedProvider.name);
+    addOrder(title, servicio, descToUse, selectedProvider.price, urgencia, selectedProvider.name);
 
     resetForm();
     router.replace('/pedidos');
@@ -403,13 +412,14 @@ export default function SolicitarScreen() {
     if (timerIntervalId) clearInterval(timerIntervalId);
 
     let title = `${servicio} — ${urgencia === 'Alta' ? 'Urgente' : 'Estándar'}`;
-    if (inputText.length < 30) {
-      title = inputText;
+    const descToUse = correctedText || inputText;
+    if (descToUse.length < 30) {
+      title = descToUse;
     } else {
-      title = inputText.substring(0, 25) + '...';
+      title = descToUse.substring(0, 25) + '...';
     }
 
-    addOrder(title, servicio, inputText, precio, urgencia, null);
+    addOrder(title, servicio, descToUse, precio, urgencia, null);
 
     setConfirmConfig({
       title: '✅ Publicado en Lista General',
@@ -425,11 +435,13 @@ export default function SolicitarScreen() {
   const reintentarBusqueda = () => {
     setFaseBusqueda('input');
     setInputText('');
+    setCorrectedText('');
     setShowResult(false);
   };
 
   const resetForm = () => {
     setInputText('');
+    setCorrectedText('');
     setFaseBusqueda('input');
     setShowResult(false);
   };
@@ -512,6 +524,15 @@ export default function SolicitarScreen() {
                   <Text style={styles.resultRow}><Text style={styles.bold}>Servicio:</Text> {servicio}</Text>
                   <Text style={styles.resultRow}><Text style={styles.bold}>Urgencia:</Text> <Text style={urgencia === 'Alta' ? styles.urgent : {}}>{urgencia}</Text></Text>
                   <Text style={styles.resultRow}><Text style={styles.bold}>Precio estimado:</Text> {precio}</Text>
+                  
+                  {correctedText && correctedText.toLowerCase().trim() !== inputText.toLowerCase().trim() && (
+                    <View style={{ marginTop: 10, padding: 10, backgroundColor: '#f0fdf4', borderRadius: 8, borderWidth: 1, borderColor: '#bbf7d0', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="sparkles" size={16} color="#15803d" />
+                      <Text style={{ fontSize: 13, color: '#166534', flex: 1 }}>
+                        <Text style={{ fontWeight: 'bold' }}>Descripción corregida:</Text> "{correctedText}"
+                      </Text>
+                    </View>
+                  )}
                   
                   {isBusiness && (
                     <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 }}>

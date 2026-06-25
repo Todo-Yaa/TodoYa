@@ -37,6 +37,7 @@ export default function HomeScreen() {
       const res = await matchProviders(descToUse + ' (urgencia extrema)', -17.784, -63.180);
       const category = res.nlpAnalysis.categoriaDetectada || 'General';
       const price = res.precioSugerido || 'Bs. 150';
+      const correctedDesc = res.nlpAnalysis.correctedDescription || descToUse;
       
       // Enviar alerta general (sin asignar aún) a Leads
       let providerName = null;
@@ -45,8 +46,8 @@ export default function HomeScreen() {
       //   providerName = res.proveedoresEmparejados[0].nombre;
       // }
       
-      const title = descToUse.length > 25 ? descToUse.substring(0, 25) + '...' : descToUse;
-      addOrder(title, category, descToUse, price, 'Alta', providerName);
+      const title = correctedDesc.length > 25 ? correctedDesc.substring(0, 25) + '...' : correctedDesc;
+      addOrder(title, category, correctedDesc, price, 'Alta', providerName);
       
       setIsPanicLoading(false);
       setShowModal(false);
@@ -174,10 +175,7 @@ export default function HomeScreen() {
             { icon: "brush-outline", label: "Pintura", price: "Desde Bs. 120" },
             { icon: "snow-outline", label: "AC / Clima", price: "Desde Bs. 150" },
             { icon: "car-outline", label: "Mecánico", price: "Desde Bs. 150" },
-            { icon: "key-outline", label: "Cerrajero", price: "Desde Bs. 70" },
-            { icon: "construct-outline", label: "Carpintero", price: "Desde Bs. 100" },
-            { icon: "phone-portrait-outline", label: "Téc. Laptop-Celular", price: "Desde Bs. 80" },
-            { icon: "cut-outline", label: "Sastrería", price: "Desde Bs. 40" },
+            { icon: "restaurant-outline", label: "Viandas y Pensiones", price: "Desde Bs. 25" },
           ].map((service, i) => (
             <TouchableOpacity key={i} style={styles.serviceCard} onPress={() => router.push('/solicitar')} activeOpacity={0.7}>
               <Ionicons name={service.icon as any} size={48} color="#2F2F2F" />

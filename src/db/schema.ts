@@ -25,6 +25,7 @@ export const users = pgTable('users', {
   descripcionProveedor: text('descripcion_provider'),
   coberturaB2B: varchar('cobertura_b2b', { length: 100 }), // Local o Nacional
   monedas: integer('monedas').default(24), // Sistema de billetera (saldo de monedas)
+  planId: varchar('plan_id', { length: 50 }).$type<'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3'>().default('provider_1'),
 
   // Verificación de Identidad KYC (Powered by Claude Sonnet 4.5 via decouple-services)
   kycVerificado: boolean('kyc_verificado').default(false),

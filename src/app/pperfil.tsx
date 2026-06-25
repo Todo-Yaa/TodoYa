@@ -17,7 +17,7 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
  */
 export default function PperfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, coins, orders, logout, activeUser } = useUser();
+  const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser } = useUser();
 
   // Controladores del modal de confirmación personalizado
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -56,6 +56,12 @@ export default function PperfilScreen() {
   const providerName = activeUser?.nombre || 'Juan Ríos';
   const providerInitials = providerName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
+  const currentEntidad = activeUser?.tipoEntidad || 'natural';
+  const userPlan = planId || activeUser?.planId || (currentEntidad === 'empresa' ? 'business_1' : 'provider_1');
+  const isPremium = currentEntidad === 'natural'
+    ? (userPlan === 'provider_2' || userPlan === 'provider_3')
+    : (userPlan === 'business_2' || userPlan === 'business_3');
+
   const professionText = isB2BProvider
     ? `Empresa Proveedora de ${activeUser?.serviciosOfrecidos?.join(', ') || activeUser?.rubro || 'Branding & Lettering'} · Cobertura: ${activeUser?.coberturaB2B || 'Nacional'}`
     : `${activeUser?.serviciosOfrecidos?.join(', ') || 'Plomería'} · Experiencia: ${activeUser?.anosExperiencia || 'Más de 3 años'}`;
@@ -94,11 +100,25 @@ export default function PperfilScreen() {
       <ScrollView style={styles.body}>
         {/* Tarjeta de Información General e Indicadores (Monedas, Calificación, Trabajos) */}
         <View style={styles.profileHeader}>
-          <View style={[styles.avatarBig, isB2BProvider && { backgroundColor: '#6366f1' }]}>
-            <Text style={[styles.avatarTextBig, isB2BProvider && { color: '#fff' }]}>{providerInitials}</Text>
+          <View style={[
+            styles.avatarBig, 
+            isB2BProvider && { backgroundColor: '#6366f1' },
+            isPremium && { backgroundColor: '#FFD700' }
+          ]}>
+            <Text style={[
+              styles.avatarTextBig, 
+              isB2BProvider && { color: '#fff' },
+              isPremium && { color: '#000' }
+            ]}>{providerInitials}</Text>
           </View>
           <Text style={styles.name}>
-            {providerName} <Text style={[styles.proBadge, isB2BProvider && { backgroundColor: '#6366f1', color: '#fff' }]}>PRO</Text>
+            {providerName}
+            {isPremium && (
+              <Text style={[styles.proBadge, { backgroundColor: '#FFD700', color: '#000', fontWeight: 'bold' }]}> PREMIUM ★</Text>
+            )}
+            {!isPremium && (
+              <Text style={[styles.proBadge, isB2BProvider && { backgroundColor: '#6366f1', color: '#fff' }]}> PRO</Text>
+            )}
           </Text>
           <Text style={styles.profession}>{professionText}</Text>
 
@@ -112,9 +132,18 @@ export default function PperfilScreen() {
               <Text style={styles.statLabel}>{t('profile.rating')}</Text>
             </View>
             <View style={styles.statItem}>
-              {/* Despliega el saldo de monedas reactivo útil para postularse a leads */}
-              <Text style={styles.statNumber}>{coins}</Text>
-              <Text style={styles.statLabel}>{t('profile.coins')}</Text>
+              <Text style={[
+                styles.statNumber, 
+                { fontSize: 13, color: isPremium ? '#b78103' : (isB2BProvider ? '#6366f1' : '#FFB400'), paddingVertical: 4 }
+              ]}>
+                {userPlan === 'provider_1' && 'Plan 1'}
+                {userPlan === 'provider_2' && 'Plan 2'}
+                {userPlan === 'provider_3' && 'Plan 3'}
+                {userPlan === 'business_1' && 'Empresa 1'}
+                {userPlan === 'business_2' && 'Empresa 2'}
+                {userPlan === 'business_3' && 'Empresa 3'}
+              </Text>
+              <Text style={styles.statLabel}>Suscripción</Text>
             </View>
           </View>
 
@@ -201,17 +230,47 @@ export default function PperfilScreen() {
         </TouchableOpacity>
 
         {/* Información sobre el Estado de Membresía de Pago PRO */}
-        <Text style={styles.sectionTitle}>{t('profile.membership')}</Text>
+        <Text style={styles.sectionTitle}>Membresía Activa</Text>
         {/* Tarjeta de membresía adaptada con bordes y sombra de color de marca */}
-        <View style={[styles.proCard, isB2BProvider && { borderColor: '#6366f1', shadowColor: '#6366f1' }]}>
+        <View style={[
+          styles.proCard, 
+          isB2BProvider && { borderColor: '#6366f1', shadowColor: '#6366f1' },
+          isPremium && { borderColor: '#FFD700', shadowColor: '#FFD700', borderWidth: 2 }
+        ]}>
           <View style={styles.proHeader}>
-            <Ionicons name={"crown" as any} size={32} color={isB2BProvider ? "#6366f1" : "#FFB400"} />
-            <View style={{ marginLeft: 12 }}>
-              <Text style={styles.proTitle}>{t('profile.active_pro_plan')}</Text>
-              <Text style={styles.proSubtitle}>{t('profile.pro_leads_access')}</Text>
+            <Ionicons name={isPremium ? "ribbon-outline" : "star-outline"} size={32} color={isPremium ? "#FFD700" : (isB2BProvider ? "#6366f1" : "#FFB400")} />
+            <View style={{ marginLeft: 12, flex: 1 }}>
+              <Text style={styles.proTitle}>
+                {userPlan === 'provider_1' && 'Plan 1 - Residencial'}
+                {userPlan === 'provider_2' && 'Plan 2 - Profesional Premium'}
+                {userPlan === 'provider_3' && 'Plan 3 - Élite Premium'}
+                {userPlan === 'business_1' && 'Plan Empresa 1 - Básico'}
+                {userPlan === 'business_2' && 'Plan Empresa 2 - Pro'}
+                {userPlan === 'business_3' && 'Plan Empresa 3 - Élite Nacional'}
+              </Text>
+              <Text style={styles.proSubtitle}>
+                {userPlan === 'provider_1' && 'Acceso ilimitado a clientes residenciales.'}
+                {userPlan === 'provider_2' && 'Residenciales ilimitados + 3 corporativos/mes.'}
+                {userPlan === 'provider_3' && 'Acceso total e ilimitado residencial/empresa.'}
+                {userPlan === 'business_1' && 'Acceso ilimitado a solicitudes corporativas.'}
+                {userPlan === 'business_2' && 'Acceso ilimitado mixto residencial/corporativo.'}
+                {userPlan === 'business_3' && 'Acceso total ilimitado + Cartera Nacional.'}
+              </Text>
             </View>
           </View>
-          <Text style={styles.renovacion}>{t('profile.renews_on', { date: '15 de Julio 2026' })}</Text>
+          <Text style={styles.renovacion}>Estado: Activo · Renueba el 15 de Julio 2026</Text>
+          
+          <TouchableOpacity 
+            style={[
+              styles.upgradeBtn, 
+              isB2BProvider ? { backgroundColor: '#6366f1' } : { backgroundColor: '#FFB400' },
+              isPremium && { backgroundColor: '#FFD700' }
+            ]}
+            onPress={() => router.replace('/leads')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.upgradeBtnText, isPremium && { color: '#000' }]}>Cambiar o Actualizar Plan</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Configuración de Idioma de la App */}
@@ -367,6 +426,19 @@ const styles = StyleSheet.create({
   proTitle: { fontSize: 17, fontWeight: '600', color: '#2F2F2F' },
   proSubtitle: { fontSize: 13, color: '#666' },
   renovacion: { marginTop: 12, fontSize: 13, color: '#888', textAlign: 'center' },
+  upgradeBtn: {
+    backgroundColor: '#FFB400',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeBtnText: {
+    color: '#2F2F2F',
+    fontWeight: '700',
+    fontSize: 13,
+  },
 
   logoutBtn: {
     marginTop: 40,

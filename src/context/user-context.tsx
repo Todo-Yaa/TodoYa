@@ -22,6 +22,7 @@ export interface UsuarioRegistrado {
   anosExperiencia?: string;
   descripcionProveedor?: string;
   coberturaB2B?: string;
+  planId?: 'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3' | null;
 }
 
 // Interfaz para representar un pedido dentro de la aplicación
@@ -51,6 +52,8 @@ interface UserContextType {
   toggleRole: () => void;  // Cambia rápidamente entre cliente y proveedor
   setRole: (role: UserRole) => void; // Define un rol específico
   coins: number;           // Monedas del proveedor (usadas para postularse)
+  planId: 'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3' | null;
+  subscribeToPlan: (planId: 'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3') => Promise<boolean>;
   orders: Order[];         // Lista global de pedidos (compartida localmente)
   addOrder: (titulo: string, servicio: string, description: string, precio: string, urgencia: string, proveedor?: string | null) => void; // Crea un pedido
   applyToLead: (orderId: number, coinsCost: number, providerName: string) => boolean; // Aplica a un trabajo (descuenta monedas)
@@ -149,6 +152,7 @@ const initialSeedUsers: UsuarioRegistrado[] = [
 export function UserProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole>('client');
   const [coins, setCoins] = useState<number>(24);
+  const [planId, setPlanId] = useState<'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3' | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('Luis Alberto M.');
@@ -192,6 +196,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const savedCoins = await Storage.getItem('todo_ya_coins');
       if (savedCoins !== null) setCoins(Number(savedCoins));
 
+      const savedPlan = await Storage.getItem('todo_ya_plan_id');
+      if (savedPlan) setPlanId(savedPlan as any);
+
       const savedAuth = await Storage.getItem('todo_ya_auth');
       if (savedAuth === 'true') {
         setIsAuthenticated(true);
@@ -211,6 +218,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
                                  !!usuarioActivoParseado.nit;
           usuarioActivoParseado.tipoEntidad = esEmpresaActiva ? 'empresa' : 'natural';
           
+          if (!usuarioActivoParseado.planId) {
+            usuarioActivoParseado.planId = esEmpresaActiva ? 'business_1' : 'provider_1';
+          }
+          setPlanId(usuarioActivoParseado.planId);
           setActiveUser(usuarioActivoParseado);
         } catch(e) {}
       }
@@ -507,11 +518,56 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * Postulación de un Proveedor a un Pedido/Lead de Cliente
    */
   const applyToLead = (orderId: number, coinsCost: number, providerName: string): boolean => {
-    if (coins < coinsCost) return false;
-    
-    const updatedCoins = coins - coinsCost;
-    setCoins(updatedCoins);
-    Storage.setItem('todo_ya_coins', String(updatedCoins));
+    // 1. Encontrar la orden para evaluar su servicio
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) return false;
+
+    // 2. Determinar si el servicio es de tipo B2B
+    const isOrderB2B = 
+      targetOrder.servicio === 'Decoración & Eventos' || 
+      targetOrder.servicio === 'Branding & Lettering' || 
+      targetOrder.servicio === 'Papelería & Oficina' || 
+      targetOrder.servicio === 'Servicios B2B';
+
+    const currentEntidad = activeUser?.tipoEntidad || 'natural';
+    const userPlan = planId || activeUser?.planId || (currentEntidad === 'empresa' ? 'business_1' : 'provider_1');
+
+    // 3. Aplicar reglas de acceso basadas en la suscripción
+    if (currentEntidad === 'natural') {
+      if (isOrderB2B) {
+        if (userPlan === 'provider_1') {
+          showNotification('Acceso Denegado', 'Tu Plan 1 no te permite acceder a solicitudes de empresas.', 'warning');
+          return false;
+        } else if (userPlan === 'provider_2') {
+          // Límite de 3 postulaciones de empresas al mes
+          const now = new Date();
+          const b2bCountThisMonth = orders.filter(o => {
+            if (o.proveedor !== providerName) return false;
+            const isB2B = 
+              o.servicio === 'Decoración & Eventos' || 
+              o.servicio === 'Branding & Lettering' || 
+              o.servicio === 'Papelería & Oficina' || 
+              o.servicio === 'Servicios B2B';
+            if (!isB2B) return false;
+            if (!o.acceptedAt) return false;
+            const accDate = new Date(o.acceptedAt);
+            return accDate.getMonth() === now.getMonth() && accDate.getFullYear() === now.getFullYear();
+          }).length;
+
+          if (b2bCountThisMonth >= 3) {
+            showNotification('Límite Alcanzado', 'Has alcanzado el límite mensual de 3 solicitudes de empresas con tu Plan 2.', 'warning');
+            return false;
+          }
+        }
+      }
+    } else if (currentEntidad === 'empresa') {
+      if (userPlan === 'business_1') {
+        if (!isOrderB2B) {
+          showNotification('Acceso Denegado', 'El Plan Empresa 1 solo permite acceder a solicitudes de empresas.', 'warning');
+          return false;
+        }
+      }
+    }
 
     let finalUserId = activeUser?.id;
     if (!finalUserId && activeUser?.correoOTelefono) {
@@ -520,14 +576,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     if (isDbOnline) {
-      if (finalUserId) {
-        fetch('/api/wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: finalUserId, tipo: 'gasto', monto: coinsCost, detalle: `Postulación a pedido #${orderId}` })
-        }).catch(err => console.error('Error al descontar monedas en Neon.db:', err));
-      }
-
       fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -987,11 +1035,54 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Cambia el plan de suscripción del proveedor
+   */
+  const subscribeToPlan = async (newPlanId: 'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3'): Promise<boolean> => {
+    setPlanId(newPlanId);
+    await Storage.setItem('todo_ya_plan_id', newPlanId);
+
+    const updatedUser = activeUser ? { ...activeUser, planId: newPlanId } : null;
+    if (updatedUser) {
+      setActiveUser(updatedUser);
+      await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+
+      // Sincronizar en la lista local de registrados
+      const updatedList = usuariosRegistrados.map(u => 
+        (u.correoOTelefono || '').toLowerCase() === (updatedUser.correoOTelefono || '').toLowerCase()
+          ? updatedUser
+          : u
+      );
+      setUsuariosRegistrados(updatedList);
+      await Storage.setItem('todo_ya_registered_users', JSON.stringify(updatedList));
+    }
+
+    if (isDbOnline && activeUser) {
+      try {
+        const response = await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            correoOTelefono: activeUser.correoOTelefono,
+            planId: newPlanId
+          })
+        });
+        if (response.ok) {
+          console.log('[UserContext] Plan de suscripción actualizado en base de datos');
+        }
+      } catch (err) {
+        console.error('Error al actualizar plan en la BD:', err);
+      }
+    }
+    return true;
+  };
+
+  /**
    * Restablece completamente los datos locales de la aplicación a su estado inicial.
    */
   const resetData = () => {
     setUserRole('client');
     setCoins(24);
+    setPlanId(null);
     setOrders(initialSeedOrders);
     setIsAuthenticated(false);
     setUserName('Luis Alberto M.');
@@ -1000,6 +1091,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     
     Storage.removeItem('todo_ya_role');
     Storage.removeItem('todo_ya_coins');
+    Storage.removeItem('todo_ya_plan_id');
     Storage.removeItem('todo_ya_orders');
     Storage.removeItem('todo_ya_auth');
     Storage.removeItem('todo_ya_username');
@@ -1022,15 +1114,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
 
     if (isDbOnline && finalUserId) {
-      try {
-        await fetch('/api/wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: finalUserId, tipo: 'recarga', monto: amount, detalle: detail })
-        });
-      } catch (e) {
-        console.error('Error al agregar monedas:', e);
-      }
+       try {
+         await fetch('/api/wallet', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ userId: finalUserId, tipo: 'recarga', monto: amount, detalle: detail })
+         });
+       } catch (e) {
+         console.error('Error al agregar monedas:', e);
+       }
     }
   };
 
@@ -1076,6 +1168,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       toggleRole, 
       setRole, 
       coins, 
+      planId,
+      subscribeToPlan,
       orders, 
       addOrder, 
       applyToLead, 
