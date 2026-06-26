@@ -201,7 +201,7 @@ Descripción del servicio: "${descripcion}"`;
     // El mejor score se posiciona primero.
     
     // Extraer proveedores desde la Base de Datos Real de Neon.db (o fallback al Mock si está desconectado)
-    let proveedoresFuente = PROVEEDORES_MOCK;
+    let proveedoresFuente: any[] = PROVEEDORES_MOCK;
     if (isDbConnected() && db) {
       try {
         const bdProviders = await db.select().from(users).where(eq(users.rol, 'provider'));

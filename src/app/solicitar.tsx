@@ -109,7 +109,7 @@ export default function SolicitarScreen() {
 
   // Estados para la búsqueda en tiempo real y flujo B2B
   const [faseBusqueda, setFaseBusqueda] = useState<'input' | 'scanning' | 'offers' | 'expired' | 'chat'>('input');
-  const [contador, setContador] = useState(15);
+  const [contador, setContador] = useState(30);
   const [candidatos, setCandidatos] = useState<CandidateProvider[]>([]);
   const [timerIntervalId, setTimerIntervalId] = useState<any>(null);
   const [presupuestoInput, setPresupuestoInput] = useState('');
@@ -119,6 +119,14 @@ export default function SolicitarScreen() {
   const [replyIndex, setReplyIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   const [b2bVisibleOffers, setB2bVisibleOffers] = useState<CandidateProvider[]>([]);
+
+  // Filtro de candidatos por radio de búsqueda en tiempo real
+  const parseDistance = (distanceStr: string) => {
+    const num = parseFloat(distanceStr);
+    return isNaN(num) ? 0 : num;
+  };
+  const currentRadius = contador > 15 ? 1.5 : (contador > 5 ? 3.0 : 5.0);
+  const activeCandidates = candidatos.filter(c => parseDistance(c.distance) <= currentRadius);
 
   // Voice input (Speech-to-Text) states
   const [showVoiceModal, setShowVoiceModal] = useState(false);
@@ -272,40 +280,24 @@ export default function SolicitarScreen() {
         });
 
         setCandidatos(b2bCandidates);
-        setFaseBusqueda('offers');
-        setB2bVisibleOffers([]);
-
-        // Mostrar ofertas progresivamente para una UX espectacular
-        setB2bVisibleOffers([b2bCandidates[0]]);
-        
-        if (b2bCandidates[1]) {
-          setTimeout(() => {
-            setB2bVisibleOffers(prev => [...prev, b2bCandidates[1]]);
-          }, 1200);
-        }
-        if (b2bCandidates[2]) {
-          setTimeout(() => {
-            setB2bVisibleOffers(prev => [...prev, b2bCandidates[2]]);
-          }, 2400);
-        }
       } else {
-        // Flujo residencial normal con temporizador de 15 segundos
         setCandidatos(filtered);
-        setFaseBusqueda('offers');
-        setContador(15);
-        
-        const interval = setInterval(() => {
-          setContador((prev) => {
-            if (prev <= 1) {
-              clearInterval(interval);
-              setFaseBusqueda('expired');
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        setTimerIntervalId(interval);
       }
+
+      setFaseBusqueda('offers');
+      setContador(30); // Búsqueda de 30 segundos en total
+      
+      const interval = setInterval(() => {
+        setContador((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setFaseBusqueda('expired');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      setTimerIntervalId(interval);
     }, 2000);
   };
 
@@ -589,32 +581,35 @@ export default function SolicitarScreen() {
               <Text style={[styles.headerTitle, isBusiness && { color: '#fff' }]}>{t('chat.provider_offers')}</Text>
               <Text style={[styles.headerSubtitle, isBusiness && { color: '#94a3b8' }]}>{servicio} · {urgencia}</Text>
             </View>
-            {isBusiness ? (
-              <View style={[styles.timerBadge, { backgroundColor: '#4f46e5' }]}>
-                <Ionicons name="radio-outline" size={18} color="#fff" />
-                <Text style={[styles.timerText, { color: '#fff' }]}>En vivo</Text>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+              <View style={[styles.timerBadge, { backgroundColor: '#e2e8f0', borderWidth: 1, borderColor: '#cbd5e1' }]}>
+                <Ionicons name="locate-outline" size={16} color="#475569" />
+                <Text style={[styles.timerText, { color: '#475569', fontWeight: 'bold' }]}>
+                  {contador > 15 ? '1.5 km' : (contador > 5 ? '3.0 km' : '5.0 km')}
+                </Text>
               </View>
-            ) : (
-              <View style={[styles.timerBadge, isBusiness && { backgroundColor: '#818cf8' }, contador < 5 && styles.timerDanger]}>
-                <Ionicons name="time-outline" size={18} color={contador < 5 ? '#fff' : (isBusiness ? '#fff' : '#2F2F2F')} />
-                <Text style={[styles.timerText, { color: contador < 5 ? '#fff' : (isBusiness ? '#fff' : '#2F2F2F') }]}>{contador}s</Text>
+              <View style={[styles.timerBadge, isBusiness && { backgroundColor: '#818cf8' }, contador < 8 && styles.timerDanger]}>
+                <Ionicons name="time-outline" size={18} color={contador < 8 ? '#fff' : (isBusiness ? '#fff' : '#2F2F2F')} />
+                <Text style={[styles.timerText, { color: contador < 8 ? '#fff' : (isBusiness ? '#fff' : '#2F2F2F') }]}>{contador}s</Text>
               </View>
-            )}
+            </View>
           </View>
 
           {/* Map Section */}
           <View style={styles.mapWrap}>
-            <MapView providersList={isBusiness ? b2bVisibleOffers : candidatos} />
+            <MapView providersList={activeCandidates} />
           </View>
 
           {/* Candidates Slider */}
           <ScrollView style={styles.candidatesList} showsVerticalScrollIndicator={true}>
             <Text style={styles.sectionTitle}>
-              {isBusiness 
-                ? t('chat.received_offers', { count: b2bVisibleOffers.length, total: candidatos.length }) 
-                : t('chat.free_providers', { count: candidatos.length })}
+              {contador > 15 
+                ? `Buscando en 1.5 km (${activeCandidates.length} encontrados)` 
+                : (contador > 5 
+                    ? `Expandido a 3.0 km (${activeCandidates.length} encontrados)` 
+                    : `Expandido a 5.0 km (${activeCandidates.length} encontrados)`)}
             </Text>
-            {(isBusiness ? b2bVisibleOffers : candidatos).map((pro, index) => {
+            {activeCandidates.map((pro, index) => {
               const avatarInit = pro.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
               return (
                 <View key={index} style={styles.candidateCard}>
@@ -676,25 +671,25 @@ export default function SolicitarScreen() {
       {faseBusqueda === 'expired' && (
         <View style={styles.expiredContainer}>
           <Ionicons name="hourglass-outline" size={64} color="#e53935" style={{ marginBottom: 16 }} />
-          <Text style={styles.expiredTitle}>{t('chat.time_out_title')}</Text>
+          <Text style={styles.expiredTitle}>Tiempo agotado</Text>
           <Text style={styles.expiredSubtitle}>
-            {t('chat.time_out_desc')}
+            No se encontró ningún proveedor cercano en el radio de 5.0 km que aceptara la solicitud en los 30 segundos de búsqueda.
           </Text>
           <View style={styles.expiredActions}>
             <TouchableOpacity 
               style={[styles.confirmButton, { flex: 1, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1' }]} 
-              onPress={reintentarBusqueda}
+              onPress={resetForm}
               activeOpacity={0.7}
             >
-              <Text style={{ color: '#475569', fontWeight: '600' }}>{t('chat.retry')}</Text>
+              <Text style={{ color: '#475569', fontWeight: '600' }}>Cancelar Solicitud</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.confirmButton, isBusiness ? { backgroundColor: '#6366f1' } : { backgroundColor: '#FFB400' }, { flex: 1.5 }]} 
-              onPress={publicarSinAsignar}
+              onPress={iniciarEscaneoRealTime}
               activeOpacity={0.7}
             >
-              <Text style={[styles.confirmButtonText, isBusiness ? { color: '#fff' } : { color: '#2F2F2F' }]}>{t('chat.publish_btn')}</Text>
+              <Text style={[styles.confirmButtonText, isBusiness ? { color: '#fff' } : { color: '#2F2F2F' }]}>Repetir Búsqueda (30s)</Text>
             </TouchableOpacity>
           </View>
         </View>
