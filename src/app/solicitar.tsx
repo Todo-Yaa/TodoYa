@@ -185,9 +185,7 @@ export default function SolicitarScreen() {
 
   const interpolatedBg = bgAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: isBusiness 
-      ? ['#1e293b', '#312e81'] 
-      : ['#fffbeb', '#fef3c7']
+    outputRange: ['#ffffff', '#FFE082']
   });
 
   const radarScale = radarAnim.interpolate({
@@ -370,7 +368,7 @@ export default function SolicitarScreen() {
         });
       }, 1000);
       setTimerIntervalId(interval);
-    }, 3000);
+    }, 5000);
   };
 
   /**
@@ -640,9 +638,7 @@ export default function SolicitarScreen() {
             {/* Onda de Radar Externa Animada (Se expande y desvanece) */}
             <Animated.View style={[
               styles.radarOuterCircle,
-              isBusiness 
-                ? { backgroundColor: 'rgba(99, 102, 241, 0.05)', borderColor: 'rgba(99, 102, 241, 0.4)' }
-                : { backgroundColor: 'rgba(255, 180, 0, 0.05)', borderColor: 'rgba(255, 180, 0, 0.4)' },
+              { backgroundColor: 'rgba(255, 180, 0, 0.05)', borderColor: 'rgba(255, 180, 0, 0.4)' },
               {
                 transform: [{ scale: radarScale }],
                 opacity: radarOpacity,
@@ -658,7 +654,7 @@ export default function SolicitarScreen() {
             <Animated.View 
               style={{
                 transform: [{ scale: scaleAnim }],
-                shadowColor: isBusiness ? '#6366f1' : '#FFB400',
+                shadowColor: '#FFB400',
                 shadowOffset: { width: 0, height: 8 },
                 shadowOpacity: 0.35,
                 shadowRadius: 16,
@@ -667,7 +663,7 @@ export default function SolicitarScreen() {
               }}
             >
               <Image 
-                source={require('@/assets/images/icon.png')} 
+                source={require('../../assets/images/icon.png')} 
                 style={{
                   width: 120,
                   height: 120,
@@ -678,17 +674,17 @@ export default function SolicitarScreen() {
             </Animated.View>
           </View>
 
-          <ActivityIndicator size="large" color={isBusiness ? '#818cf8' : '#FFB400'} style={{ marginBottom: 24 }} />
+          <ActivityIndicator size="large" color="#FFB400" style={{ marginBottom: 24 }} />
           
           <Text style={[
             styles.scanningTitle, 
-            isBusiness ? { color: '#ffffff' } : { color: '#2F2F2F' }
+            { color: '#2F2F2F' }
           ]}>
             {t('solicitud.scanning_title')}
           </Text>
           <Text style={[
             styles.scanningSubtitle, 
-            isBusiness ? { color: '#94a3b8' } : { color: '#666666' }
+            { color: '#666666' }
           ]}>
             {t('solicitud.scanning_subtitle', { servicio })}
           </Text>
