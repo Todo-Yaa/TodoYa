@@ -6,13 +6,14 @@ import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated'; // 
 import { UserProvider, useUser } from '../context/user-context';
 import LoginScreen from '../components/login-screen';
 import RatingOverlayModal from '../components/rating-overlay-modal';
+import NotificationBanner from '../components/notification-banner';
 
 /**
  * Componente NavigationLayout:
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
  */
 function NavigationLayout() {
-  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification } = useUser();
+  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification, isDbOnline, isSyncing, triggerSync, activeToast, dismissToast } = useUser();
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
@@ -47,6 +48,20 @@ function NavigationLayout() {
 
   return (
     <View style={{ flex: 1 }}>
+
+      {/* ✅ Badge de estado: Offline / Sincronizando */}
+      {(!isDbOnline || isSyncing) && (
+        <View style={[styles.statusBadge, isSyncing ? styles.badgeSyncing : styles.badgeOffline]}>
+          {isSyncing 
+            ? <ActivityIndicator size={10} color="#fff" style={{ marginRight: 5 }} />
+            : <Ionicons name="cloud-offline-outline" size={12} color="#fff" style={{ marginRight: 4 }} />
+          }
+          <Text style={styles.statusBadgeText}>
+            {isSyncing ? 'Sincronizando...' : '📡 Modo offline — Datos locales'}
+          </Text>
+        </View>
+      )}
+
       <Tabs
       screenOptions={{
         // Color activo de los iconos y texto adaptado dinámicamente
@@ -151,41 +166,7 @@ function NavigationLayout() {
       )}
 
       {/* Banner de Notificación In-App Global */}
-      {notification && (
-        <Animated.View
-          entering={FadeIn.duration(300)}
-          exiting={FadeOut.duration(200)}
-          style={[
-            styles.notificationToast,
-            notification.type === 'success' && styles.toastSuccess,
-            notification.type === 'warning' && styles.toastWarning,
-            isBusiness && styles.toastBusiness,
-          ]}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={styles.toastIconBg}>
-              <Ionicons
-                name={
-                  notification.type === 'success'
-                    ? 'checkmark-circle'
-                    : notification.type === 'warning'
-                    ? 'warning'
-                    : 'flash'
-                }
-                size={22}
-                color="#fff"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.toastTitle} numberOfLines={1}>{notification.title}</Text>
-              <Text style={styles.toastMessage} numberOfLines={2}>{notification.message}</Text>
-            </View>
-            <TouchableOpacity onPress={clearNotification} style={styles.toastClose}>
-              <Ionicons name="close-circle" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
+      <NotificationBanner toast={activeToast} onDismiss={dismissToast} />
 
       {/* Pantalla flotante de transición de rol con micro-animación de desvanecimiento */}
       {isSwitchingRole && (
@@ -321,7 +302,7 @@ const styles = StyleSheet.create({
     top: 50,
     left: 16,
     right: 16,
-    backgroundColor: '#2F2F2F', // Default neutral dark charcoal
+    backgroundColor: '#2F2F2F',
     borderRadius: 20,
     padding: 16,
     zIndex: 999999,
@@ -363,5 +344,30 @@ const styles = StyleSheet.create({
   },
   toastClose: {
     padding: 4,
+  },
+  // ✅ Badge de estado de conexión
+  statusBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 99998,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+  },
+  badgeOffline: {
+    backgroundColor: '#ef4444', // rojo
+  },
+  badgeSyncing: {
+    backgroundColor: '#3b82f6', // azul
+  },
+  statusBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

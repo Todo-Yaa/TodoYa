@@ -21,8 +21,8 @@ export async function GET(request: Request) {
     
     return Response.json({
       status: 'ok',
-      database: (connected && queryExito) ? 'connected' : `simulated (Error: ${errorMessage || 'Variable de entorno ausente'})`,
-      provider: 'Neon.db (PostgreSQL Serverless)',
+      database: (connected && queryExito) ? 'connected' : 'local_db.json (Offline)',
+      provider: (connected && queryExito) ? 'Neon.db (PostgreSQL Serverless)' : 'JSON Local File System',
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {

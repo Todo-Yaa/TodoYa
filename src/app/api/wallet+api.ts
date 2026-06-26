@@ -1,6 +1,7 @@
 import { db, isDbConnected } from '../../db';
 import { users, transactions } from '../../db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { localDb } from '../../db/localDb';
 
 // GET: Obtener saldo e historial de transacciones de un usuario
 export async function GET(request: Request) {
@@ -15,7 +16,16 @@ export async function GET(request: Request) {
     const userId = parseInt(userIdStr, 10);
 
     if (!isDbConnected() || !db) {
-      return Response.json({ status: 'simulated', coins: 24, history: [] });
+      const user = localDb.getUserById(userId);
+      if (!user) {
+        return Response.json({ error: 'Usuario no encontrado' }, { status: 404 });
+      }
+      const history = localDb.getTransactions(userId);
+      return Response.json({
+        status: 'success',
+        coins: user.monedas,
+        history: history
+      });
     }
 
     // Obtener saldo actual
@@ -43,15 +53,35 @@ export async function GET(request: Request) {
 // POST: Registrar recarga o gasto y actualizar saldo
 export async function POST(request: Request) {
   try {
-    if (!isDbConnected() || !db) {
-      return Response.json({ status: 'simulated', message: 'Simulado en AsyncStorage' });
-    }
-
     const body = await request.json();
     const { userId, tipo, monto, detalle } = body;
 
     if (!userId || !tipo || !monto || !detalle) {
       return Response.json({ error: 'Faltan parámetros requeridos' }, { status: 400 });
+    }
+
+    if (!isDbConnected() || !db) {
+      const user = localDb.getUserById(userId);
+      if (!user) {
+        return Response.json({ error: 'Usuario no encontrado' }, { status: 404 });
+      }
+      const saldoActual = user.monedas ?? 0;
+      if (tipo === 'gasto' && saldoActual < monto) {
+        return Response.json({ error: 'Saldo insuficiente' }, { status: 400 });
+      }
+      const nuevoSaldo = tipo === 'recarga' ? saldoActual + monto : saldoActual - monto;
+      localDb.updateUserById(userId, { monedas: nuevoSaldo });
+      const nuevaTransaccion = localDb.insertTransaction({
+        usuario_id: userId,
+        tipo: tipo,
+        monto_monedas: monto,
+        detalle: detalle
+      });
+      return Response.json({
+        status: 'success',
+        coins: nuevoSaldo,
+        transaction: nuevaTransaccion
+      });
     }
 
     // 1. Obtener usuario para conocer saldo actual

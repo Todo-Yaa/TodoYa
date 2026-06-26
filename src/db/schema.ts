@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, integer, boolean, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, integer, boolean, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 
 // Tabla de Usuarios (Clientes residenciales, Empresas B2B y Proveedores)
 export const users = pgTable('users', {
@@ -34,30 +34,17 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// Tabla de Mensajes de Chat en Tiempo Real (por orden)
-export const messages = pgTable('messages', {
-  id: serial('id').primaryKey(),
-  orderId: integer('order_id').notNull(), // ID del pedido al que pertenece el chat
-  senderName: varchar('sender_name', { length: 256 }).notNull(), // Nombre del remitente
-  messageText: text('message_text').notNull(), // Contenido del mensaje
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-// Tabla de Historial de Transacciones (Billetera)
-export const transactions = pgTable('transactions', {
-  id: serial('id').primaryKey(),
-  usuario_id: integer('usuario_id').references(() => users.id).notNull(),
-  tipo: varchar('tipo', { length: 50 }).$type<'recarga' | 'gasto'>().notNull(),
-  monto_monedas: integer('monto_monedas').notNull(),
-  detalle: varchar('detalle', { length: 256 }).notNull(), // Ej: "Recarga de monedas (Prueba)" o "Postulación a lead #23"
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
 // Tabla de Pedidos / Solicitudes de servicio
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   titulo: varchar('titulo', { length: 256 }).notNull(),
-  proveedor: varchar('proveedor', { length: 256 }), // Nombre o ID del proveedor asignado
+  
+  // ✅ RELACIONAL: FKs al cliente y proveedor por ID
+  clienteId: integer('cliente_id').references(() => users.id, { onDelete: 'set null' }), // Quién solicita el servicio
+  proveedorId: integer('proveedor_id').references(() => users.id, { onDelete: 'set null' }), // Quién ejecuta el servicio
+
+  // Campos de display rápido (mantenidos para compatibilidad y UI)
+  proveedor: varchar('proveedor', { length: 256 }), // Nombre del proveedor (display)
   servicio: varchar('servicio', { length: 256 }).notNull(), // Categoría (Plomería, Electricidad, etc.)
   descripcion: text('descripcion').notNull(),
   estado: varchar('estado', { length: 50 }).$type<'Buscando proveedor' | 'En progreso' | 'Completado'>().default('Buscando proveedor').notNull(),
@@ -67,7 +54,7 @@ export const orders = pgTable('orders', {
   precio: varchar('precio', { length: 100 }).notNull(), // Ej: "150 Bs." o "Presupuesto: 500 Bs."
   urgencia: varchar('urgencia', { length: 50 }).$type<'Normal' | 'Alta'>().default('Normal').notNull(),
   
-  // Calificación del servicio (Bloqueo Estilo Jango)
+  // Calificación del servicio (Bloqueo Estilo Jango — mantenido para queries rápidos)
   calificado: boolean('calificado').default(false),
   calificacionEstrellas: integer('calificacion_estrellas'),
   calificacionEtiquetas: jsonb('calificacion_etiquetas').$type<string[]>(),
@@ -77,4 +64,66 @@ export const orders = pgTable('orders', {
   acceptedAt: timestamp('accepted_at'),
   completedAt: timestamp('completed_at'),
   tiempoEjecucion: varchar('tiempo_ejecucion', { length: 100 }), // Ej: "45 minutos"
-});
+}, (table) => ({
+  clienteIdx: index('orders_cliente_idx').on(table.clienteId),
+  proveedorIdx: index('orders_proveedor_idx').on(table.proveedorId),
+}));
+
+// Tabla de Mensajes de Chat en Tiempo Real (por orden)
+export const messages = pgTable('messages', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(), // ✅ FK al pedido
+  senderId: integer('sender_id').references(() => users.id, { onDelete: 'cascade' }),          // ✅ FK al usuario remitente
+  senderName: varchar('sender_name', { length: 256 }).notNull(),      // Display rápido
+  messageText: text('message_text').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  orderIdx: index('messages_order_idx').on(table.orderId),
+  senderIdx: index('messages_sender_idx').on(table.senderId),
+}));
+
+// Tabla de Historial de Transacciones (Billetera)
+export const transactions = pgTable('transactions', {
+  id: serial('id').primaryKey(),
+  usuario_id: integer('usuario_id').references(() => users.id, { onDelete: 'cascade' }).notNull(), // ✅ FK al usuario
+  tipo: varchar('tipo', { length: 50 }).$type<'recarga' | 'gasto'>().notNull(),
+  monto_monedas: integer('monto_monedas').notNull(),
+  detalle: varchar('detalle', { length: 256 }).notNull(), // Ej: "Recarga de monedas (Prueba)" o "Postulación a lead #23"
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  usuarioIdx: index('transactions_usuario_idx').on(table.usuario_id),
+}));
+
+// ✅ NUEVA TABLA: Calificaciones (Separadas del pedido para mayor flexibilidad)
+export const ratings = pgTable('ratings', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),       // ✅ FK al pedido calificado
+  calificadorId: integer('calificador_id').references(() => users.id, { onDelete: 'cascade' }),      // ✅ Quién califica
+  calificadoId: integer('calificado_id').references(() => users.id, { onDelete: 'cascade' }),        // ✅ A quién se califica
+  estrellas: integer('estrellas').notNull(),                                 // 1 a 5 estrellas
+  etiquetas: jsonb('etiquetas').$type<string[]>(),                           // ["Puntual", "Limpio", "Profesional"]
+  comentario: text('comentario'),                                            // Comentario libre (opcional)
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  orderIdx: index('ratings_order_idx').on(table.orderId),
+  calificadorIdx: index('ratings_calificador_idx').on(table.calificadorId),
+  calificadoIdx: index('ratings_calificado_idx').on(table.calificadoId),
+}));
+
+// ✅ NUEVA TABLA: Postulaciones de Proveedores a Pedidos (Historial completo)
+export const applications = pgTable('applications', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),       // ✅ FK al pedido
+  proveedorId: integer('proveedor_id').references(() => users.id, { onDelete: 'cascade' }).notNull(), // ✅ FK al proveedor
+  estado: varchar('estado', { length: 50 })
+    .$type<'pendiente' | 'aceptado' | 'rechazado'>()
+    .default('pendiente')
+    .notNull(),
+  monedasGastadas: integer('monedas_gastadas').notNull(),                    // Costo de la postulación
+  notaPersonal: text('nota_personal'),                                       // Mensaje del proveedor al cliente
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  orderIdx: index('applications_order_idx').on(table.orderId),
+  proveedorIdx: index('applications_proveedor_idx').on(table.proveedorId),
+}));
+

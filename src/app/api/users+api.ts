@@ -1,12 +1,14 @@
 import { db, isDbConnected } from '../../db';
 import { users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { localDb } from '../../db/localDb';
 
-// GET: Obtener todos los usuarios registrados
+// GET: Obtener todos los registrados
 export async function GET(request: Request) {
   try {
     if (!isDbConnected() || !db) {
-      return Response.json({ status: 'simulated', message: 'Usando base de datos local simulada' });
+      const localUsers = localDb.getUsers();
+      return Response.json({ status: 'success', data: localUsers });
     }
 
     const allUsers = await db.select().from(users);
@@ -20,12 +22,36 @@ export async function GET(request: Request) {
 // POST: Registrar un nuevo usuario (manual o social OAuth)
 export async function POST(request: Request) {
   try {
-    if (!isDbConnected() || !db) {
-      return Response.json({ status: 'simulated', message: 'Registro simulado de forma local exitoso' });
-    }
-
     const body = await request.json();
     const { nombre, correoOTelefono, rol, contrasena, tipoProveedor = 'normal', tipoEntidad = 'natural', nit, correoFacturacion, rubro, ofreceB2B = false } = body;
+
+    if (!isDbConnected() || !db) {
+      const usuarioExistente = localDb.getUserByEmailOrPhone(correoOTelefono);
+      if (usuarioExistente) {
+        const updated = localDb.updateUser(correoOTelefono, {
+          nombre,
+          rol,
+          nit: nit || usuarioExistente.nit,
+          correoFacturacion: correoFacturacion || usuarioExistente.correoFacturacion,
+          rubro: rubro || usuarioExistente.rubro,
+          ofreceB2B: ofreceB2B || usuarioExistente.ofreceB2B,
+        });
+        return Response.json({ status: 'success', action: 'updated', user: updated });
+      }
+      const nuevoUsuario = localDb.insertUser({
+        nombre,
+        correoOTelefono,
+        rol,
+        contrasena,
+        tipoProveedor,
+        tipoEntidad,
+        nit,
+        correoFacturacion,
+        rubro,
+        ofreceB2B,
+      });
+      return Response.json({ status: 'success', action: 'created', user: nuevoUsuario });
+    }
 
     // Verificar si ya existe el correo/teléfono
     const usuarioExistente = await db.select().from(users).where(eq(users.correoOTelefono, correoOTelefono.trim().toLowerCase())).limit(1);
@@ -70,10 +96,6 @@ export async function POST(request: Request) {
 // PUT: Actualizar configuración del perfil del Proveedor (Onboarding) o Plan de Suscripción
 export async function PUT(request: Request) {
   try {
-    if (!isDbConnected() || !db) {
-      return Response.json({ status: 'simulated', message: 'Perfil de proveedor configurado localmente' });
-    }
-
     const body = await request.json();
     const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId } = body;
 
@@ -95,6 +117,14 @@ export async function PUT(request: Request) {
     if (coberturaB2B !== undefined) {
       updateData.coberturaB2B = coberturaB2B;
       updateData.ofreceB2B = CoberturaB2BValida(coberturaB2B);
+    }
+
+    if (!isDbConnected() || !db) {
+      const updated = localDb.updateUser(correoOTelefono, updateData);
+      if (!updated) {
+        return Response.json({ error: 'Usuario no encontrado' }, { status: 404 });
+      }
+      return Response.json({ status: 'success', user: updated });
     }
 
     const updated = await db.update(users)
