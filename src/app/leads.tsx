@@ -82,11 +82,18 @@ export default function LeadsScreen() {
       o.servicio === 'Papelería & Oficina' || 
       o.servicio === 'Servicios B2B';
       
-    // Los proveedores naturales solo ven residencial, los proveedores empresa solo ven B2B
+    // Los proveedores naturales con Plan 1 solo ven residencial. Plan 2 y Plan 3 ven residenciales y B2B.
+    // Las empresas proveedoras con Plan Empresa 1 solo ven B2B. Plan Empresa 2 y Plan Empresa 3 ven B2B y residenciales.
     if (currentEntidad === 'natural') {
-      return !isOrderB2B;
+      if (userPlan === 'provider_1') {
+        return !isOrderB2B;
+      }
+      return true; // provider_2 y provider_3 ven ambos
     } else {
-      return isOrderB2B;
+      if (userPlan === 'business_1') {
+        return isOrderB2B;
+      }
+      return true; // business_2 y business_3 ven ambos
     }
   });
 
@@ -253,7 +260,7 @@ export default function LeadsScreen() {
   // Effect to poll payment status when QR is visible
   useEffect(() => {
     let intervalId: any;
-    if (showPaymentModal && paymentStep === 'qr' && qrData?.movimiento_id && activeUser) {
+    if (showPaymentModal && paymentStep === 'qr' && qrData?.movimiento_id && activeUser && selectedPlan) {
       let finalUserId = activeUser.id;
       if (!finalUserId && activeUser.correoOTelefono) {
         const emailClave = activeUser.correoOTelefono.trim().toLowerCase();
@@ -274,7 +281,7 @@ export default function LeadsScreen() {
 
       intervalId = setInterval(async () => {
         try {
-          const res = await fetch(`/api/veripagos?movimiento_id=${qrData.movimiento_id}&userId=${finalUserId}&monedas=0`);
+          const res = await fetch(`/api/veripagos?movimiento_id=${qrData.movimiento_id}&userId=${finalUserId}&planId=${selectedPlan.id}&monedas=${selectedPlan.priceBs}`);
           if (res.ok) {
             const data = await res.json();
             if (data.status === 'success' && data.paymentStatus === 'Completado') {
@@ -473,7 +480,7 @@ export default function LeadsScreen() {
                   styles.historyItemAmount,
                   { color: t.tipo === 'recarga' ? '#2e7d32' : '#c62828', fontWeight: 'bold' }
                 ]}>
-                  {t.tipo === 'recarga' ? '+' : '-'}{t.monto_monedas}
+                  {t.tipo === 'recarga' ? '+' : '-'} Bs. {t.monto_monedas}
                 </Text>
               </View>
             ))

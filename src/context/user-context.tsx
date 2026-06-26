@@ -447,7 +447,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 serviciosOfrecidos: u.serviciosOfrecidos,
                 anosExperiencia: u.anosExperiencia,
                 descripcionProveedor: u.descripcionProveedor,
-                coberturaB2B: u.coberturaB2B
+                coberturaB2B: u.coberturaB2B,
+                planId: u.planId || (u.tipoEntidad === 'empresa' ? 'business_1' : 'provider_1')
               }));
               setUsuariosRegistrados(usuariosSaneados);
             } else {
@@ -758,7 +759,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
        if (found?.id) finalUserId = found.id;
     }
 
-    if (isDbOnline && finalUserId) {
+    if (isDbOnline && finalUserId && coinsCost > 0) {
       fetch('/api/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -929,7 +930,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         rol,
         tipoProveedor: 'normal',
         contrasena: contrasena,
-        tipoEntidad: esEmpresaEmail ? 'empresa' : 'natural'
+        tipoEntidad: esEmpresaEmail ? 'empresa' : 'natural',
+        planId: esEmpresaEmail ? 'business_1' : 'provider_1'
       };
       
       const listaActualizada = [...usuariosRegistrados, nuevoUsuario];

@@ -1,6 +1,7 @@
 import { db, isDbConnected } from '../../db';
 import { users, transactions } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { localDb } from '../../db/localDb';
 
 const VERIPAGOS_SECRET_KEY = '12df605b-5dd3-4a35-84b0-b9ec07bfecae';
 const VERIPAGOS_PASSWORD = 's9Ee7!Cw67';
@@ -65,17 +66,17 @@ function isVeriPagosSuccess(result: any): boolean {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { userId, monedas, detalle } = body;
+    const { userId, monedas, planId, detalle } = body;
 
-    if (userId === undefined || userId === null || monedas === undefined || monedas === null) {
-      return Response.json({ error: 'Se requiere userId y cantidad de monedas' }, { status: 400 });
+    if (userId === undefined || userId === null) {
+      return Response.json({ error: 'Se requiere userId' }, { status: 400 });
     }
 
     // Para la demo del Hackatón cobrará 1.00 Bs. reales
     const montoReal = 1.00;
 
     const dataArray = [
-      JSON.stringify({ userId, monedas })
+      JSON.stringify({ userId, planId, monedas })
     ];
 
     const basicAuth = getBasicAuthHeader();
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
       data: dataArray,
       uso_unico: true,
       vigencia: "0/00:15",
-      detalle: detalle || `Recarga de ${monedas} monedas`
+      detalle: detalle || `Suscripción a plan / Recarga`
     };
 
     console.log('[VeriPagos POST] Sending request to VeriPagos:', JSON.stringify(requestPayload));
@@ -163,13 +164,27 @@ export async function POST(request: Request) {
   }
 }
 
-// GET: Consultar el estado del QR y acreditar monedas si está completado
+// Helper to get plan name
+function getPlanName(planId: string | null) {
+  switch (planId) {
+    case 'provider_1': return 'Plan 1 - Residencial';
+    case 'provider_2': return 'Plan 2 - Profesional';
+    case 'provider_3': return 'Plan 3 - Élite';
+    case 'business_1': return 'Plan Empresa 1 - Básico';
+    case 'business_2': return 'Plan Empresa 2 - Pro';
+    case 'business_3': return 'Plan Empresa 3 - Élite';
+    default: return 'Plan Básico';
+  }
+}
+
+// GET: Consultar el estado del QR y acreditar plan o monedas si está completado
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const movimientoIdStr = url.searchParams.get('movimiento_id');
     const userIdStr = url.searchParams.get('userId');
     const monedasStr = url.searchParams.get('monedas');
+    const planId = url.searchParams.get('planId');
 
     if (!movimientoIdStr || !userIdStr || !monedasStr) {
       return Response.json({ error: 'Faltan parámetros de consulta (movimiento_id, userId, monedas)' }, { status: 400 });
@@ -221,47 +236,54 @@ export async function GET(request: Request) {
     }
 
     const dataSection = result.Data || result.data || result;
-    // Handle different status field names
     const estadoPago: string = dataSection.estado || dataSection.status || dataSection.estado_qr || dataSection.payment_status || 'Pendiente';
 
     console.log('[VeriPagos GET] Estado de pago:', estadoPago);
 
     if (estadoPago === 'Completado' || estadoPago === 'completado' || estadoPago === 'COMPLETADO' || estadoPago === 'Pagado' || estadoPago === 'pagado') {
-      // 1. Acreditar las monedas en la base de datos si está online
+      const planName = planId ? getPlanName(planId) : `Recarga de ${monedas} monedas`;
+      const detalleUnico = planId ? `Suscripción a ${planName} (#${movimientoIdStr})` : `Recarga VeriPagos #${movimientoIdStr}`;
+
+      // 1. Acreditar el plan/monedas en la base de datos si está online
       if (isDbConnected() && db) {
         try {
-          // Consultar el saldo actual
-          const [user] = await db.select({ monedas: users.monedas }).from(users).where(eq(users.id, userId));
+          const [user] = await db.select({ planId: users.planId, monedas: users.monedas }).from(users).where(eq(users.id, userId));
           if (user) {
             const saldoActual = user.monedas ?? 0;
-            const nuevoSaldo = saldoActual + monedas;
+            const nuevoSaldo = saldoActual + (planId ? 0 : monedas);
 
             // Evitar doble acreditación
-            const detalleUnico = `Recarga VeriPagos #${movimientoIdStr}`;
             const [transaccionExistente] = await db.select().from(transactions).where(eq(transactions.detalle, detalleUnico));
 
             if (!transaccionExistente) {
-              // Actualizar saldo
+              const updatePayload: any = {};
+              if (planId) {
+                updatePayload.planId = planId;
+              } else {
+                updatePayload.monedas = nuevoSaldo;
+              }
+
               await db.update(users)
-                .set({ monedas: nuevoSaldo })
+                .set(updatePayload)
                 .where(eq(users.id, userId));
 
               // Registrar transacción
               await db.insert(transactions).values({
                 usuario_id: userId,
                 tipo: 'recarga',
-                monto_monedas: monedas,
+                monto_monedas: monedas, // guardamos el precio del plan en Bs. en el campo de monto
                 detalle: detalleUnico
               });
 
-              console.log('[VeriPagos GET] Monedas acreditadas. Nuevo saldo:', nuevoSaldo);
+              console.log('[VeriPagos GET] Plan/Monedas acreditados exitosamente en Neon DB:', planId || nuevoSaldo);
 
               return Response.json({
                 status: 'success',
                 paymentStatus: 'Completado',
                 accredited: true,
                 coins: nuevoSaldo,
-                message: 'Pago completado y monedas acreditadas con éxito'
+                planId: planId || user.planId,
+                message: 'Pago completado y plan acreditado con éxito'
               });
             } else {
               return Response.json({
@@ -269,13 +291,13 @@ export async function GET(request: Request) {
                 paymentStatus: 'Completado',
                 accredited: false,
                 coins: saldoActual,
+                planId: user.planId,
                 message: 'El pago ya había sido acreditado previamente'
               });
             }
           }
         } catch (dbError: any) {
           console.error('[VeriPagos GET] DB error while crediting:', dbError);
-          // Still return success for payment, even if DB credit failed
           return Response.json({
             status: 'success',
             paymentStatus: 'Completado',
@@ -283,15 +305,40 @@ export async function GET(request: Request) {
             message: 'Pago completado pero error al acreditar en BD: ' + dbError.message
           });
         }
-      }
+      } else {
+        // DB no disponible - actualizar localDb si existe
+        try {
+          const user = localDb.getUserById(userId);
+          if (user) {
+            const history = localDb.getTransactions(userId);
+            const transaccionExistente = history.find((t: any) => t.detalle === detalleUnico);
+            
+            if (!transaccionExistente) {
+              if (planId) {
+                localDb.updateUserById(userId, { planId });
+              } else {
+                const saldoActual = user.monedas ?? 0;
+                localDb.updateUserById(userId, { monedas: saldoActual + monedas });
+              }
+              localDb.insertTransaction({
+                usuario_id: userId,
+                tipo: 'recarga',
+                monto_monedas: monedas,
+                detalle: detalleUnico
+              });
+            }
+          }
+        } catch (localDbError) {
+          console.error('[VeriPagos GET] Error al actualizar localDb:', localDbError);
+        }
 
-      // DB not connected - return success anyway
-      return Response.json({
-        status: 'success',
-        paymentStatus: 'Completado',
-        accredited: false,
-        message: 'Pago completado (BD no disponible para acreditar)'
-      });
+        return Response.json({
+          status: 'success',
+          paymentStatus: 'Completado',
+          accredited: true,
+          message: 'Pago completado y acreditado en base de datos local'
+        });
+      }
     }
 
     return Response.json({

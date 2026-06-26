@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -225,105 +225,158 @@ export default function SolicitarScreen() {
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [voicePulse, setVoicePulse] = useState(1);
   const [voiceErrorMsg, setVoiceErrorMsg] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+
+  const mediaRecorderRef = useRef<any>(null);
+  const audioChunksRef = useRef<any[]>([]);
+  const audioStreamRef = useRef<any>(null);
+  const voiceIntervalRef = useRef<any>(null);
+  const shouldSaveRef = useRef<boolean>(false);
 
   // Captura y reconocimiento real de voz (Speech-to-Text)
   const iniciarGrabacionVoz = () => {
-    const SpeechRecognition = typeof window !== 'undefined' 
-      ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) 
-      : null;
-
-    if (!SpeechRecognition) {
-      console.warn('[Speech] Web Speech API no soportada. Usando simulación...');
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('[Speech] API de grabación de audio no soportada en este entorno.');
+      setVoiceErrorMsg('⚠️ Grabación de audio no soportada en este dispositivo.');
       setShowVoiceModal(true);
-      setVoicePulse(1);
-      setVoiceErrorMsg('Reconocimiento no soportado. Simulando...');
-
-      const pulseInterval = setInterval(() => {
-        setVoicePulse(p => (p === 1 ? 1.3 : 1));
-      }, 600);
-
-      setTimeout(() => {
-        clearInterval(pulseInterval);
-        setShowVoiceModal(false);
-        setVoiceErrorMsg('');
-        
-        const textoTranscrito = isBusiness
-          ? "Requerimos 20 resmas de papel bond tamaño carta, carpetas membretadas y bolígrafos para uso corporativo urgente."
-          : "Hola, necesito instalar un aire acondicionado split de 12000 BTU en mi dormitorio lo antes posible.";
-        
-        setInputText(textoTranscrito);
-        setTimeout(() => {
-          processNLP(textoTranscrito);
-        }, 500);
-      }, 3000);
+      setTimeout(() => setShowVoiceModal(false), 3000);
       return;
     }
 
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'es-BO'; // Español (Bolivia/Latinoamérica)
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        audioStreamRef.current = stream;
+        audioChunksRef.current = [];
+        shouldSaveRef.current = false;
 
-      setShowVoiceModal(true);
-      setVoicePulse(1);
-      setVoiceErrorMsg('Escuchando tu voz... (Permite el acceso al micrófono)');
-
-      const pulseInterval = setInterval(() => {
-        setVoicePulse(p => (p === 1 ? 1.3 : 1));
-      }, 600);
-
-      recognition.onstart = () => {
-        setVoiceErrorMsg('Te escuchamos, describe tu necesidad...');
-      };
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setInputText(transcript);
-          setTimeout(() => {
-            processNLP(transcript);
-          }, 600);
+        // Determinar mejor mimeType soportado
+        let mimeType = 'audio/webm';
+        if (typeof MediaRecorder !== 'undefined') {
+          if (MediaRecorder.isTypeSupported('audio/webm')) {
+            mimeType = 'audio/webm';
+          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            mimeType = 'audio/mp4';
+          } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+            mimeType = 'audio/ogg';
+          } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+            mimeType = 'audio/wav';
+          } else {
+            mimeType = '';
+          }
         }
-      };
 
-      recognition.onerror = (event: any) => {
-        console.error('[Speech] Error de voz:', event.error);
-        if (event.error === 'not-allowed') {
-          setVoiceErrorMsg('Permiso de micrófono denegado');
-        } else {
-          setVoiceErrorMsg(`Error: ${event.error}`);
-        }
-        
-        // Simulación en caso de error/denegado para no congelar el flujo
-        setTimeout(() => {
-          const fallbackText = isBusiness
-            ? "Requerimos 20 resmas de papel bond tamaño carta, carpetas membretadas y bolígrafos para uso corporativo urgente."
-            : "Hola, necesito instalar un aire acondicionado split de 12000 BTU en mi dormitorio lo antes posible.";
-          setInputText(fallbackText);
-          processNLP(fallbackText);
-        }, 1500);
-      };
+        const options = mimeType ? { mimeType } : undefined;
+        const mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorderRef.current = mediaRecorder;
 
-      recognition.onend = () => {
-        clearInterval(pulseInterval);
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          if (shouldSaveRef.current) {
+            setIsTranscribing(true);
+            setVoiceErrorMsg('Transcribiendo tu voz con IA...');
+            const finalMimeType = mimeType || mediaRecorder.mimeType || 'audio/webm';
+            const audioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
+
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = async () => {
+              const base64Audio = (reader.result as string).split(',')[1];
+              try {
+                const res = await fetch('/api/transcribe', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ audio: base64Audio, mimeType: finalMimeType })
+                });
+
+                if (!res.ok) {
+                  throw new Error('Error al procesar transcripción');
+                }
+
+                const data = await res.json();
+                if (data.text && data.text.trim()) {
+                  setInputText(data.text);
+                  setShowVoiceModal(false);
+                  setVoiceErrorMsg('');
+                  processNLP(data.text);
+                } else {
+                  setVoiceErrorMsg('⚠️ No se detectó ninguna voz en el audio.');
+                  setTimeout(() => {
+                    setShowVoiceModal(false);
+                  }, 2500);
+                }
+              } catch (err) {
+                console.error('[Speech] Error transcribiendo:', err);
+                setVoiceErrorMsg('⚠️ Error al transcribir el audio.');
+                setTimeout(() => {
+                  setShowVoiceModal(false);
+                }, 2500);
+              } finally {
+                setIsTranscribing(false);
+              }
+            };
+          } else {
+            setShowVoiceModal(false);
+            setVoiceErrorMsg('');
+          }
+        };
+
+        setShowVoiceModal(true);
+        setVoicePulse(1);
+        setVoiceErrorMsg('');
+        setIsRecording(true);
+
+        if (voiceIntervalRef.current) clearInterval(voiceIntervalRef.current);
+        voiceIntervalRef.current = setInterval(() => {
+          setVoicePulse(p => (p === 1 ? 1.3 : 1));
+        }, 600);
+
+        mediaRecorder.start();
+      })
+      .catch((err) => {
+        console.error('[Speech] Error al acceder al micrófono o permisos denegados:', err);
+        setShowVoiceModal(true);
+        setVoiceErrorMsg('⚠️ Permiso de micrófono denegado. Habilita el acceso en el navegador.');
         setTimeout(() => {
           setShowVoiceModal(false);
-          setVoiceErrorMsg('');
-        }, 1000);
-      };
+        }, 3000);
+      });
+  };
 
-      recognition.start();
-
-    } catch (err: any) {
-      console.error('[Speech] Error al iniciar:', err);
-      setShowVoiceModal(false);
+  const detenerGrabacionVoz = (save: boolean) => {
+    shouldSaveRef.current = save;
+    if (voiceIntervalRef.current) {
+      clearInterval(voiceIntervalRef.current);
+      voiceIntervalRef.current = null;
     }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach((track: any) => track.stop());
+      audioStreamRef.current = null;
+    }
+
+    setIsRecording(false);
   };
 
   useEffect(() => {
     return () => {
       if (timerIntervalId) clearInterval(timerIntervalId);
+      if (voiceIntervalRef.current) clearInterval(voiceIntervalRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track: any) => track.stop());
+      }
     };
   }, [timerIntervalId]);
 
@@ -359,6 +412,17 @@ export default function SolicitarScreen() {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const res = await apiCallPromise;
+      
+      if (res.noSense === true) {
+        setLoading(false);
+        setConfirmConfig({
+          title: '⚠️ No se entiende',
+          message: 'Vuelve a escribirlo',
+          onConfirm: () => {}
+        });
+        setShowConfirmModal(true);
+        return;
+      }
       
       const cat = res.nlpAnalysis.categoriaDetectada;
       const urg = res.nlpAnalysis.urgenciaDetectada;
@@ -1094,7 +1158,9 @@ export default function SolicitarScreen() {
               />
             </View>
 
-            <Text style={styles.voiceTitle}>Escuchando...</Text>
+            <Text style={styles.voiceTitle}>
+              {isTranscribing ? 'Transcribiendo...' : 'Escuchando...'}
+            </Text>
             <Text style={styles.voiceSubtitle}>
               {voiceErrorMsg || (isBusiness 
                 ? "Describe los insumos o servicios que requiere tu empresa..." 
@@ -1107,6 +1173,34 @@ export default function SolicitarScreen() {
               <View style={[styles.voiceWaveBar, { height: 38 * voicePulse, backgroundColor: isBusiness ? '#4f46e5' : '#FFD54F' }]} />
               <View style={[styles.voiceWaveBar, { height: 20 * (voicePulse === 1 ? 0.8 : 1.3), backgroundColor: isBusiness ? '#6366f1' : '#FFC107' }]} />
               <View style={[styles.voiceWaveBar, { height: 10 * voicePulse, backgroundColor: isBusiness ? '#818cf8' : '#FFB400' }]} />
+            </View>
+
+            {/* Botones de acción o indicador de transcripción */}
+            <View style={styles.voiceModalButtons}>
+              {isTranscribing ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center', width: '100%' }}>
+                  <ActivityIndicator size="small" color={isBusiness ? '#818cf8' : '#FFB400'} />
+                  <Text style={{ color: '#94a3b8', fontSize: 13, fontWeight: '500' }}>Procesando audio con IA...</Text>
+                </View>
+              ) : (
+                <>
+                  <TouchableOpacity 
+                    style={styles.voiceCancelBtn} 
+                    onPress={() => detenerGrabacionVoz(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.voiceCancelBtnText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.voiceConfirmBtn, isBusiness && { backgroundColor: '#818cf8' }]} 
+                    onPress={() => detenerGrabacionVoz(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.voiceConfirmBtnText, isBusiness && { color: '#2F2F2F' }]}>Listo</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -1552,6 +1646,40 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     textAlign: 'center',
     lineHeight: 18,
+  },
+  voiceModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+    width: '100%',
+    marginTop: 20,
+  },
+  voiceCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceCancelBtnText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  voiceConfirmBtn: {
+    flex: 1.2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFB400',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceConfirmBtnText: {
+    color: '#2F2F2F',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 

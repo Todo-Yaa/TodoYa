@@ -33,7 +33,7 @@ Desarrollar un prototipo de aplicación universal multiplataforma (Móvil y Web)
 
 ### Objetivos Específicos:
 1.  Diseñar e implementar un sistema estricto de roles de usuario (Cliente natural vs. Empresa B2B) que filtre dinámicamente las pantallas de acuerdo al tipo de entidad registrada.
-2.  Desarrollar un formulario interactivo inteligente con la API de Google Gemini (modelo gemini-1.5-flash) que interprete requerimientos en lenguaje natural, corrigiendo errores ortográficos y gramaticales (ej. 'tengo un fga de gua' -> 'Tengo una fuga de agua') y clasificando automáticamente la orden y estimando costos.
+2.  Desarrollar un formulario interactivo inteligente con la API de Google Gemini (modelo gemini-2.5-flash) que admita entrada de voz real (micrófono con MediaRecorder) y texto libre en lenguaje natural, corrigiendo errores ortográficos y gramaticales (ej. 'tengo un fga de gua' -> 'Tengo una fuga de agua'), clasificando automáticamente el servicio, estimando costos, y rechazando entradas incoherentes o sin sentido con el mensaje "Vuelve a escribirlo" mediante filtros online (IA) y offline (heurísticos locales).
 3.  Implementar un flujo de búsqueda residencial (B2C) interactivo por mapa con una cuenta regresiva de 15 segundos mediante un radar de escaneo animado.
 4.  Crear un módulo corporativo (B2B) de subastas en vivo donde proveedores de insumos compitan enviando contraofertas progresivas (a la baja o al alza por servicios premium) con un chat de negociación en vivo.
 5.  Desarrollar un sistema de calificación forzada con bloqueo de interfaz raíz (Rating Overlay) para garantizar la retroalimentación de los trabajos completados.
@@ -116,6 +116,7 @@ Se alinea estrictamente al perfil de egreso del ingeniero, fomentando el desarro
 1.  **Viabilidad de la Arquitectura:** Se comprobó que el stack tecnológico compuesto por **React Native / Expo, Drizzle ORM, Neon.db e i18n** permite desarrollar un sistema multiplataforma altamente fluido, reactivo y de bajo consumo de recursos, ideal para el mercado latinoamericano.
 2.  **Solución a la Fragmentación de Roles:** La separación lógica y estricta de roles por tipo de entidad (Natural vs. Empresa) resolvió la confusión de flujos, unificando la estética B2B (slate e índigo) e impidiendo desviaciones a pantallas incompatibles.
 3.  **Inclusión Lingüística Exitosa:** La incorporación de traducciones i18n al Quechua, Aymara y Guaraní demostró que es posible construir interfaces tecnológicas complejas que respeten y promuevan la identidad cultural de los trabajadores de oficios generales.
+4.  **Resiliencia y Accesibilidad en Entrada de Voz:** Se validó que la combinación de captura de audio real via `MediaRecorder` y transcripción asíncrona por IA incrementa la accesibilidad y velocidad de carga de requerimientos. El diseño híbrido del validador (online con Gemini y fallback heurístico local offline) garantiza que la entrada de texto sin sentido sea rechazada de forma consistente con el mensaje "Vuelve a escribirlo", aun bajo restricciones técnicas como límites de cuota (error 429).
 
 ---
 

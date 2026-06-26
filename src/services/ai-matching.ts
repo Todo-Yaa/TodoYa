@@ -88,6 +88,30 @@ export const analizarTextoNLP = (descripcion: string) => {
  * score = (rating * 0.4) + (distanciaFactor * 0.4) + (experienciaFactor * 0.2)
  */
 export const matchProvidersOffline = async (descripcion: string, latCliente: number, lngCliente: number) => {
+  // Validación de sentido básica local
+  const textTrimmed = descripcion.trim();
+  const wordsList = textTrimmed.split(/\s+/).filter(Boolean);
+  const containsGenericRequest = textTrimmed.toLowerCase().match(/(necesito|busco|quiero|repar|instal|compra|arregl|urgente|servici|ayuda|resma|papel|aire|tengo|dañado|roto|averia|problema|fuga|gotera|corto|pintar|limpieza|sastre|vianda|comida|llave|chapa|cerradura)/);
+
+  const tieneSentidoLocal = textTrimmed.length >= 8 && wordsList.length >= 2 && containsGenericRequest;
+
+  if (!tieneSentidoLocal) {
+    return {
+      success: false,
+      noSense: true,
+      nlpAnalysis: {
+        categoriaDetectada: 'Ninguna',
+        urgenciaDetectada: 'Normal',
+        correctedDescription: descripcion,
+        confianza: 0.0
+      },
+      precioSugerido: '',
+      proveedoresEmparejados: [],
+      totalEncontrados: 0,
+      modo: 'offline'
+    };
+  }
+
   const { categoria, urgencia } = analizarTextoNLP(descripcion);
 
   const proveedoresFiltrados = PROVEEDORES_MOCK.filter(p => p.especialidad === categoria);

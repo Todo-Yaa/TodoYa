@@ -58,15 +58,37 @@ export async function POST(request: Request) {
     // 🧠 INTEGRACIÓN CON GOOGLE GEMINI API (CON CORRECCIÓN GRAMATICAL)
     // =========================================================================
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+    let tieneSentidoDetectadoPorIA = true;
     let categoriaDetectadaPorIA: string | null = null;
     let urgenciaDetectadaPorIA: 'Normal' | 'Alta' | null = null;
     let descripcionCorregidaPorIA: string | null = null;
 
+    // Validación de sentido básica local (para fallback rápido o falta de API Key)
+    const textTrimmed = descripcion.trim();
+    const wordsList = textTrimmed.split(/\s+/).filter(Boolean);
+    const containsGenericRequest = textTrimmed.toLowerCase().match(/(necesito|busco|quiero|repar|instal|compra|arregl|urgente|servici|ayuda|resma|papel|aire|tengo|dañado|roto|averia|problema)/);
+    
+    let totalKeywordsCount = 0;
+    for (const palabras of Object.values(CATEGORIAS_BASE)) {
+      for (const palabra of palabras) {
+        if (textTrimmed.toLowerCase().includes(palabra)) {
+          totalKeywordsCount++;
+        }
+      }
+    }
+    const tieneSentidoLocal = textTrimmed.length >= 8 && wordsList.length >= 2 && (totalKeywordsCount > 0 || containsGenericRequest);
+
+    // El filtro local se ejecutará si la llamada a Gemini falla o si no hay API Key disponible.
+
     if (GEMINI_API_KEY) {
       try {
         const prompt = `Analiza la siguiente descripción de un servicio solicitado por un cliente o empresa.
-Corrige cualquier error gramatical, ortográfico o de tipeo en la descripción (por ejemplo, si dice "tengo un fga de gua" corrígelo a "Tengo una fuga de agua").
-Clasifica el servicio en una de las siguientes categorías válidas EXACTAS:
+Determina si la descripción tiene sentido y es una solicitud real de servicio, insumo o trabajo técnico (por ejemplo, "tengo un fga de gua" o "necesito 20 resmas de papel" o "limpieza de mi oficina" sí tienen sentido; mientras que "asdfasdf", "12345", "hola" o palabras sueltas sin petición de servicio NO tienen sentido).
+
+Si la descripción tiene sentido:
+- Establece "tieneSentido" como true.
+- Corrige cualquier error gramatical, ortográfico o de tipeo en la descripción (por ejemplo, si dice "tengo un fga de gua" corrígelo a "Tengo una fuga de agua").
+- Clasifica el servicio en una de las siguientes categorías válidas EXACTAS:
 ${Object.keys(CATEGORIAS_BASE).map(c => `- "${c}"`).join('\n')}
 
 Nota de clasificación especial y guías por categoría:
@@ -86,13 +108,18 @@ Nota de clasificación especial y guías por categoría:
 - "Servicios B2B": Limpieza corporativa de oficinas, consultoría empresarial, contabilidad, seguridad física, mantenimiento general de instalaciones comerciales.
 - "Albañilería & Construcción": Trabajos de albañilería/albañil, colocación de cerámica, baldosas o azulejos, mezcla de cemento, reparación de pisos/contrapisos, revoque de paredes, levantar muros de ladrillo, columnas, losas y obras de construcción en general.
 
-Determina la urgencia del servicio como "Normal" o "Alta" según la gravedad o palabras clave de urgencia descritas.
+- Determina la urgencia del servicio como "Normal" o "Alta" según la gravedad o palabras clave de urgencia descritas.
+
+Si la descripción NO tiene sentido, es incoherente o spam:
+- Establece "tieneSentido" como false.
+- Los campos "categoria", "urgencia" y "descripcionCorregida" deben ser null.
 
 Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (no envíes Markdown block, solo el objeto JSON como texto plano):
 {
-  "categoria": "Nombre de la categoría clasificada",
-  "urgencia": "Normal" o "Alta",
-  "descripcionCorregida": "La descripción corregida y con buena ortografía"
+  "tieneSentido": true o false,
+  "categoria": "Nombre de la categoría clasificada o null",
+  "urgencia": "Normal" o "Alta" o null,
+  "descripcionCorregida": "La descripción corregida o null"
 }
 
 Descripción del servicio: "${descripcion}"`;
@@ -123,6 +150,7 @@ Descripción del servicio: "${descripcion}"`;
 
           const parsed = JSON.parse(textoRespuesta);
           if (parsed && typeof parsed === 'object') {
+            tieneSentidoDetectadoPorIA = parsed.tieneSentido !== false;
             categoriaDetectadaPorIA = parsed.categoria;
             urgenciaDetectadaPorIA = (parsed.urgencia === 'Alta' || parsed.urgencia === 'Normal') ? parsed.urgencia : 'Normal';
             descripcionCorregidaPorIA = parsed.descripcionCorregida;
@@ -135,9 +163,18 @@ Descripción del servicio: "${descripcion}"`;
       }
     }
 
+    if (tieneSentidoDetectadoPorIA === false) {
+      console.warn(`[Matching API] Gemini determinó que la descripción no tiene sentido: "${descripcion}"`);
+      return Response.json({
+        success: false,
+        noSense: true,
+        message: 'La descripción del servicio no tiene sentido. Vuelve a escribirlo.'
+      });
+    }
+
     // Normalización de la categoría recomendada por IA
     let iaMatchSuccessful = false;
-    if (categoriaDetectadaPorIA) {
+    if (tieneSentidoDetectadoPorIA && categoriaDetectadaPorIA) {
       const exactCategory = Object.keys(CATEGORIAS_BASE).find(
         c => c.toLowerCase() === categoriaDetectadaPorIA?.toLowerCase() ||
              c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 
@@ -158,6 +195,14 @@ Descripción del servicio: "${descripcion}"`;
     // ⚙️ ALGORITMO DE MATCHING SIMULADO / FALLBACK (PROCESAMIENTO NLP BÁSICO)
     // =========================================================================
     if (!iaMatchSuccessful) {
+      if (!tieneSentidoLocal) {
+        console.warn(`[Matching API] Fallback local determinó que la descripción no tiene sentido: "${descripcion}"`);
+        return Response.json({
+          success: false,
+          noSense: true,
+          message: 'Vuelve a escribirlo'
+        });
+      }
       const textLower = descripcion.toLowerCase();
       let maxPuntaje = 0;
       

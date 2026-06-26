@@ -192,14 +192,26 @@ graph TD
 ## ⚙️ 6. Componentes Técnicos e Implementación
 
 ### 1. Formulario de Solicitud y Google Gemini API (`solicitar.tsx`)
-* **Google Gemini API Integration (gemini-1.5-flash)**: Conexión asíncrona mediante Expo API Routes para analizar la descripción en lenguaje natural escrita por el usuario. El servicio:
+* **Google Gemini API Integration (gemini-2.5-flash)**: Conexión asíncrona mediante Expo API Routes para analizar la descripción en lenguaje natural escrita por el usuario. El servicio:
   * Corrige errores gramaticales y ortográficos en tiempo real (ej. *"tengo un fga de gua"* -> *"Tengo una fuga de agua"*).
   * Clasifica y recomienda la categoría de servicio exacta de entre las 14 categorías oficiales.
   * Identifica el nivel de urgencia ("Normal" o "Alta").
   * Cuenta con un fallback transparente a procesamiento de diccionarios locales (NLP offline) si la API no está disponible o falla la red.
 * **Visualización de Correcciones**: En la UI de resultados se despliega una alerta con fondo verde suave y el icono `sparkles` informando la descripción profesional corregida por la IA, la cual se utilizará para registrar la orden final.
 
-### 2. Control de Acceso por Suscripciones Mensuales y VeriPagos (`leads.tsx`)
+### 2. Grabación de Voz Real y Transcripción con IA (`/api/transcribe`)
+* **Captura de Audio con MediaRecorder**: Implementación de grabación de audio nativa mediante el navegador o WebView del dispositivo empleando la API `MediaRecorder`.
+  * **Soporte de Códecs**: El sistema busca dinámicamente el formato soportado por el navegador (priorizando `audio/webm`, seguido por `audio/mp4`, `audio/ogg` y `audio/wav`).
+  * **Interfaz de Control Interactiva**: El modal de entrada de voz proporciona botones reales para **Listo** (detener y transcribir) y **Cancelar** (abortar y descartar).
+* **Transcripción con Gemini API**: Envía el archivo de audio codificado en Base64 al backend `/api/transcribe` que realiza una llamada a Gemini `gemini-2.5-flash` usando `inlineData` para transcribir con precisión la grabación de voz al español sin agregar textos explicativos adicionales.
+
+### 3. Validación de Coherencia de Descripción (IA)
+* **Filtro de Coherencia / Sentido**: Evita solicitudes sin sentido, incoherentes o spam (como "asdfasdf", "12345", o "hola" sin petición de servicio).
+  * **Filtro Online**: La API Route de matching (`/api/matching`) solicita a Gemini retornar un campo booleano `tieneSentido`. Si es `false`, retorna un código especial para alertar al cliente.
+  * **Filtro Offline / Local**: Un algoritmo heurístico en `ai-matching.ts` valida si la longitud es mayor o igual a 8 caracteres, si tiene 2 o más palabras y si contiene verbos y palabras clave de la categoría o términos de servicios.
+  * **Notificación de Incoherencia**: Al detectarse una descripción sin sentido, se despliega un modal con el título `⚠️ No se entiende` y el mensaje interactivo `Vuelve a escribirlo` bloqueando el registro de la orden.
+
+### 4. Control de Acceso por Suscripciones Mensuales y VeriPagos (`leads.tsx`)
 * Regulación de acceso a leads para proveedores en base a su nivel de suscripción activa:
   * **Plan 1 (Natural):** Leads residenciales ilimitados. Leads B2B bloqueados.
   * **Plan 2 (Natural):** Leads residenciales ilimitados. Máximo 3 leads B2B al mes. Insignia dorada Premium.
@@ -209,14 +221,14 @@ graph TD
   * **Plan Empresa 3:** Leads residenciales y B2B ilimitados. Acceso exclusivo a la Cartera Nacional de Clientes en tiempo real.
 * **Pasarela VeriPagos**: Pantalla interactiva que simula la generación de códigos QR de prueba por Bs. 1.00 para la actualización de planes en la nube en tiempo real.
 
-### 3. Motor de Subastas y Contraofertas B2B
+### 5. Motor de Subastas y Contraofertas B2B
 * **Subasta en Vivo**: Simula la llegada progresiva de cotizaciones de proveedores (con esperas controladas de ~1.2s).
 * **Contraofertas**: Generación dinámica de cotizaciones en base al presupuesto del cliente (iguales, más baratas o más caras con valor premium).
 
-### 4. Chat Interactivo en Tiempo Real
+### 6. Chat Interactivo en Tiempo Real
 * Canal directo de mensajería con la empresa seleccionada tras aceptar su oferta, simulando respuestas sobre facturación, NIT, y puesta en marcha del servicio.
 
-### 5. Calificación Condicional (`rating-overlay-modal.tsx`)
+### 7. Calificación Condicional (`rating-overlay-modal.tsx`)
 * Intercepta el inicio de la navegación si detecta un pedido `Completado` sin calificar, bloqueando la app con un overlay dinámico hasta registrar las estrellas y etiquetas del servicio.
 
 ---

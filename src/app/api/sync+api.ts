@@ -93,6 +93,7 @@ export async function POST(request: Request) {
             descripcionProveedor: localUser.descripcionProveedor || null,
             coberturaB2B: localUser.coberturaB2B || null,
             monedas: localUser.monedas ?? 24,
+            planId: localUser.planId || null,
             kycVerificado: localUser.kycVerificado || false,
             kycDetalles: localUser.kycDetalles || null,
           });
