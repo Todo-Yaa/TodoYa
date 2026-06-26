@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { userId, monedas, detalle } = body;
 
-    if (!userId || !monedas) {
+    if (userId === undefined || userId === null || monedas === undefined || monedas === null) {
       return Response.json({ error: 'Se requiere userId y cantidad de monedas' }, { status: 400 });
     }
 
