@@ -224,31 +224,101 @@ export default function SolicitarScreen() {
   // Voice input (Speech-to-Text) states
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [voicePulse, setVoicePulse] = useState(1);
+  const [voiceErrorMsg, setVoiceErrorMsg] = useState('');
 
-  // Simulación de grabación de voz
+  // Captura y reconocimiento real de voz (Speech-to-Text)
   const iniciarGrabacionVoz = () => {
-    setShowVoiceModal(true);
-    setVoicePulse(1);
+    const SpeechRecognition = typeof window !== 'undefined' 
+      ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) 
+      : null;
 
-    // Efecto de animación de ondas de sonido pulsantes
-    const pulseInterval = setInterval(() => {
-      setVoicePulse(p => (p === 1 ? 1.3 : 1));
-    }, 600);
+    if (!SpeechRecognition) {
+      console.warn('[Speech] Web Speech API no soportada. Usando simulación...');
+      setShowVoiceModal(true);
+      setVoicePulse(1);
+      setVoiceErrorMsg('Reconocimiento no soportado. Simulando...');
 
-    setTimeout(() => {
-      clearInterval(pulseInterval);
-      setShowVoiceModal(false);
-      
-      const textoTranscrito = isBusiness
-        ? "Requerimos 20 resmas de papel bond tamaño carta, carpetas membretadas y bolígrafos para uso corporativo urgente."
-        : "Hola, necesito instalar un aire acondicionado split de 12000 BTU en mi dormitorio lo antes posible.";
-      
-      setInputText(textoTranscrito);
-      
+      const pulseInterval = setInterval(() => {
+        setVoicePulse(p => (p === 1 ? 1.3 : 1));
+      }, 600);
+
       setTimeout(() => {
-        processNLP(textoTranscrito);
-      }, 500);
-    }, 2800);
+        clearInterval(pulseInterval);
+        setShowVoiceModal(false);
+        setVoiceErrorMsg('');
+        
+        const textoTranscrito = isBusiness
+          ? "Requerimos 20 resmas de papel bond tamaño carta, carpetas membretadas y bolígrafos para uso corporativo urgente."
+          : "Hola, necesito instalar un aire acondicionado split de 12000 BTU en mi dormitorio lo antes posible.";
+        
+        setInputText(textoTranscrito);
+        setTimeout(() => {
+          processNLP(textoTranscrito);
+        }, 500);
+      }, 3000);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'es-BO'; // Español (Bolivia/Latinoamérica)
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      setShowVoiceModal(true);
+      setVoicePulse(1);
+      setVoiceErrorMsg('Escuchando tu voz... (Permite el acceso al micrófono)');
+
+      const pulseInterval = setInterval(() => {
+        setVoicePulse(p => (p === 1 ? 1.3 : 1));
+      }, 600);
+
+      recognition.onstart = () => {
+        setVoiceErrorMsg('Te escuchamos, describe tu necesidad...');
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInputText(transcript);
+          setTimeout(() => {
+            processNLP(transcript);
+          }, 600);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('[Speech] Error de voz:', event.error);
+        if (event.error === 'not-allowed') {
+          setVoiceErrorMsg('Permiso de micrófono denegado');
+        } else {
+          setVoiceErrorMsg(`Error: ${event.error}`);
+        }
+        
+        // Simulación en caso de error/denegado para no congelar el flujo
+        setTimeout(() => {
+          const fallbackText = isBusiness
+            ? "Requerimos 20 resmas de papel bond tamaño carta, carpetas membretadas y bolígrafos para uso corporativo urgente."
+            : "Hola, necesito instalar un aire acondicionado split de 12000 BTU en mi dormitorio lo antes posible.";
+          setInputText(fallbackText);
+          processNLP(fallbackText);
+        }, 1500);
+      };
+
+      recognition.onend = () => {
+        clearInterval(pulseInterval);
+        setTimeout(() => {
+          setShowVoiceModal(false);
+          setVoiceErrorMsg('');
+        }, 1000);
+      };
+
+      recognition.start();
+
+    } catch (err: any) {
+      console.error('[Speech] Error al iniciar:', err);
+      setShowVoiceModal(false);
+    }
   };
 
   useEffect(() => {
@@ -1026,9 +1096,9 @@ export default function SolicitarScreen() {
 
             <Text style={styles.voiceTitle}>Escuchando...</Text>
             <Text style={styles.voiceSubtitle}>
-              {isBusiness 
+              {voiceErrorMsg || (isBusiness 
                 ? "Describe los insumos o servicios que requiere tu empresa..." 
-                : "Describe el problema o servicio técnico que necesitas en casa..."}
+                : "Describe el problema o servicio técnico que necesitas en casa...")}
             </Text>
 
             <View style={styles.voiceWaveContainer}>
