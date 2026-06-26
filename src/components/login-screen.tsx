@@ -398,7 +398,7 @@ export default function LoginScreen() {
             style={styles.logoImage}
             contentFit="contain"
           />
-          <Text style={styles.tagline}>Servicios locales en minutos</Text>
+          <Text style={styles.tagline}>¿Tienes problemas? Ten ¡Todo Ya!</Text>
         </View>
 
         {/* Tarjeta de Formulario de Entrada */}

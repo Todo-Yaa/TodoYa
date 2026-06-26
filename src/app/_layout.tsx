@@ -284,12 +284,13 @@ function CustomSplashScreen() {
         </Text>
         <Text style={{
           color: '#aaaaaa',
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: 11,
+          fontWeight: '600',
           marginTop: 8,
-          letterSpacing: 2,
+          letterSpacing: 1,
+          textAlign: 'center',
         }}>
-          SERVICIOS LOCALES EN MINUTOS
+          Y si pudieras resolverlo todo... YA?
         </Text>
       </Animated.View>
     </Animated.View>

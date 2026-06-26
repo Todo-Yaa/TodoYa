@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Animated, Image } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
@@ -666,13 +667,13 @@ export default function SolicitarScreen() {
               }}
             >
               <Image 
-                source={require('../../assets/images/icon.png')} 
+                source={require('@/assets/images/icon.png')} 
                 style={{
                   width: 120,
                   height: 120,
                   borderRadius: 28,
                 }}
-                resizeMode="contain"
+                contentFit="contain"
               />
             </Animated.View>
           </View>
