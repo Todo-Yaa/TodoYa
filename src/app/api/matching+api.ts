@@ -67,6 +67,9 @@ Corrige cualquier error gramatical, ortográfico o de tipeo en la descripción (
 Clasifica el servicio en una de las siguientes categorías válidas EXACTAS:
 ${Object.keys(CATEGORIAS_BASE).map(c => `- "${c}"`).join('\n')}
 
+Nota de clasificación especial:
+- Los servicios de vidriería, vidriero, instalación/reparación de vidrios, ventanas de vidrio y blindex se deben clasificar bajo "Branding & Lettering" (ya que en este sistema esa categoría cubre la fachada comercial y vidrios).
+
 Determina la urgencia del servicio como "Normal" o "Alta" según la gravedad o palabras clave de urgencia descritas.
 
 Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (no envíes Markdown block, solo el objeto JSON como texto plano):
