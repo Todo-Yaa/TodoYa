@@ -66,8 +66,12 @@ export default function LeadsScreen() {
       o.servicio === 'Papelería & Oficina' || 
       o.servicio === 'Servicios B2B';
       
-    // Todas las categorías están disponibles para ambos tipos de proveedores
-    return true;
+    // Los proveedores naturales solo ven residencial, los proveedores empresa solo ven B2B
+    if (currentEntidad === 'natural') {
+      return !isOrderB2B;
+    } else {
+      return isOrderB2B;
+    }
   });
 
   // Custom modal state
@@ -80,7 +84,27 @@ export default function LeadsScreen() {
   });
 
   const handleApply = (leadId: number, cost: number, title: string, isB2BOrder: boolean) => {
-    // No hay restricciones de categorías o planes para postularse
+    // Validar exclusividad de entidad para la postulación
+    if (currentEntidad === 'natural' && isB2BOrder) {
+      setConfirmConfig({
+        title: '⚠️ Exclusividad B2B',
+        message: 'Esta es una solicitud corporativa. Las solicitudes B2B son exclusivas para proveedores registrados como Empresa.',
+        singleButton: true,
+        onConfirm: () => {}
+      });
+      setShowConfirmModal(true);
+      return;
+    }
+    if (currentEntidad === 'empresa' && !isB2BOrder) {
+      setConfirmConfig({
+        title: '⚠️ Exclusividad Residencial',
+        message: 'Esta es una solicitud residencial. Las solicitudes residenciales son exclusivas para proveedores individuales (Natural).',
+        singleButton: true,
+        onConfirm: () => {}
+      });
+      setShowConfirmModal(true);
+      return;
+    }
 
     setConfirmConfig({
       title: 'Confirmar Postulación',
