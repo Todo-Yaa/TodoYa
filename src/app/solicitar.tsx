@@ -198,6 +198,29 @@ export default function SolicitarScreen() {
     outputRange: [0.6, 0.4, 0]
   });
 
+  // Animación de rotación del rayito (loading)
+  const rotateAnim = useState(new Animated.Value(0))[0];
+
+  useEffect(() => {
+    if (loading) {
+      rotateAnim.setValue(0);
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: false,
+        })
+      ).start();
+    } else {
+      rotateAnim.setValue(0);
+    }
+  }, [loading]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg']
+  });
+
   // Voice input (Speech-to-Text) states
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [voicePulse, setVoicePulse] = useState(1);
@@ -250,11 +273,22 @@ export default function SolicitarScreen() {
     }
 
     setLoading(true);
-    setLoadingText('Analizando descripción con IA...');
+    setLoadingText('La IA te está ayudando a reconocer...');
 
     try {
       // 1. Llamar al servicio de emparejamiento inteligente (intenta API online -> fallback local offline)
-      const res = await matchProviders(targetText, -17.784, -63.180);
+      const apiCallPromise = matchProviders(targetText, -17.784, -63.180);
+      
+      // Simular las fases del texto cargador para una UX espectacular
+      // Fase 1 dura 1.5s
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setLoadingText('La IA te aconseja que...');
+      
+      // Fase 2 dura 1.5s
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const res = await apiCallPromise;
       
       const cat = res.nlpAnalysis.categoriaDetectada;
       const urg = res.nlpAnalysis.urgenciaDetectada;
@@ -563,8 +597,10 @@ export default function SolicitarScreen() {
             {/* Botón de análisis / Estado cargando */}
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={isBusiness ? '#818cf8' : '#FFB400'} />
-                <Text style={styles.loadingText}>{loadingText}</Text>
+                <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                  <Ionicons name="flash" size={42} color={isBusiness ? '#818cf8' : '#FFB400'} />
+                </Animated.View>
+                <Text style={[styles.loadingText, { marginTop: 10, textAlign: 'center' }]}>{loadingText}</Text>
               </View>
             ) : (
               <TouchableOpacity 
@@ -572,8 +608,8 @@ export default function SolicitarScreen() {
                 onPress={() => processNLP()}
                 activeOpacity={0.7}
               >
-                <Ionicons name="send" size={22} color={isBusiness ? '#fff' : '#FFB400'} />
-                <Text style={[styles.sendButtonText, isBusiness && { color: '#fff' }]}>{t('solicitud.analyze_btn')}</Text>
+                <Ionicons name="sparkles" size={20} color={isBusiness ? '#fff' : '#FFB400'} />
+                <Text style={[styles.sendButtonText, isBusiness && { color: '#fff' }]}>Analizar</Text>
               </TouchableOpacity>
             )}
 
