@@ -410,7 +410,8 @@ export default function PerfilScreen() {
                       'Papelería & Oficina',
                       'Decoración & Eventos',
                       'Branding & Lettering',
-                      'Servicios B2B'
+                      'Servicios B2B',
+                      'Albañilería & Construcción'
                     ].map((serv) => {
                       const selected = serviciosSeleccionados.includes(serv);
                       return (

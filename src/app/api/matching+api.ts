@@ -17,6 +17,7 @@ const PROVEEDORES_MOCK = [
   { id: 'p10', nombre: 'Elena Paz', especialidad: 'Sastrería', rating: 4.8, experiencia: 12, lat: -17.781, lng: -63.189, descripcion: 'Arreglos de costura, entalles, confección a medida y bastas.' },
   { id: 'p11', nombre: 'Pensionado Doña Flor', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 5, lat: -17.781, lng: -63.189, descripcion: 'Almuerzos completos y viandas a domicilio.' },
   { id: 'p12', nombre: 'Pensionado El Buen Sabor', especialidad: 'Viandas y Pensiones', rating: 4.8, experiencia: 3, lat: -17.785, lng: -63.169, descripcion: 'Comida criolla y pensiones ejecutivas.' },
+  { id: 'p13', nombre: 'José Mamani', especialidad: 'Albañilería & Construcción', rating: 4.9, experiencia: 15, lat: -17.785, lng: -63.180, descripcion: 'Colocación de cerámica, revoques, construcción y refacciones en general.' },
 ];
 
 // Diccionarios de palabras clave para "Todas las Probabilidades" (Sistema de Puntaje)
@@ -34,7 +35,8 @@ const CATEGORIAS_BASE: Record<string, string[]> = {
   'Papelería & Oficina': ['papel', 'resma', 'oficina', 'boligrafo', 'carpeta', 'escritorio', 'impresion', 'impresora', 'tinta', 'toner', 'lapiz', 'cuaderno', 'archivo', 'fotocopia'],
   'Branding & Lettering': ['letrero', 'banner', 'diseño', 'logo', 'vinilo', 'grafica', 'corporeo', 'rotulado', 'marca', 'identidad', 'letras', 'iluminado', 'fachada', 'vidriera', 'vidriero', 'vidrio', 'vidrios', 'blindex'],
   'Decoración & Eventos': ['decoracion', 'evento', 'globo', 'fiesta', 'aniversario', 'cumpleaños', 'arreglo', 'flores', 'ambientacion', 'salon', 'sillas', 'mesas', 'catering'],
-  'Servicios B2B': ['limpieza', 'mantenimiento', 'empresa', 'corporativo', 'guardia', 'seguridad', 'consultoria', 'asesoria', 'contable', 'fiscal', 'legal']
+  'Servicios B2B': ['limpieza', 'mantenimiento', 'empresa', 'corporativo', 'guardia', 'seguridad', 'consultoria', 'asesoria', 'contable', 'fiscal', 'legal'],
+  'Albañilería & Construcción': ['albañil', 'albañileria', 'albañilería', 'cemento', 'ladrillo', 'ceramica', 'cerámica', 'piso', 'pared', 'columna', 'revoque', 'construccion', 'construcción', 'obra', 'losa', 'mezcla', 'azulejo', 'baldosa', 'contrapiso']
 };
 
 export async function POST(request: Request) {
@@ -82,6 +84,7 @@ Nota de clasificación especial y guías por categoría:
 - "Branding & Lettering": Letreros luminosos, banners, diseño gráfico, logos, vinilos, rotulación, fachada comercial, vidriería, vidriero, vidrios comerciales, blindex.
 - "Decoración & Eventos": Decoración de eventos, globos, flores, arreglos para fiestas/aniversarios/cumpleaños, ambientación de salas.
 - "Servicios B2B": Limpieza corporativa de oficinas, consultoría empresarial, contabilidad, seguridad física, mantenimiento general de instalaciones comerciales.
+- "Albañilería & Construcción": Trabajos de albañilería/albañil, colocación de cerámica, baldosas o azulejos, mezcla de cemento, reparación de pisos/contrapisos, revoque de paredes, levantar muros de ladrillo, columnas, losas y obras de construcción en general.
 
 Determina la urgencia del servicio como "Normal" o "Alta" según la gravedad o palabras clave de urgencia descritas.
 
@@ -279,6 +282,7 @@ Descripción del servicio: "${descripcion}"`;
     if (categoria === 'Técnico de laptop-celulares') precioSugerido = '80 Bs. - 250 Bs. (más repuestos)';
     if (categoria === 'Sastrería') precioSugerido = '40 Bs. - 100 Bs. (según prenda)';
     if (categoria === 'Viandas y Pensiones') precioSugerido = '20 Bs. - 35 Bs. (por vianda/plato)';
+    if (categoria === 'Albañilería & Construcción') precioSugerido = '150 Bs. - 500 Bs. (según trabajo/m²)';
 
     return Response.json({
       success: true,
