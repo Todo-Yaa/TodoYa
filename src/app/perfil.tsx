@@ -407,9 +407,9 @@ export default function PerfilScreen() {
                       'Carpintero',
                       'Técnico de laptop-celulares',
                       'Sastrería',
-                      'Papelería',
-                      'Decoración',
-                      'Branding',
+                      'Papelería & Oficina',
+                      'Decoración & Eventos',
+                      'Branding & Lettering',
                       'Servicios B2B'
                     ].map((serv) => {
                       const selected = serviciosSeleccionados.includes(serv);

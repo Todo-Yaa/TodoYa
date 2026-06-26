@@ -66,23 +66,8 @@ export default function LeadsScreen() {
       o.servicio === 'Papelería & Oficina' || 
       o.servicio === 'Servicios B2B';
       
-    if (currentEntidad === 'natural') {
-      if (userPlan === 'provider_1') {
-        // Plan 1 solo ve residenciales
-        return !isOrderB2B;
-      } else {
-        // Plan 2 y 3 ven residenciales y corporativos
-        return true;
-      }
-    } else {
-      if (userPlan === 'business_1') {
-        // Plan Empresa 1 solo ve corporativos
-        return isOrderB2B;
-      } else {
-        // Plan Empresa 2 y 3 ven residenciales y corporativos
-        return true;
-      }
-    }
+    // Todas las categorías están disponibles para ambos tipos de proveedores
+    return true;
   });
 
   // Custom modal state
@@ -95,78 +80,7 @@ export default function LeadsScreen() {
   });
 
   const handleApply = (leadId: number, cost: number, title: string, isB2BOrder: boolean) => {
-    // Reglas de negocio para Proveedor Natural
-    if (currentEntidad === 'natural') {
-      if (isB2BOrder && userPlan === 'provider_1') {
-        setConfirmConfig({
-          title: '⚠️ Plan Restringido',
-          message: 'Tu Plan 1 Residencial no permite acceder a solicitudes de empresas. ¿Deseas ver los planes de suscripción para actualizar tu plan?',
-          singleButton: false,
-          onConfirm: () => {
-            setPaymentStep('packages');
-            setSelectedPlan(null);
-            setQrData(null);
-            setPaymentError('');
-            setShowPaymentModal(true);
-          }
-        });
-        setShowConfirmModal(true);
-        return;
-      }
-
-      if (isB2BOrder && userPlan === 'provider_2') {
-        const now = new Date();
-        const b2bCountThisMonth = orders.filter(o => {
-          if (o.proveedor !== providerName) return false;
-          const isB2B = 
-            o.servicio === 'Decoración & Eventos' || 
-            o.servicio === 'Branding & Lettering' || 
-            o.servicio === 'Papelería & Oficina' || 
-            o.servicio === 'Servicios B2B';
-          if (!isB2B) return false;
-          if (!o.acceptedAt) return false;
-          const accDate = new Date(o.acceptedAt);
-          return accDate.getMonth() === now.getMonth() && accDate.getFullYear() === now.getFullYear();
-        }).length;
-
-        if (b2bCountThisMonth >= 3) {
-          setConfirmConfig({
-            title: '⚠️ Límite Excedido',
-            message: 'Has alcanzado el límite mensual de 3 solicitudes de empresas con tu Plan 2. ¿Deseas actualizar a Plan 3 para acceso ilimitado?',
-            singleButton: false,
-            onConfirm: () => {
-              setPaymentStep('packages');
-              setSelectedPlan(null);
-              setQrData(null);
-              setPaymentError('');
-              setShowPaymentModal(true);
-            }
-          });
-          setShowConfirmModal(true);
-          return;
-        }
-      }
-    }
-
-    // Reglas de negocio para Proveedor Empresa (B2B)
-    if (currentEntidad === 'empresa') {
-      if (!isB2BOrder && userPlan === 'business_1') {
-        setConfirmConfig({
-          title: '⚠️ Plan Restringido',
-          message: 'El Plan Empresa 1 Básico solo permite solicitudes de empresas. ¿Deseas ver planes de suscripción para recibir solicitudes residenciales de personas naturales?',
-          singleButton: false,
-          onConfirm: () => {
-            setPaymentStep('packages');
-            setSelectedPlan(null);
-            setQrData(null);
-            setPaymentError('');
-            setShowPaymentModal(true);
-          }
-        });
-        setShowConfirmModal(true);
-        return;
-      }
-    }
+    // No hay restricciones de categorías o planes para postularse
 
     setConfirmConfig({
       title: 'Confirmar Postulación',

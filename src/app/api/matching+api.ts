@@ -67,8 +67,21 @@ Corrige cualquier error gramatical, ortográfico o de tipeo en la descripción (
 Clasifica el servicio en una de las siguientes categorías válidas EXACTAS:
 ${Object.keys(CATEGORIAS_BASE).map(c => `- "${c}"`).join('\n')}
 
-Nota de clasificación especial:
-- Los servicios de vidriería, vidriero, instalación/reparación de vidrios, ventanas de vidrio y blindex se deben clasificar bajo "Branding & Lettering" (ya que en este sistema esa categoría cubre la fachada comercial y vidrios).
+Nota de clasificación especial y guías por categoría:
+- "Plomería": Fugas de agua, goteras, tuberías, cañerías, grifos, inodoros, lavaplatos, desatoro de drenajes, bombas de agua, filtraciones, sanitarios.
+- "Electricidad": Cortocircuitos, enchufes, interruptores, cableado, térmicas, tableros eléctricos, apagones, bombillas/focos, chispas, instalaciones eléctricas.
+- "Pintura": Pintado de interiores/exteriores, paredes, techos, fachadas, rodillos, brochas, humedad en paredes, empapelado, látex, barniz.
+- "Climatización": Aire acondicionado, calefacción, ventilación, mantenimiento de splits, recarga de gas, limpieza de filtros.
+- "Mecánico": Reparación de automóviles/motos, motores, frenos, cambio de aceite, llantas, batería de vehículo, remolques.
+- "Viandas y Pensiones": Comida a domicilio, viandas diarias, almuerzos, cenas, cáterin corporativo, platos preparados, pensionados.
+- "Cerrajero": Apertura de puertas, duplicados de llaves, cambio de cerraduras, chapas trabadas, cerrajería de emergencia.
+- "Carpintero": Muebles de madera, sillas, mesas, puertas de madera, estantes, cajones, lijado, barnizado, restauración de madera.
+- "Técnico de laptop-celulares": Reparación de computadoras, laptops, celulares, tablets, pantallas rotas, cambio de batería, formateo de software.
+- "Sastrería": Arreglos de ropa, bastas, entallados, cierres, botones, confección a medida de prendas.
+- "Papelería & Oficina": Suministros de oficina, papel resma, carpetas, tóners/tintas de impresora, fotocopias, impresiones.
+- "Branding & Lettering": Letreros luminosos, banners, diseño gráfico, logos, vinilos, rotulación, fachada comercial, vidriería, vidriero, vidrios comerciales, blindex.
+- "Decoración & Eventos": Decoración de eventos, globos, flores, arreglos para fiestas/aniversarios/cumpleaños, ambientación de salas.
+- "Servicios B2B": Limpieza corporativa de oficinas, consultoría empresarial, contabilidad, seguridad física, mantenimiento general de instalaciones comerciales.
 
 Determina la urgencia del servicio como "Normal" o "Alta" según la gravedad o palabras clave de urgencia descritas.
 
@@ -206,6 +219,9 @@ Descripción del servicio: "${descripcion}"`;
             id: String(p.id),
             nombre: p.nombre,
             especialidad: especialidad,
+            serviciosOfrecidos: p.serviciosOfrecidos,
+            ofreceB2B: p.ofreceB2B,
+            rubro: p.rubro,
             rating: 4.8, // En una versión futura se sacaría del promedio de calificacionEstrellas
             experiencia: expAnos,
             lat: -17.780 + (Math.random() * 0.02 - 0.01), // Coordenada simulada en radio de SCZ
@@ -222,7 +238,14 @@ Descripción del servicio: "${descripcion}"`;
       }
     }
 
-    const proveedoresFiltrados = proveedoresFuente.filter(p => p.especialidad === categoria);
+    const proveedoresFiltrados = proveedoresFuente.filter(p => {
+      // 1. Si el proveedor tiene serviciosOfrecidos como un array con elementos, verificar si contiene la categoría solicitada
+      if (p.serviciosOfrecidos && Array.isArray(p.serviciosOfrecidos) && p.serviciosOfrecidos.length > 0) {
+        return p.serviciosOfrecidos.includes(categoria);
+      }
+      // 2. Si no, verificar si su especialidad o rubro coincide con la categoría
+      return p.especialidad === categoria || (p.ofreceB2B && p.rubro === categoria);
+    });
     
     const proveedoresConScore = proveedoresFiltrados.map(p => {
       const distancia = calcularDistancia(latCliente, lngCliente, p.lat, p.lng);
