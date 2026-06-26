@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Animated, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
@@ -127,6 +127,77 @@ export default function SolicitarScreen() {
   };
   const currentRadius = contador > 15 ? 1.5 : (contador > 5 ? 3.0 : 5.0);
   const activeCandidates = candidatos.filter(c => parseDistance(c.distance) <= currentRadius);
+
+  // Animaciones para la pantalla de escaneo real-time
+  const scaleAnim = useState(new Animated.Value(1))[0];
+  const radarAnim = useState(new Animated.Value(0))[0];
+  const bgAnim = useState(new Animated.Value(0))[0];
+
+  useEffect(() => {
+    if (faseBusqueda === 'scanning') {
+      scaleAnim.setValue(1);
+      radarAnim.setValue(0);
+      bgAnim.setValue(0);
+
+      // Animación 1: Escala del logo (latido continuo)
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.12,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1.0,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+        ])
+      ).start();
+
+      // Animación 2: Onda de radar externa (expansión y desvanecimiento continuo)
+      Animated.loop(
+        Animated.timing(radarAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: false,
+        })
+      ).start();
+
+      // Animación 3: Pulsación del fondo de color
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(bgAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: false,
+          }),
+          Animated.timing(bgAnim, {
+            toValue: 0,
+            duration: 1500,
+            useNativeDriver: false,
+          }),
+        ])
+      ).start();
+    }
+  }, [faseBusqueda]);
+
+  const interpolatedBg = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: isBusiness 
+      ? ['#1e293b', '#312e81'] 
+      : ['#fffbeb', '#fef3c7']
+  });
+
+  const radarScale = radarAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.8, 1.8]
+  });
+
+  const radarOpacity = radarAnim.interpolate({
+    inputRange: [0, 0.8, 1],
+    outputRange: [0.6, 0.4, 0]
+  });
 
   // Voice input (Speech-to-Text) states
   const [showVoiceModal, setShowVoiceModal] = useState(false);
@@ -298,7 +369,7 @@ export default function SolicitarScreen() {
         });
       }, 1000);
       setTimerIntervalId(interval);
-    }, 2000);
+    }, 3000);
   };
 
   /**
@@ -560,17 +631,67 @@ export default function SolicitarScreen() {
       )}
 
       {faseBusqueda === 'scanning' && (
-        <View style={styles.scanningContainer}>
-          <Ionicons name="sparkles" size={54} color={isBusiness ? '#6366f1' : '#FFB400'} style={{ marginBottom: 20 }} />
-          <ActivityIndicator size="large" color={isBusiness ? '#6366f1' : '#FFB400'} />
-          <Text style={styles.scanningTitle}>{t('solicitud.scanning_title')}</Text>
-          <Text style={styles.scanningSubtitle}>
+        <Animated.View style={[
+          styles.scanningContainer,
+          { backgroundColor: interpolatedBg }
+        ]}>
+          <View style={{ height: 220, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+            {/* Onda de Radar Externa Animada (Se expande y desvanece) */}
+            <Animated.View style={[
+              styles.radarOuterCircle,
+              isBusiness 
+                ? { backgroundColor: 'rgba(99, 102, 241, 0.05)', borderColor: 'rgba(99, 102, 241, 0.4)' }
+                : { backgroundColor: 'rgba(255, 180, 0, 0.05)', borderColor: 'rgba(255, 180, 0, 0.4)' },
+              {
+                transform: [{ scale: radarScale }],
+                opacity: radarOpacity,
+                position: 'absolute',
+                width: 180,
+                height: 180,
+                borderRadius: 90,
+                marginTop: 0,
+              }
+            ]} />
+            
+            {/* Logo de la App Animado (Pulsante en el centro) */}
+            <Animated.View 
+              style={{
+                transform: [{ scale: scaleAnim }],
+                shadowColor: isBusiness ? '#6366f1' : '#FFB400',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.35,
+                shadowRadius: 16,
+                elevation: 5,
+                zIndex: 2,
+              }}
+            >
+              <Image 
+                source={require('../../assets/images/icon.png')} 
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 28,
+                }}
+                resizeMode="contain"
+              />
+            </Animated.View>
+          </View>
+
+          <ActivityIndicator size="large" color={isBusiness ? '#818cf8' : '#FFB400'} style={{ marginBottom: 24 }} />
+          
+          <Text style={[
+            styles.scanningTitle, 
+            isBusiness ? { color: '#ffffff' } : { color: '#2F2F2F' }
+          ]}>
+            {t('solicitud.scanning_title')}
+          </Text>
+          <Text style={[
+            styles.scanningSubtitle, 
+            isBusiness ? { color: '#94a3b8' } : { color: '#666666' }
+          ]}>
             {t('solicitud.scanning_subtitle', { servicio })}
           </Text>
-          <View style={[styles.radarOuterCircle, isBusiness && { backgroundColor: 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.3)' }]}>
-            <View style={[styles.radarInnerCircle, isBusiness && { backgroundColor: 'rgba(99, 102, 241, 0.15)', borderColor: '#6366f1' }]} />
-          </View>
-        </View>
+        </Animated.View>
       )}
 
       {faseBusqueda === 'offers' && (
