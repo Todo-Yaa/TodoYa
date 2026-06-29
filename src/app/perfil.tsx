@@ -18,7 +18,7 @@ import Storage from '../utils/storage';
  */
 export default function PerfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, logout, userName, userRole, setRole, activeUser, configurarProveedor } = useUser();
+  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor } = useUser();
   const isBusiness = userRole === 'business';
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
@@ -84,6 +84,18 @@ export default function PerfilScreen() {
       onConfirm: () => {
         logout();
         router.replace('/'); // Vuelve a la raíz (donde se activará el Auth Guard)
+      }
+    });
+    setShowConfirmModal(true);
+  };
+
+  const handleDeleteAccount = () => {
+    setConfirmConfig({
+      title: '⚠️ ¿Eliminar tu Cuenta?',
+      message: '¿Estás completamente seguro? Esta acción es definitiva y borrará permanentemente todos tus datos, historial de pedidos y saldo acumulado de forma irreversible.',
+      onConfirm: async () => {
+        await deleteAccount();
+        router.replace('/');
       }
     });
     setShowConfirmModal(true);
@@ -303,12 +315,21 @@ export default function PerfilScreen() {
           </View>
 
           <TouchableOpacity 
-            style={[styles.accountRow, { borderBottomWidth: 0 }]}
+            style={[styles.accountRow, { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}
             onPress={handleLogout}
             activeOpacity={0.7}
           >
             <Ionicons name="log-out-outline" size={24} color="#e53935" />
             <Text style={[styles.accountText, { color: '#e53935' }]}>{t('profile.logout')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.accountRow, { borderBottomWidth: 0 }]}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={24} color="#dc2626" />
+            <Text style={[styles.accountText, { color: '#dc2626', fontWeight: '600' }]}>Eliminar Cuenta</Text>
           </TouchableOpacity>
         </View>
 

@@ -17,7 +17,7 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
  */
 export default function PperfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser } = useUser();
+  const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser, deleteAccount } = useUser();
 
   // Controladores del modal de confirmación personalizado
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -48,6 +48,19 @@ export default function PperfilScreen() {
       onConfirm: () => {
         logout();
         router.replace('/'); // Redirige a raíz para forzar el Login
+      }
+    });
+    setShowConfirmModal(true);
+  };
+
+  const handleDeleteAccount = () => {
+    setConfirmConfig({
+      title: '⚠️ ¿Eliminar tu Cuenta?',
+      message: '¿Estás completamente seguro? Esta acción es definitiva y borrará permanentemente todos tus datos, historial de trabajos y saldo acumulado de forma irreversible.',
+      singleButton: false,
+      onConfirm: async () => {
+        await deleteAccount();
+        router.replace('/');
       }
     });
     setShowConfirmModal(true);
@@ -320,11 +333,22 @@ export default function PperfilScreen() {
           </View>
         </View>
 
-        {/* Botón de Cierre de Sesión */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
-          <Ionicons name="log-out-outline" size={22} color="#e53935" />
-          <Text style={styles.logoutText}>{t('profile.logout')}</Text>
-        </TouchableOpacity>
+        {/* Botones de Cuenta */}
+        <View style={{ gap: 4, marginBottom: 30 }}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={22} color="#e53935" />
+            <Text style={styles.logoutText}>{t('profile.logout')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.logoutBtn, { marginTop: 10, borderColor: '#dc2626', backgroundColor: '#fef2f2', borderWidth: 1, borderRadius: 12 }]} 
+            onPress={handleDeleteAccount} 
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={22} color="#dc2626" />
+            <Text style={[styles.logoutText, { color: '#dc2626', fontWeight: '600' }]}>Eliminar Cuenta</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* Modal personalizado con bordes y botón de confirmación adaptado al tipo de proveedor */}

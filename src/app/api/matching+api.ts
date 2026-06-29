@@ -51,6 +51,8 @@ export async function POST(request: Request) {
     console.log(`[Matching API] Iniciando análisis para: "${descripcion}"`);
 
     let categoria = 'Plomería'; // Default fallback
+    let subservicio = 'Servicio general';
+    let prediagnostico = 'Requiere inspección física';
     let urgencia: 'Normal' | 'Alta' = 'Normal';
     let descripcionCorregida = descripcion;
 
@@ -60,6 +62,8 @@ export async function POST(request: Request) {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
     let tieneSentidoDetectadoPorIA = true;
     let categoriaDetectadaPorIA: string | null = null;
+    let subservicioDetectadoPorIA: string | null = null;
+    let prediagnosticoDetectadoPorIA: string | null = null;
     let urgenciaDetectadaPorIA: 'Normal' | 'Alta' | null = null;
     let descripcionCorregidaPorIA: string | null = null;
 
@@ -109,10 +113,12 @@ Nota de clasificación especial y guías por categoría:
 - "Albañilería & Construcción": Trabajos de albañilería/albañil, colocación de cerámica, baldosas o azulejos, mezcla de cemento, reparación de pisos/contrapisos, revoque de paredes, levantar muros de ladrillo, columnas, losas y obras de construcción en general.
 
 - Determina la urgencia del servicio como "Normal" o "Alta" según la gravedad o palabras clave de urgencia descritas.
+- Detecta con granularidad el subservicio exacto requerido (por ejemplo: "Instalación de grifo", "Reparación de cortocircuito", "Mantenimiento preventivo de aire split", "Reparación de pantalla iPhone", etc.).
+- Elabora un pre-diagnóstico técnico preliminar y automatizado muy corto sobre la causa probable o solución recomendada en base a la descripción provista (por ejemplo: "Posible desgaste del empaque o daño en la rosca", "Sobrecarga del interruptor termomagnético secundario", "Filtros obstruidos por polvo o falta de gas refrigerante", "Fisura en panel LCD táctil externo", etc.).
 
 Si la descripción NO tiene sentido, es incoherente o spam:
 - Establece "tieneSentido" como false.
-- Los campos "categoria", "urgencia" y "descripcionCorregida" deben ser null.
+- Los campos "categoria", "subservicio", "prediagnostico", "urgencia" y "descripcionCorregida" deben ser null.
 
 Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (no envíes Markdown block, solo el objeto JSON como texto plano):
 {
@@ -152,6 +158,8 @@ Descripción del servicio: "${descripcion}"`;
           if (parsed && typeof parsed === 'object') {
             tieneSentidoDetectadoPorIA = parsed.tieneSentido !== false;
             categoriaDetectadaPorIA = parsed.categoria;
+            subservicioDetectadoPorIA = parsed.subservicio;
+            prediagnosticoDetectadoPorIA = parsed.prediagnostico;
             urgenciaDetectadaPorIA = (parsed.urgencia === 'Alta' || parsed.urgencia === 'Normal') ? parsed.urgencia : 'Normal';
             descripcionCorregidaPorIA = parsed.descripcionCorregida;
           }
@@ -182,6 +190,8 @@ Descripción del servicio: "${descripcion}"`;
       );
       if (exactCategory) {
         categoria = exactCategory;
+        subservicio = subservicioDetectadoPorIA || 'Servicio general';
+        prediagnostico = prediagnosticoDetectadoPorIA || 'Requiere inspección física';
         urgencia = urgenciaDetectadaPorIA || 'Normal';
         descripcionCorregida = descripcionCorregidaPorIA || descripcion;
         iaMatchSuccessful = true;
@@ -333,6 +343,8 @@ Descripción del servicio: "${descripcion}"`;
       success: true,
       nlpAnalysis: {
         categoriaDetectada: categoria,
+        subservicioDetectado: subservicio,
+        prediagnosticoDetectado: prediagnostico,
         urgenciaDetectada: urgencia,
         correctedDescription: descripcionCorregida,
         confianza: 0.95,

@@ -60,10 +60,14 @@ Todo_ya-/
   * Pestañas en la base de la aplicación (`Tabs`) gestionadas mediante `src/app/_layout.tsx`.
   * Pantallas principales dinámicas según el rol del usuario logueado en la sesión.
 
-### B. Gestión de Estado Global (State Management)
+### B. Gestión de Estado Global y Persistencia Híbrida
 * **Tecnología**: React Context API (`src/context/user-context.tsx`).
-* **Persistencia**: AsyncStorage simulado (`src/utils/storage.ts`) para persistir de manera local la sesión del usuario, plan de suscripción activa (`planId`), perfiles y pedidos.
-* **Integración en la Nube**: Persistencia remota en la base de datos a través de llamadas a `src/app/api/users+api.ts`.
+* **Persistencia Multiplataforma**: Adaptador adaptativo `src/utils/storage.ts` que selecciona el motor de almacenamiento según el tipo de dato y la plataforma:
+  * **Web**: Usa `localStorage` para almacenamiento persistente del navegador.
+  * **Móvil Nativo (iOS/Android)**: 
+    * **Datos Sensibles** (sesión, credenciales, plan de suscripción, monedas): Almacenados encriptados con `expo-secure-store` en el llavero de seguridad nativo del dispositivo.
+    * **Datos Generales** (pedidos, notificaciones): Almacenados usando `@react-native-async-storage/async-storage` para soportar colecciones grandes sin exceder el límite de claves de la bóveda del sistema.
+* **Integración en la Nube**: Persistencia remota en Neon.db (PostgreSQL) a través de llamadas a `src/app/api/users+api.ts`.
 
 ### C. Hibridación de Mapas (Web & Nativo)
 * **Componente**: `src/components/map-view.tsx`.
@@ -71,6 +75,44 @@ Todo_ya-/
 
 ### D. Internacionalización Multicultural (i18n)
 * **Idiomas Nativos Bolivianos**: Soporte a Quechua, Aymara y Guaraní, además de Español e Inglés, facilitando la inclusión social y regional de los trabajadores independientes de oficios técnicos.
+
+### E. Arquitectura y Flujo de Componentes (Diagrama)
+El siguiente diagrama detalla cómo se comunican las distintas capas de la aplicación: el cliente multiplataforma (Móvil/Web), los servicios de internacionalización, el motor de mapas, los endpoints del backend serverless en Expo API Routes y los servicios de terceros (Google Gemini API y Neon.db/PostgreSQL).
+
+```mermaid
+graph TD
+    subgraph Cliente (Front-End)
+        App[React Native / Expo App]
+        Web[Web PWA]
+        I18n[Módulo i18n Quechua/Aymara/Guaraní/ES/EN]
+        Map[Leaflet / GPS Map View]
+    end
+
+    subgraph Servidor (Back-End Serverless)
+        Routes[Expo API Routes]
+        Transcribe[/api/transcribe]
+        Matching[/api/matching]
+        Users[/api/users]
+        Drizzle[Drizzle ORM]
+    end
+
+    subgraph Servicios Externos
+        Gemini[Google Gemini API - gemini-2.5-flash]
+        Neon[Neon.db Postgres Serverless]
+    end
+
+    App & Web --> Routes
+    App & Web --> I18n
+    App & Web --> Map
+
+    Routes --> Transcribe & Matching & Users
+    
+    Transcribe --> Gemini
+    Matching --> Gemini
+    
+    Users --> Drizzle
+    Drizzle --> Neon
+```
 
 ---
 
@@ -96,6 +138,7 @@ export interface UsuarioRegistrado {
   descripcionProveedor?: string;
   coberturaB2B?: string;
   planId?: string; // Suscripción activa ('provider_1', 'provider_2', 'provider_3', etc.)
+  pushToken?: string; // Token de notificaciones push de Expo
 }
 
 export interface Order {
@@ -116,14 +159,109 @@ export interface Order {
 }
 ```
 
-### B. Relaciones Conceptuales (Mermaid ERD)
+### B. Diseño Lógico de la Base de Datos (Mermaid ERD)
+El modelo relacional detallado refleja exactamente el esquema definido mediante Drizzle ORM en [schema.ts](file:///c:/Users/PCZ/Desktop/todo-ya/src/db/schema.ts) para la base de datos Neon.db PostgreSQL:
+
 ```mermaid
 erDiagram
-    ACTIVE_USER ||--|| REGISTERED_USERS : "Pertenece a"
-    ACTIVE_USER ||--o{ ORDERS : "Crea o tiene asignados"
-    PLAN ||--|| ACTIVE_USER : "Suscripción activa de (Proveedor)"
-    ROLE ||--|| ACTIVE_USER : "Rol activo de"
-    AUTH ||--|| ACTIVE_USER : "Estado de sesión"
+    users {
+        int id PK
+        varchar nombre
+        varchar correo_o_telefono UK
+        varchar rol
+        text contrasena
+        varchar tipo_proveedor
+        varchar tipo_entidad
+        varchar nit
+        varchar correo_facturacion
+        varchar rubro
+        boolean ofrece_b2b
+        boolean proveedor_configurado
+        jsonb servicios_ofrecidos
+        varchar anos_experiencia
+        text descripcion_provider
+        varchar cobertura_b2b
+        int monedas
+        varchar plan_id
+        varchar push_token
+        boolean kyc_verificado
+        text kyc_detalles
+        timestamp created_at
+    }
+
+    orders {
+        int id PK
+        varchar titulo
+        int cliente_id FK
+        int proveedor_id FK
+        varchar proveedor
+        varchar servicio
+        text descripcion
+        varchar estado
+        int progreso
+        varchar hora
+        varchar color
+        varchar precio
+        varchar urgencia
+        boolean calificado
+        int calificacion_estrellas
+        jsonb calificacion_etiquetas
+        timestamp created_at
+        timestamp accepted_at
+        timestamp completed_at
+        varchar tiempo_ejecucion
+    }
+
+    messages {
+        int id PK
+        int order_id FK
+        int sender_id FK
+        varchar sender_name
+        text message_text
+        timestamp created_at
+    }
+
+    transactions {
+        int id PK
+        int usuario_id FK
+        varchar tipo
+        int monto_monedas
+        varchar detalle
+        timestamp created_at
+    }
+
+    ratings {
+        int id PK
+        int order_id FK
+        int calificador_id FK
+        int calificado_id FK
+        int estrellas
+        jsonb etiquetas
+        text comentario
+        timestamp created_at
+    }
+
+    applications {
+        int id PK
+        int order_id FK
+        int proveedor_id FK
+        varchar estado
+        int monedas_gastadas
+        text nota_personal
+        timestamp created_at
+    }
+
+    users ||--o{ orders : "solicita (como cliente)"
+    users ||--o{ orders : "atiende (como proveedor)"
+    users ||--o{ messages : "envia"
+    users ||--o{ transactions : "realiza"
+    users ||--o{ ratings : "califica"
+    users ||--o{ ratings : "recibe_calificacion"
+    users ||--o{ applications : "postula"
+
+    orders ||--o{ messages : "contiene"
+    orders ||--o{ ratings : "tiene"
+    orders ||--o{ applications : "recibe"
 ```
 
 ---
@@ -179,6 +317,55 @@ graph TD
 ```
 
 ### C. Casos de Uso del Sistema
+
+A continuación se detalla gráficamente el diagrama de casos de uso y la descripción detallada de las acciones que realiza cada rol o actor del ecosistema:
+
+```mermaid
+graph LR
+    subgraph Actores
+        CR[Cliente Residencial]
+        CC[Cliente B2B / Empresa]
+        PN[Proveedor Natural]
+        PE[Proveedor Empresa]
+        IA[Google Gemini API / IA]
+    end
+
+    subgraph Sistema Todo Ya
+        UC1((Registrar Cuenta / Seleccionar Rol))
+        UC2((Crear Requerimiento con Voz o Texto))
+        UC3((Corregir y Categorizar Requerimiento))
+        UC4((Escanear Radar de Técnicos 15s))
+        UC5((Crear Subasta / Licitación B2B))
+        UC6((Enviar Contraofertas Progresivas))
+        UC7((Chatear en Tiempo Real))
+        UC8((Calificar Servicio - Rating Overlay))
+        UC9((Gestionar Planes y Monedas - VeriPagos))
+    end
+
+    CR --> UC1
+    CR --> UC2
+    CR --> UC4
+    CR --> UC8
+
+    CC --> UC1
+    CC --> UC2
+    CC --> UC5
+    CC --> UC7
+    CC --> UC8
+
+    PN --> UC1
+    PN --> UC6
+    PN --> UC7
+    PN --> UC9
+
+    PE --> UC1
+    PE --> UC6
+    PE --> UC7
+    PE --> UC9
+
+    IA -.-> UC3
+    UC2 -.-> UC3
+```
 
 | Actor | Caso de Uso | Descripción |
 | :--- | :--- | :--- |
@@ -279,6 +466,11 @@ graph TD
 
 ### D. Unificación Cromática de Empresa-Proveedor
 * Rediseñamos el enrutador de navegación y cada pantalla de proveedor para detectar si el usuario activo es una entidad de tipo empresa (`tipoEntidad === 'empresa'`) y aplicar estilos e iconos en color índigo B2B en todas las pestañas (*Estadísticas*, *Trabajos*, *Perfil*), logrando un diseño visual consistente.
+
+### E. Preparación para Producción en Google Play Store (Seguridad y Eliminación de Cuentas)
+* **Persistencia Robusta:** Se reemplazó el almacenamiento en memoria temporal nativo por un adaptador híbrido seguro utilizando `expo-secure-store` y `@react-native-async-storage/async-storage`. Esto evita el reinicio involuntario de la sesión y protege las credenciales de los usuarios en la bóveda cifrada nativa.
+* **Flujo de Eliminación de Cuenta:** En cumplimiento con las políticas de privacidad de la Google Play Store, se desarrolló el endpoint serverless `DELETE /api/users` en [users+api.ts](file:///c:/Users/PCZ/Desktop/todo-ya/src/app/api/users+api.ts), se programó el borrado físico de usuarios en [localDb.ts](file:///c:/Users/PCZ/Desktop/todo-ya/src/db/localDb.ts) y Neon.db, y se agregaron botones rojos de borrado y modales de confirmación en el perfil de Cliente ([perfil.tsx](file:///c:/Users/PCZ/Desktop/todo-ya/src/app/perfil.tsx)) y Proveedor ([pperfil.tsx](file:///c:/Users/PCZ/Desktop/todo-ya/src/app/pperfil.tsx)).
+* **Configuración del Bundle:** Se configuraron identificadores nativos únicos para Android (`com.wasansky16.todoya` con `versionCode: 1`) e iOS en [app.json](file:///c:/Users/PCZ/Desktop/todo-ya/app.json).
 
 ---
 

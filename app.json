@@ -12,17 +12,30 @@
       "backgroundColor": "#FFB400"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.wasansky16.todoya",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Permítenos conocer tu ubicación para buscar proveedores cercanos a ti."
+      }
     },
     "android": {
+      "package": "com.wasansky16.todoya",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFB400"
-      }
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "output": "server"
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

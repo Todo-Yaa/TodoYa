@@ -1,4 +1,22 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
+import * as Location from 'expo-location';
+import { useEffect, useState } from 'react';
+
+// Importación dinámica de react-native-maps en nativo para evitar crasheos en web
+let MapViewNative: any = null;
+let MarkerNative: any = null;
+let CircleNative: any = null;
+
+if (Platform.OS !== 'web') {
+  try {
+    const RNMaps = require('react-native-maps');
+    MapViewNative = RNMaps.default;
+    MarkerNative = RNMaps.Marker;
+    CircleNative = RNMaps.Circle;
+  } catch (e) {
+    console.warn('No se pudo cargar react-native-maps:', e);
+  }
+}
 
 export interface MapProvider {
   name: string;
@@ -20,9 +38,7 @@ const defaultProviders: MapProvider[] = [
   { name: "Andrés Silva", lat: -17.7890, lng: -63.2050, service: "AC / Aire ❄️", rating: "4.9 ★", price: "Bs. 150" }
 ];
 
-const generateMapHtml = (providers: MapProvider[]) => {
-  const center = [-17.7833, -63.1821];
-  
+const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: number }) => {
   const markersScript = providers.map(p => {
     let emoji = "🔧";
     const serviceLower = p.service.toLowerCase();
@@ -109,7 +125,7 @@ const generateMapHtml = (providers: MapProvider[]) => {
 <body>
   <div id="map"></div>
   <script>
-    const center = [-17.7833, -63.1821];
+    const center = [${center.lat}, ${center.lng}];
     
     const map = L.map('map', { 
       zoomControl: false,
@@ -121,7 +137,7 @@ const generateMapHtml = (providers: MapProvider[]) => {
     }).addTo(map);
  
     const userMarker = L.marker(center).addTo(map)
-      .bindPopup('<b style="font-size: 14px; color: #2F2F2F;">📍 Tu ubicación</b><br><span style="color: #666; font-size: 12px;">Santa Cruz de la Sierra</span>')
+      .bindPopup('<b style="font-size: 14px; color: #2F2F2F;">📍 Tu ubicación</b><br><span style="color: #666; font-size: 12px;">Coordenadas reales por GPS</span>')
       .openPopup();
  
     const circle = L.circle(center, {
@@ -142,12 +158,33 @@ const generateMapHtml = (providers: MapProvider[]) => {
 
 export default function MapView({ providersList }: MapViewProps) {
   const activeList = providersList || defaultProviders;
+  const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  if (Platform.OS === 'web') {
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({});
+          setGpsLocation({
+            lat: loc.coords.latitude,
+            lng: loc.coords.longitude
+          });
+        }
+      } catch (err) {
+        console.warn('[MapView] Error al obtener GPS en tiempo real:', err);
+      }
+    })();
+  }, []);
+
+  const defaultCenter = { lat: -17.7833, lng: -63.1821 }; // Santa Cruz de la Sierra
+  const center = gpsLocation || defaultCenter;
+
+  if (Platform.OS === ('web' as any)) {
     return (
       <View style={styles.container}>
         <iframe
-          srcDoc={generateMapHtml(activeList)}
+          srcDoc={generateMapHtml(activeList, center)}
           style={styles.iframe}
           title="Mapa de Proveedores"
         />
@@ -155,7 +192,53 @@ export default function MapView({ providersList }: MapViewProps) {
     );
   }
 
-  // Fallback nativo: simula un radar para evitar crasheos de librerías web en iOS/Android nativo
+  // Renderizar react-native-maps en nativo si está cargado
+  if (Platform.OS !== ('web' as any) && MapViewNative) {
+    return (
+      <View style={styles.container}>
+        <MapViewNative
+          style={styles.map}
+          initialRegion={{
+            latitude: center.lat,
+            longitude: center.lng,
+            latitudeDelta: 0.04,
+            longitudeDelta: 0.04,
+          }}
+          showsUserLocation={true}
+          followsUserLocation={true}
+        >
+          {/* Marcador del cliente/usuario */}
+          <MarkerNative
+            coordinate={{ latitude: center.lat, longitude: center.lng }}
+            title="📍 Tu ubicación"
+            description="Ubicación GPS en tiempo real"
+            pinColor="#FFB400"
+          />
+
+          {/* Radio de cobertura de 5 km */}
+          <CircleNative
+            center={{ latitude: center.lat, longitude: center.lng }}
+            radius={5000}
+            strokeWidth={2}
+            strokeColor="#FFB400"
+            fillColor="rgba(255, 180, 0, 0.12)"
+          />
+
+          {/* Renderizar proveedores en el mapa nativo */}
+          {activeList.map((p, idx) => (
+            <MarkerNative
+              key={idx}
+              coordinate={{ latitude: p.lat, longitude: p.lng }}
+              title={p.name}
+              description={`${p.service} · ${p.rating} · ${p.price}`}
+            />
+          ))}
+        </MapViewNative>
+      </View>
+    );
+  }
+
+  // Fallback nativo: simula un radar para evitar crasheos si la librería fallara
   return (
     <View style={[styles.container, styles.nativeFallback]}>
       <Text style={styles.fallbackTitle}>🗺️ Mapa de Proveedores Cercanos</Text>
@@ -183,6 +266,10 @@ const styles = StyleSheet.create({
     height: '100%',
     border: 'none',
   } as any,
+  map: {
+    width: '100%',
+    height: '100%',
+  },
   nativeFallback: {
     alignItems: 'center',
     justifyContent: 'center',

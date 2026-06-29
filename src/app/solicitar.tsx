@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
 import MapView from '../components/map-view';
 import { matchProviders } from '../services/ai-matching';
+import * as Location from 'expo-location';
 
 /**
  * Componente SolicitarScreen:
@@ -98,10 +99,31 @@ export default function SolicitarScreen() {
   const [correctedText, setCorrectedText] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [servicio, setServicio] = useState('');
+  const [subservicio, setSubservicio] = useState('');
+  const [prediagnostico, setPrediagnostico] = useState('');
   const [urgencia, setUrgencia] = useState('');
   const [precio, setPrecio] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
+
+  const [clientCoords, setClientCoords] = useState<{ lat: number; lng: number }>({ lat: -17.784, lng: -63.180 });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({});
+          setClientCoords({
+            lat: loc.coords.latitude,
+            lng: loc.coords.longitude
+          });
+        }
+      } catch (e) {
+        console.warn('[SolicitarScreen] Error al obtener GPS de cliente:', e);
+      }
+    })();
+  }, []);
 
   // Controladores del modal de alerta/confirmación personalizado
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -400,7 +422,7 @@ export default function SolicitarScreen() {
 
     try {
       // 1. Llamar al servicio de emparejamiento inteligente (intenta API online -> fallback local offline)
-      const apiCallPromise = matchProviders(targetText, -17.784, -63.180);
+      const apiCallPromise = matchProviders(targetText, clientCoords.lat, clientCoords.lng);
       
       // Simular las fases del texto cargador para una UX espectacular
       // Fase 1 dura 1.5s
@@ -425,10 +447,14 @@ export default function SolicitarScreen() {
       }
       
       const cat = res.nlpAnalysis.categoriaDetectada;
+      const sub = res.nlpAnalysis.subservicioDetectado || 'Servicio general';
+      const diag = res.nlpAnalysis.prediagnosticoDetectado || 'Requiere inspección física';
       const urg = res.nlpAnalysis.urgenciaDetectada;
       const corrected = res.nlpAnalysis.correctedDescription || targetText;
       
       setServicio(cat);
+      setSubservicio(sub);
+      setPrediagnostico(diag);
       setUrgencia(urg);
       setPrecio(res.precioSugerido);
       setCorrectedText(corrected);
@@ -756,6 +782,12 @@ export default function SolicitarScreen() {
                   <Text style={styles.resultRow}><Text style={styles.bold}>Servicio:</Text> {servicio}</Text>
                   <Text style={styles.resultRow}><Text style={styles.bold}>Urgencia:</Text> <Text style={urgencia === 'Alta' ? styles.urgent : {}}>{urgencia}</Text></Text>
                   <Text style={styles.resultRow}><Text style={styles.bold}>Precio estimado:</Text> {precio}</Text>
+                  {subservicio ? (
+                    <Text style={styles.resultRow}><Text style={styles.bold}>Sub-servicio:</Text> {subservicio}</Text>
+                  ) : null}
+                  {prediagnostico ? (
+                    <Text style={styles.resultRow}><Text style={styles.bold}>Pre-diagnóstico:</Text> {prediagnostico}</Text>
+                  ) : null}
                   
                   {correctedText && correctedText.toLowerCase().trim() !== inputText.toLowerCase().trim() && (
                     <View style={{ marginTop: 10, padding: 10, backgroundColor: '#f0fdf4', borderRadius: 8, borderWidth: 1, borderColor: '#bbf7d0', flexDirection: 'row', alignItems: 'center', gap: 6 }}>

@@ -97,7 +97,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId } = body;
+    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken } = body;
 
     if (!correoOTelefono) {
       return Response.json({ error: 'El identificador de correo/teléfono es requerido' }, { status: 400 });
@@ -106,6 +106,9 @@ export async function PUT(request: Request) {
     const updateData: any = {};
     if (planId !== undefined) {
       updateData.planId = planId;
+    }
+    if (pushToken !== undefined) {
+      updateData.pushToken = pushToken;
     }
     if (serviciosOfrecidos !== undefined) {
       updateData.proveedorConfigurado = true;
@@ -145,4 +148,28 @@ export async function PUT(request: Request) {
 
 function CoberturaB2BValida(cobertura: string | undefined): boolean {
   return cobertura !== undefined && (cobertura === 'Local' || cobertura === 'Nacional');
+}
+
+// DELETE: Eliminar una cuenta de usuario
+export async function DELETE(request: Request) {
+  try {
+    const url = new URL(request.url);
+    const correoOTelefono = url.searchParams.get('correoOTelefono');
+
+    if (!correoOTelefono) {
+      return Response.json({ error: 'El correo/teléfono es requerido' }, { status: 400 });
+    }
+
+    if (!isDbConnected() || !db) {
+      localDb.deleteUser(correoOTelefono);
+      return Response.json({ status: 'success', message: 'Usuario eliminado de la base de datos local' });
+    }
+
+    await db.delete(users).where(eq(users.correoOTelefono, correoOTelefono.trim().toLowerCase()));
+    
+    return Response.json({ status: 'success', message: 'Usuario eliminado de Neon.db' });
+  } catch (error: any) {
+    console.error('Error in DELETE /api/users:', error);
+    return Response.json({ error: 'Error al eliminar usuario', details: error.message }, { status: 500 });
+  }
 }

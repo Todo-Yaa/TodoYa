@@ -39,6 +39,7 @@ Desarrollar un prototipo de aplicación universal multiplataforma (Móvil y Web)
 5.  Desarrollar un sistema de calificación forzada con bloqueo de interfaz raíz (Rating Overlay) para garantizar la retroalimentación de los trabajos completados.
 6.  Integrar un módulo de traducción i18n para soportar 5 idiomas principales: Español, Inglés, Quechua, Aymara y Guaraní.
 7.  Configurar la arquitectura de backend mediante Expo API Routes conectadas a Drizzle ORM y base de datos relacional Neon.db.
+8.  Implementar un modelo híbrido de persistencia nativa segura (cifrado con SecureStore y almacenamiento persistente estructurado con AsyncStorage) y flujos de eliminación física de cuentas en cumplimiento con las directrices de seguridad y políticas de privacidad requeridas para la publicación comercial en Google Play Store.
 
 ---
 
@@ -146,4 +147,202 @@ const resources = {
   ay: { translation: { welcome: "Jilimanta Puruma", switchRole: "Luraña Mayjt'ayaña" } },
   gn: { translation: { welcome: "Maitei", switchRole: "Mba'apo Mboheko" } }
 };
+```
+
+### Anexo C: Diagramas de Diseño del Sistema (Mermaid)
+
+Para sustentar técnicamente el desarrollo del prototipo de **Todo Ya**, se detallan a continuación los diagramas de modelado de negocio y de software:
+
+#### 1. Diagrama de Casos de Uso
+Ilustra el alcance del prototipo indicando cómo interactúan los clientes (residenciales y corporativos) y los proveedores (naturales y jurídicos) con las principales funciones del sistema y el motor de IA.
+
+```mermaid
+graph LR
+    subgraph Actores
+        CR[Cliente Residencial]
+        CC[Cliente B2B / Empresa]
+        PN[Proveedor Natural]
+        PE[Proveedor Empresa]
+        IA[Google Gemini API / IA]
+    end
+
+    subgraph Sistema Todo Ya
+        UC1((Registrar Cuenta / Seleccionar Rol))
+        UC2((Crear Requerimiento con Voz o Texto))
+        UC3((Corregir y Categorizar Requerimiento))
+        UC4((Escanear Radar de Técnicos 15s))
+        UC5((Crear Subasta / Licitación B2B))
+        UC6((Enviar Contraofertas Progresivas))
+        UC7((Chatear en Tiempo Real))
+        UC8((Calificar Servicio - Rating Overlay))
+        UC9((Gestionar Planes y Monedas - VeriPagos))
+    end
+
+    CR --> UC1
+    CR --> UC2
+    CR --> UC4
+    CR --> UC8
+
+    CC --> UC1
+    CC --> UC2
+    CC --> UC5
+    CC --> UC7
+    CC --> UC8
+
+    PN --> UC1
+    PN --> UC6
+    PN --> UC7
+    PN --> UC9
+
+    PE --> UC1
+    PE --> UC6
+    PE --> UC7
+    PE --> UC9
+
+    IA -.-> UC3
+    UC2 -.-> UC3
+```
+
+#### 2. Diseño Lógico de la Base de Datos (Modelo Entidad-Relación)
+Muestra la estructura lógica de almacenamiento persistente en la nube relacional (Neon.db PostgreSQL) construida a través del modelado de Drizzle ORM:
+
+```mermaid
+erDiagram
+    users {
+        int id PK
+        varchar nombre
+        varchar correo_o_telefono UK
+        varchar rol
+        text contrasena
+        varchar tipo_proveedor
+        varchar tipo_entidad
+        varchar nit
+        varchar correo_facturacion
+        varchar rubro
+        boolean ofrece_b2b
+        boolean proveedor_configurado
+        jsonb servicios_ofrecidos
+        varchar anos_experiencia
+        text descripcion_provider
+        varchar cobertura_b2b
+        int monedas
+        varchar plan_id
+        varchar push_token
+        boolean kyc_verificado
+        text kyc_detalles
+        timestamp created_at
+    }
+
+    orders {
+        int id PK
+        varchar titulo
+        int cliente_id FK
+        int proveedor_id FK
+        varchar proveedor
+        varchar servicio
+        text descripcion
+        varchar estado
+        int progreso
+        varchar hora
+        varchar color
+        varchar precio
+        varchar urgencia
+        boolean calificado
+        int calificacion_estrellas
+        jsonb calificacion_etiquetas
+        timestamp created_at
+        timestamp accepted_at
+        timestamp completed_at
+        varchar tiempo_ejecucion
+    }
+
+    messages {
+        int id PK
+        int order_id FK
+        int sender_id FK
+        varchar sender_name
+        text message_text
+        timestamp created_at
+    }
+
+    transactions {
+        int id PK
+        int usuario_id FK
+        varchar tipo
+        int monto_monedas
+        varchar detalle
+        timestamp created_at
+    }
+
+    ratings {
+        int id PK
+        int order_id FK
+        int calificador_id FK
+        int calificado_id FK
+        int estrellas
+        jsonb etiquetas
+        text comentario
+        timestamp created_at
+    }
+
+    applications {
+        int id PK
+        int order_id FK
+        int proveedor_id FK
+        varchar estado
+        int monedas_gastadas
+        text nota_personal
+        timestamp created_at
+    }
+
+    users ||--o{ orders : "solicita (como cliente)"
+    users ||--o{ orders : "atiende (como proveedor)"
+    users ||--o{ messages : "envia"
+    users ||--o{ transactions : "realiza"
+    users ||--o{ ratings : "califica"
+    users ||--o{ ratings : "recibe_calificacion"
+    users ||--o{ applications : "postula"
+
+    orders ||--o{ messages : "contiene"
+    orders ||--o{ ratings : "tiene"
+    orders ||--o{ applications : "recibe"
+```
+
+#### 3. Diagrama de Arquitectura del Software
+Representa la separación de responsabilidades y flujo de datos entre las capas de presentación, controlador de API y base de datos e IA en la nube:
+
+```mermaid
+graph TD
+    subgraph Cliente (Front-End)
+        App[React Native / Expo App]
+        Web[Web PWA]
+        I18n[Módulo i18n Quechua/Aymara/Guaraní/ES/EN]
+        Map[Leaflet / GPS Map View]
+    end
+
+    subgraph Servidor (Back-End Serverless)
+        Routes[Expo API Routes]
+        Transcribe[/api/transcribe]
+        Matching[/api/matching]
+        Users[/api/users]
+        Drizzle[Drizzle ORM]
+    end
+
+    subgraph Servicios Externos
+        Gemini[Google Gemini API - gemini-2.5-flash]
+        Neon[Neon.db Postgres Serverless]
+    end
+
+    App & Web --> Routes
+    App & Web --> I18n
+    App & Web --> Map
+
+    Routes --> Transcribe & Matching & Users
+    
+    Transcribe --> Gemini
+    Matching --> Gemini
+    
+    Users --> Drizzle
+    Drizzle --> Neon
+```
 ```

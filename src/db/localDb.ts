@@ -209,6 +209,15 @@ class LocalDb {
     return null;
   }
 
+  deleteUser(correoOTelefono: string) {
+    const dbData = this.read();
+    const clean = correoOTelefono.trim().toLowerCase();
+    const filtered = dbData.users.filter(u => (u.correoOTelefono || '').trim().toLowerCase() !== clean);
+    dbData.users = filtered;
+    this.write(dbData);
+    return true;
+  }
+
   // --- ORDERS ---
   getOrders() {
     return this.read().orders;

@@ -63,6 +63,7 @@ interface UserContextType {
   userName: string;        // Nombre personalizado del usuario activo
   login: (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole) => Promise<boolean>; // Inicia sesión
   logout: () => void;      // Cierra sesión y limpia la memoria
+  deleteAccount: () => Promise<boolean>; // Elimina la cuenta permanentemente
   usuariosRegistrados: UsuarioRegistrado[]; // Lista de todos los usuarios de la base de datos local
   registrarEIniciarSesion: (nombre: string, correoOTelefono: string, rol: UserRole, tipoProveedor: 'google' | 'linkedin' | 'normal', extraData?: Partial<UsuarioRegistrado>) => Promise<void>; // Registro social
   registrarUsuario: (nombre: string, correoOTelefono: string, rol: UserRole, contrasena: string, tipoEntidad: 'natural' | 'empresa', nit?: string, correoFacturacion?: string, rubro?: string, ofreceB2B?: boolean) => Promise<boolean>; // Registro manual
@@ -1164,6 +1165,35 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Eliminación de cuenta permanente
+   */
+  const deleteAccount = async (): Promise<boolean> => {
+    if (!activeUser?.correoOTelefono) return false;
+    const correoOTelefono = activeUser.correoOTelefono;
+    
+    // 1. Llamar a la API para borrar de la base de datos
+    try {
+      await fetch(`/api/users?correoOTelefono=${encodeURIComponent(correoOTelefono)}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.warn('[deleteAccount] Falló la eliminación en servidor:', err);
+    }
+
+    // 2. Limpiar localmente en la lista de usuarios registrados del contexto
+    const claveCorreo = correoOTelefono.toLowerCase();
+    const listaActualizada = usuariosRegistrados.filter(u => 
+      (u.correoOTelefono || '').toLowerCase() !== claveCorreo
+    );
+    setUsuariosRegistrados(listaActualizada);
+    await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
+
+    // 3. Ejecutar logout para limpiar sesión y storage
+    logout();
+    return true;
+  };
+
+  /**
    * Configura al usuario activo como Proveedor tras responder el onboarding.
    */
   const configurarProveedor = async (
@@ -1388,6 +1418,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       userName,
       login,
       logout,
+      deleteAccount,
       usuariosRegistrados,
       registrarEIniciarSesion,
       registrarUsuario,

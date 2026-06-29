@@ -161,6 +161,8 @@ export const matchProvidersOffline = async (descripcion: string, latCliente: num
     success: true,
     nlpAnalysis: {
       categoriaDetectada: categoria,
+      subservicioDetectado: 'Servicio general de ' + categoria,
+      prediagnosticoDetectado: 'Requiere revisión física para pre-diagnóstico',
       urgenciaDetectada: urgencia,
       correctedDescription: descripcion,
       confianza: 0.95,

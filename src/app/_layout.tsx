@@ -1,12 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 import { useEffect, useState } from 'react';
 import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated'; // Para una animación fluida de desvanecimiento
 import { UserProvider, useUser } from '../context/user-context';
 import LoginScreen from '../components/login-screen';
 import RatingOverlayModal from '../components/rating-overlay-modal';
 import NotificationBanner from '../components/notification-banner';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 /**
  * Componente NavigationLayout:
@@ -26,6 +40,43 @@ function NavigationLayout() {
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
+  // Registrar token de notificación push si el usuario está autenticado y es nativo
+  useEffect(() => {
+    if (isAuthenticated && activeUser && Platform.OS !== 'web') {
+      (async () => {
+        try {
+          const { status: existingStatus } = await Notifications.getPermissionsAsync();
+          let finalStatus = existingStatus;
+          if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+          }
+          if (finalStatus !== 'granted') {
+            console.log('Failed to get push token for push notification!');
+            return;
+          }
+          const tokenData = await Notifications.getExpoPushTokenAsync({
+            projectId: Constants.expoConfig?.extra?.eas?.projectId,
+          });
+          const pushToken = tokenData.data;
+          console.log('[Push] Token obtenido:', pushToken);
+
+          // Actualizar en el servidor (Neon y localStorage)
+          await fetch('/api/users', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              correoOTelefono: activeUser.correoOTelefono,
+              pushToken: pushToken
+            })
+          });
+        } catch (e) {
+          console.warn('[Push] Error al configurar notificaciones push:', e);
+        }
+      })();
+    }
+  }, [isAuthenticated, activeUser]);
 
   // CORRECCIÓN: Unificamos el color y fondo de la barra de pestañas de acuerdo al tipo de entidad del usuario activo.
   // Si el usuario es de tipo 'empresa' (como Corporación Alfa S.A. o Imprenta Beta), se le asignan los tonos B2B (índigo/slate oscuro)

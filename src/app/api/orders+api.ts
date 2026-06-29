@@ -1,7 +1,7 @@
-import { db, isDbConnected } from '../../db';
-import { orders, users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { db, isDbConnected } from '../../db';
 import { localDb } from '../../db/localDb';
+import { orders, users } from '../../db/schema';
 
 // GET: Obtener todos los pedidos/solicitudes de la base de datos
 export async function GET(request: Request) {
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     // Si viene un proveedor mockup (ej: Andrés Silva), asegurarse de que exista en la BD
     if (proveedor && !proveedorId) {
       const email = proveedor.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '.') + '@todoya.com';
-      
+
       if (!isDbConnected() || !db) {
         const existingUser = localDb.getUserByEmailOrPhone(email);
         if (!existingUser) {
@@ -137,6 +137,7 @@ export async function POST(request: Request) {
         hora: 'Ahora mismo',
         acceptedAt: proveedor ? new Date().toISOString() : null,
       });
+      enviarNotificacionesPush(servicio, titulo, precio).catch(() => {});
       return Response.json({ status: 'success', order: nuevoPedido });
     }
 
@@ -156,6 +157,7 @@ export async function POST(request: Request) {
       acceptedAt: proveedor ? new Date() : null,
     }).returning();
 
+    enviarNotificacionesPush(servicio, titulo, precio).catch(() => {});
     return Response.json({ status: 'success', order: nuevoPedido[0] });
   } catch (error: any) {
     return Response.json({ error: 'Error al crear pedido', details: error.message }, { status: 500 });
@@ -271,5 +273,53 @@ export async function PUT(request: Request) {
     return Response.json({ status: 'success', order: updated[0] });
   } catch (error: any) {
     return Response.json({ error: 'Error al actualizar pedido', details: error.message }, { status: 500 });
+  }
+}
+
+// Función auxiliar para enviar notificaciones push a los proveedores que coinciden con la categoría
+async function enviarNotificacionesPush(servicio: string, titulo: string, precio: string) {
+  try {
+    let providersToNotify: any[] = [];
+    if (isDbConnected() && db) {
+      const matchingProviders = await db.select().from(users).where(eq(users.rol, 'provider'));
+      providersToNotify = matchingProviders.filter(p => 
+        p.pushToken && 
+        p.serviciosOfrecidos && 
+        Array.isArray(p.serviciosOfrecidos) && 
+        (p.serviciosOfrecidos as string[]).includes(servicio)
+      );
+    } else {
+      const localUsers = localDb.getUsers();
+      providersToNotify = localUsers.filter(u => 
+        u.rol === 'provider' && 
+        u.pushToken && 
+        u.serviciosOfrecidos && 
+        Array.isArray(u.serviciosOfrecidos) && 
+        u.serviciosOfrecidos.includes(servicio)
+      );
+    }
+
+    if (providersToNotify.length > 0) {
+      const messages = providersToNotify.map(p => ({
+        to: p.pushToken,
+        sound: 'default',
+        title: '💼 ¡Nuevo Lead Disponible!',
+        body: `${titulo} en la categoría ${servicio}. Presupuesto: ${precio}`,
+        data: { service: servicio },
+      }));
+
+      const res = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip, deflate',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messages),
+      });
+      console.log(`[Push] Enviadas notificaciones a ${providersToNotify.length} proveedores. Response status: ${res.status}`);
+    }
+  } catch (err) {
+    console.error('[Push] Error al enviar notificaciones push a proveedores:', err);
   }
 }
