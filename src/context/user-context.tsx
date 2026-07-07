@@ -23,6 +23,10 @@ export interface UsuarioRegistrado {
   descripcionProveedor?: string;
   coberturaB2B?: string;
   planId?: 'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3' | null;
+  celular?: string;
+  codigoPais?: string;
+  kycVerificado?: boolean;
+  kycDetalles?: string;
 }
 
 // Interfaz para representar un pedido dentro de la aplicación
@@ -66,9 +70,10 @@ interface UserContextType {
   deleteAccount: () => Promise<boolean>; // Elimina la cuenta permanentemente
   usuariosRegistrados: UsuarioRegistrado[]; // Lista de todos los usuarios de la base de datos local
   registrarEIniciarSesion: (nombre: string, correoOTelefono: string, rol: UserRole, tipoProveedor: 'google' | 'linkedin' | 'normal', extraData?: Partial<UsuarioRegistrado>) => Promise<void>; // Registro social
-  registrarUsuario: (nombre: string, correoOTelefono: string, rol: UserRole, contrasena: string, tipoEntidad: 'natural' | 'empresa', nit?: string, correoFacturacion?: string, rubro?: string, ofreceB2B?: boolean) => Promise<boolean>; // Registro manual
+  registrarUsuario: (nombre: string, correoOTelefono: string, rol: UserRole, contrasena: string, tipoEntidad: 'natural' | 'empresa', nit?: string, correoFacturacion?: string, rubro?: string, ofreceB2B?: boolean, celular?: string, codigoPais?: string) => Promise<boolean>; // Registro manual
   activeUser: UsuarioRegistrado | null; // Usuario activo logueado
   configurarProveedor: (servicios: string[], experiencia: string, descripcion: string, cobertura?: string) => Promise<void>;
+  actualizarKyc: (kycVerificado: boolean, kycDetalles: string) => Promise<void>;
   rateOrder: (orderId: number, estrellas: number, etiquetas: string[]) => void;
   isSwitchingRole: boolean; // Indica si se está realizando una transición de rol
   syncOrders: () => Promise<void>; // Fuerza la sincronización de pedidos con la DB
@@ -986,7 +991,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       nit: extraData?.nit,
       correoFacturacion: extraData?.correoFacturacion,
       rubro: extraData?.rubro,
-      ofreceB2B: extraData?.ofreceB2B || (esEmpresaEmail ? true : undefined)
+      ofreceB2B: extraData?.ofreceB2B || (esEmpresaEmail ? true : undefined),
+      celular: extraData?.celular,
+      codigoPais: extraData?.codigoPais,
+      kycVerificado: extraData?.kycVerificado || false,
+      kycDetalles: extraData?.kycDetalles || ''
     };
 
     if (isDbOnline) {
@@ -1068,7 +1077,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     nit?: string,
     correoFacturacion?: string,
     rubro?: string,
-    ofreceB2B?: boolean
+    ofreceB2B?: boolean,
+    celular?: string,
+    codigoPais?: string
   ): Promise<boolean> => {
     const claveCorreo = correoOTelefono.trim().toLowerCase();
     
@@ -1086,7 +1097,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, correoOTelefono, rol, contrasena, tipoEntidad, nit, correoFacturacion, rubro, ofreceB2B })
+        body: JSON.stringify({ nombre, correoOTelefono, rol, contrasena, tipoEntidad, nit, correoFacturacion, rubro, ofreceB2B, celular, codigoPais })
       });
       if (res.ok) {
         const data = await res.json();
@@ -1132,7 +1143,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       nit,
       correoFacturacion,
       rubro,
-      ofreceB2B
+      ofreceB2B,
+      celular,
+      codigoPais,
+      kycVerificado: false,
+      kycDetalles: ''
     };
 
     const listaActualizada = [...usuariosRegistrados, nuevoUsuario];
@@ -1236,6 +1251,45 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setActiveUser(updatedUser);
     setUserRole('provider');
     await Storage.setItem('todo_ya_role', 'provider');
+    await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+
+    const claveCorreo = (activeUser.correoOTelefono || '').toLowerCase();
+    const listaActualizada = usuariosRegistrados.map(u => 
+      (u.correoOTelefono || '').toLowerCase() === claveCorreo ? updatedUser : u
+    );
+    setUsuariosRegistrados(listaActualizada);
+    await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
+  };
+
+  /**
+   * Actualiza el estado de verificación de identidad KYC para el usuario activo
+   */
+  const actualizarKyc = async (kycVerificado: boolean, kycDetalles: string) => {
+    if (!activeUser) return;
+
+    const updatedUser: UsuarioRegistrado = {
+      ...activeUser,
+      kycVerificado,
+      kycDetalles
+    };
+
+    if (isDbOnline) {
+      try {
+        await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            correoOTelefono: activeUser.correoOTelefono,
+            kycVerificado,
+            kycDetalles
+          })
+        });
+      } catch (err) {
+        console.error('Error al sincronizar verificación KYC en Neon.db:', err);
+      }
+    }
+
+    setActiveUser(updatedUser);
     await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
 
     const claveCorreo = (activeUser.correoOTelefono || '').toLowerCase();
@@ -1424,6 +1478,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       registrarUsuario,
       activeUser,
       configurarProveedor,
+      actualizarKyc,
       rateOrder,
       isSwitchingRole,
       syncOrders,

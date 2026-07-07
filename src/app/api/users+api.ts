@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { nombre, correoOTelefono, rol, contrasena, tipoProveedor = 'normal', tipoEntidad = 'natural', nit, correoFacturacion, rubro, ofreceB2B = false } = body;
+    const { nombre, correoOTelefono, rol, contrasena, tipoProveedor = 'normal', tipoEntidad = 'natural', nit, correoFacturacion, rubro, ofreceB2B = false, celular, codigoPais } = body;
 
     if (!isDbConnected() || !db) {
       const usuarioExistente = localDb.getUserByEmailOrPhone(correoOTelefono);
@@ -35,6 +35,8 @@ export async function POST(request: Request) {
           correoFacturacion: correoFacturacion || usuarioExistente.correoFacturacion,
           rubro: rubro || usuarioExistente.rubro,
           ofreceB2B: ofreceB2B || usuarioExistente.ofreceB2B,
+          celular: celular || usuarioExistente.celular,
+          codigoPais: codigoPais || usuarioExistente.codigoPais,
         });
         return Response.json({ status: 'success', action: 'updated', user: updated });
       }
@@ -49,6 +51,8 @@ export async function POST(request: Request) {
         correoFacturacion,
         rubro,
         ofreceB2B,
+        celular,
+        codigoPais,
       });
       return Response.json({ status: 'success', action: 'created', user: nuevoUsuario });
     }
@@ -66,6 +70,8 @@ export async function POST(request: Request) {
           correoFacturacion: correoFacturacion || usuarioExistente[0].correoFacturacion,
           rubro: rubro || usuarioExistente[0].rubro,
           ofreceB2B: ofreceB2B || usuarioExistente[0].ofreceB2B,
+          celular: celular || usuarioExistente[0].celular,
+          codigoPais: codigoPais || usuarioExistente[0].codigoPais,
         })
         .where(eq(users.correoOTelefono, correoOTelefono.trim().toLowerCase()))
         .returning();
@@ -84,6 +90,8 @@ export async function POST(request: Request) {
       correoFacturacion,
       rubro,
       ofreceB2B,
+      celular,
+      codigoPais,
     }).returning();
 
     return Response.json({ status: 'success', action: 'created', user: nuevoUsuario[0] });
@@ -97,7 +105,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken } = body;
+    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken, kycVerificado, kycDetalles } = body;
 
     if (!correoOTelefono) {
       return Response.json({ error: 'El identificador de correo/teléfono es requerido' }, { status: 400 });
@@ -120,6 +128,12 @@ export async function PUT(request: Request) {
     if (coberturaB2B !== undefined) {
       updateData.coberturaB2B = coberturaB2B;
       updateData.ofreceB2B = CoberturaB2BValida(coberturaB2B);
+    }
+    if (kycVerificado !== undefined) {
+      updateData.kycVerificado = kycVerificado;
+    }
+    if (kycDetalles !== undefined) {
+      updateData.kycDetalles = kycDetalles;
     }
 
     if (!isDbConnected() || !db) {

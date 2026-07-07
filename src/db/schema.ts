@@ -12,6 +12,10 @@ export const users = pgTable('users', {
   tipoProveedor: varchar('tipo_proveedor', { length: 50 }).$type<'google' | 'linkedin' | 'normal'>().default('normal'),
   tipoEntidad: varchar('tipo_entidad', { length: 50 }).$type<'natural' | 'empresa'>().default('natural'),
   
+  // Celular y Código de País (doble verificación y soporte regional)
+  celular: varchar('celular', { length: 50 }),
+  codigoPais: varchar('codigo_pais', { length: 20 }),
+  
   // Campos específicos B2B / Empresa
   nit: varchar('nit', { length: 50 }),
   correoFacturacion: varchar('correo_facturacion', { length: 256 }),

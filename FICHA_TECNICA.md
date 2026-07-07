@@ -139,6 +139,10 @@ export interface UsuarioRegistrado {
   coberturaB2B?: string;
   planId?: string; // Suscripción activa ('provider_1', 'provider_2', 'provider_3', etc.)
   pushToken?: string; // Token de notificaciones push de Expo
+  celular?: string; // Teléfono celular del usuario
+  codigoPais?: string; // Código de país telefónico (ej. 591, 51, etc.)
+  kycVerificado?: boolean; // Estado de verificación de identidad
+  kycDetalles?: string; // Descripción del análisis de identidad de la IA
 }
 
 export interface Order {
@@ -184,6 +188,8 @@ erDiagram
         int monedas
         varchar plan_id
         varchar push_token
+        varchar celular
+        varchar codigo_pais
         boolean kyc_verificado
         text kyc_detalles
         timestamp created_at
@@ -275,14 +281,21 @@ graph TD
     B -->|Persona Natural| C[Registro como Natural]
     B -->|Empresa B2B| D[Registro como Empresa]
     
-    C --> E[Rol por Defecto: Cliente Natural]
-    D --> F[Rol por Defecto: Empresa Cliente]
+    C & D --> PIN[SMS PIN Doble Verificación]
+    PIN -->|PIN Correcto| B2{¿Tipo de Entidad?}
+    
+    B2 -->|Persona Natural| E[Rol por Defecto: Cliente Natural]
+    B2 -->|Empresa B2B| KYC_CORP[Verificación KYC con IA]
+    KYC_CORP --> F[Rol por Defecto: Empresa Cliente]
     
     E --> G[Visualiza Perfil Cliente]
     F --> H[Visualiza Perfil Empresa]
     
     G --> I{¿Cambio de Rol?}
-    I -->|Ir a Proveedor| J{¿Configurado?}
+    I -->|Ir a Proveedor| KYC_PROV{¿KYC Verificado?}
+    KYC_PROV -->|No| KYC_FLOW[Modal KYC: DNI/CE + Selfie]
+    KYC_FLOW -->|Verificado| J{¿Configurado?}
+    KYC_PROV -->|Sí| J
     I -->|Ir a Cliente Natural| K[Rol: client]
     
     H --> L{¿Cambio de Rol B2B?}
@@ -397,6 +410,15 @@ graph LR
   * **Filtro Online**: La API Route de matching (`/api/matching`) solicita a Gemini retornar un campo booleano `tieneSentido`. Si es `false`, retorna un código especial para alertar al cliente.
   * **Filtro Offline / Local**: Un algoritmo heurístico en `ai-matching.ts` valida si la longitud es mayor o igual a 8 caracteres, si tiene 2 o más palabras y si contiene verbos y palabras clave de la categoría o términos de servicios.
   * **Notificación de Incoherencia**: Al detectarse una descripción sin sentido, se despliega un modal con el título `⚠️ No se entiende` y el mensaje interactivo `Vuelve a escribirlo` bloqueando el registro de la orden.
+
+### 8. Registro Regional, Doble Verificación (PIN SMS) y Verificación de Proveedores (KYC)
+* **Registro de Celular y Código de País**: El formulario de registro manual integra un selector de prefijo de país de Latinoamérica con banderas (Bolivia 🇧🇴, Perú 🇵🇪, Colombia 🇨🇴, etc.) y un campo numérico para el celular. Esto aplica para usuarios individuales y corporativos.
+- **Verificación Doble Factor por PIN**: Al presionar "Registrarse", se genera un PIN dinámico y se simula la entrega de un SMS en pantalla (Toast). El usuario ingresa el PIN en un modal con cuenta regresiva. Si el PIN coincide, se procede a la creación definitiva de la cuenta.
+- **Validación de Identidad KYC para Proveedores (Persona Natural)**: Si un cliente residencial intenta pasar a Proveedor (ofrecer servicios) desde su menú de perfil, y no está verificado (`kycVerificado` es `false`), se le despliega un modal KYC interactivo. Aquí debe:
+  - Seleccionar su documento (DNI o Carnet de Extranjería).
+  - Capturar una foto legible del frente del documento.
+  - Tomarse una selfie facial.
+  - El sistema procesa la validación con IA y, tras el éxito, actualiza su estado a verificado en base de datos y le permite continuar con el onboarding de proveedor.
 
 ### 4. Control de Acceso por Suscripciones Mensuales y VeriPagos (`leads.tsx`)
 * Regulación de acceso a leads para proveedores en base a su nivel de suscripción activa:

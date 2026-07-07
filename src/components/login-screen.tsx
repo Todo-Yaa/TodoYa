@@ -1,10 +1,31 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useUser, UserRole } from '../context/user-context';
 import { router } from 'expo-router'; // Importar enrutador para redireccionar tras login dinámico
 import KYCVerifierModal from './kyc-verifier-modal';
+
+const PAISES_LATINOS = [
+  { nombre: 'Bolivia', codigo: '591', bandera: '🇧🇴' },
+  { nombre: 'Perú', codigo: '51', bandera: '🇵🇪' },
+  { nombre: 'Colombia', codigo: '57', bandera: '🇨🇴' },
+  { nombre: 'Ecuador', codigo: '593', bandera: '🇪🇨' },
+  { nombre: 'Chile', codigo: '56', bandera: '🇨🇱' },
+  { nombre: 'Argentina', codigo: '54', bandera: '🇦🇷' },
+  { nombre: 'México', codigo: '52', bandera: '🇲🇽' },
+  { nombre: 'Venezuela', codigo: '58', bandera: '🇻🇪' },
+  { nombre: 'Paraguay', codigo: '595', bandera: '🇵🇾' },
+  { nombre: 'Uruguay', codigo: '598', bandera: '🇺🇾' },
+  { nombre: 'Brasil', codigo: '55', bandera: '🇧🇷' },
+  { nombre: 'Costa Rica', codigo: '506', bandera: '🇨🇷' },
+  { nombre: 'Panamá', codigo: '507', bandera: '🇵🇦' },
+  { nombre: 'Guatemala', codigo: '502', bandera: '🇬🇹' },
+  { nombre: 'El Salvador', codigo: '503', bandera: '🇸🇻' },
+  { nombre: 'Honduras', codigo: '504', bandera: '🇭🇳' },
+  { nombre: 'Nicaragua', codigo: '505', bandera: '🇳🇮' },
+  { nombre: 'República Dominicana', codigo: '1-809', bandera: '🇩🇴' },
+];
 
 /**
  * Componente LoginScreen:
@@ -29,6 +50,31 @@ export default function LoginScreen() {
   const [b2bRol, setB2bRol] = useState<'client' | 'provider'>('client');
   const [naturalRol, setNaturalRol] = useState<'client' | 'provider'>('client');
 
+  // Nuevos campos de celular y país
+  const [codigoPais, setCodigoPais] = useState('591');
+  const [celular, setCelular] = useState('');
+  const [correoRegistro, setCorreoRegistro] = useState('');
+  const [mostrarPaises, setMostrarPaises] = useState(false);
+
+  // Estados de verificación doble por PIN SMS
+  const [mostrarModalPIN, setMostrarModalPIN] = useState(false);
+  const [pinGenerado, setPinGenerado] = useState('');
+  const [pinIngresado, setPinIngresado] = useState('');
+  const [smsCountdown, setSmsCountdown] = useState(60);
+  const [smsToastText, setSmsToastText] = useState<string | null>(null);
+  const [pinError, setPinError] = useState('');
+
+  // Temporizador para SMS countdown
+  useEffect(() => {
+    let timer: any;
+    if (mostrarModalPIN && smsCountdown > 0) {
+      timer = setInterval(() => {
+        setSmsCountdown(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [mostrarModalPIN, smsCountdown]);
+
   // Estado del Modal de Verificación KYC
   const [mostrarKYC, setMostrarKYC] = useState(false);
   const [pendingRegistroData, setPendingRegistroData] = useState<any>(null); // Datos del registro pendiente de KYC
@@ -50,6 +96,88 @@ export default function LoginScreen() {
   /**
    * Registra manualmente un nuevo usuario en la app.
    */
+  const enviarSmsPin = () => {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setPinGenerado(code);
+    setSmsCountdown(60);
+    setPinError('');
+    setSmsToastText(`SMS de Todo Ya: Tu código de verificación de doble factor es ${code}.`);
+    
+    // Auto-ocultar toast de SMS después de 12 segundos
+    setTimeout(() => {
+      setSmsToastText(prev => prev && prev.includes(code) ? null : prev);
+    }, 12000);
+  };
+
+  const confirmarPinYRegistrar = async () => {
+    if (pinIngresado !== pinGenerado) {
+      setPinError('Código PIN incorrecto. Inténtalo de nuevo.');
+      return;
+    }
+
+    setMostrarModalPIN(false);
+    
+    const loginIdentifier = `+${codigoPais} ${celular}`;
+
+    if (tipoEntidad === 'empresa') {
+      setPendingRegistroData({
+        nombre: nombreRegistro.trim(),
+        correo: loginIdentifier,
+        contrasena: contrasenaRegistro,
+        tipoEntidad,
+        nit: nit.trim(),
+        correoFacturacion: correoFacturacion.trim(),
+        rubro,
+        celular,
+        codigoPais,
+      });
+      setMostrarKYC(true);
+      return;
+    }
+
+    setCargando(true);
+    setTimeout(async () => {
+      const finalRole: UserRole = 'client';
+
+      const exito = await registrarUsuario(
+        nombreRegistro.trim(),
+        loginIdentifier,
+        finalRole,
+        contrasenaRegistro,
+        tipoEntidad,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        celular,
+        codigoPais
+      );
+
+      setCargando(false);
+      if (exito) {
+        setConfiguracionModal({
+          titulo: '🎉 ¡Registro Exitoso!',
+          mensaje: 'Tu cuenta ha sido creada correctamente. ¡Bienvenido a Todo Ya!'
+        });
+        setMostrarModal(true);
+        setEsRegistro(false);
+        setNombreRegistro('');
+        setCelular('');
+        setCorreoRegistro('');
+        setContrasenaRegistro('');
+      } else {
+        setConfiguracionModal({
+          titulo: '❌ Error de Registro',
+          mensaje: 'El correo o número de teléfono ingresado ya existe. Inténtalo con otro.'
+        });
+        setMostrarModal(true);
+      }
+    }, 1200);
+  };
+
+  /**
+   * Registra manualmente un nuevo usuario en la app.
+   */
   const manejarRegistroManual = async () => {
     if (!nombreRegistro.trim()) {
       setConfiguracionModal({
@@ -59,10 +187,10 @@ export default function LoginScreen() {
       setMostrarModal(true);
       return;
     }
-    if (!correoOTelefonoRegistro.trim()) {
+    if (!celular.trim() || celular.length < 7) {
       setConfiguracionModal({
-        titulo: '⚠️ Correo o Teléfono vacío',
-        mensaje: 'Por favor ingresa tu número de teléfono o correo electrónico para registrarte.'
+        titulo: '⚠️ Celular vacío o corto',
+        mensaje: 'Por favor ingresa tu número de celular (mínimo 7 dígitos).'
       });
       setMostrarModal(true);
       return;
@@ -95,56 +223,8 @@ export default function LoginScreen() {
       }
     }
 
-    // Si es empresa o proveedor, primero verificamos identidad con KYC
-    if (tipoEntidad === 'empresa') {
-      setPendingRegistroData({
-        nombre: nombreRegistro.trim(),
-        correo: correoOTelefonoRegistro.trim(),
-        contrasena: contrasenaRegistro,
-        tipoEntidad,
-        nit: nit.trim(),
-        correoFacturacion: correoFacturacion.trim(),
-        rubro,
-      });
-      setMostrarKYC(true);
-      return;
-    }
-
-    setCargando(true);
-    setTimeout(async () => {
-      const finalRole: UserRole = 'client';
-
-      const exito = await registrarUsuario(
-        nombreRegistro.trim(),
-        correoOTelefonoRegistro.trim(),
-        finalRole,
-        contrasenaRegistro,
-        tipoEntidad,
-        undefined,
-        undefined,
-        undefined,
-        false
-      );
-
-      setCargando(false);
-      if (exito) {
-        setConfiguracionModal({
-          titulo: '🎉 ¡Registro Exitoso!',
-          mensaje: 'Tu cuenta ha sido creada correctamente. ¡Bienvenido a Todo Ya!'
-        });
-        setMostrarModal(true);
-        setEsRegistro(false);
-        setNombreRegistro('');
-        setCorreoOTelefonoRegistro('');
-        setContrasenaRegistro('');
-      } else {
-        setConfiguracionModal({
-          titulo: '❌ Error de Registro',
-          mensaje: 'El correo o número de teléfono ingresado ya existe. Inténtalo con otro.'
-        });
-        setMostrarModal(true);
-      }
-    }, 1200);
+    enviarSmsPin();
+    setMostrarModalPIN(true);
   };
 
   /**
@@ -155,10 +235,10 @@ export default function LoginScreen() {
     if (!pendingRegistroData) return;
 
     setCargando(true);
-    const { nombre, correo, contrasena, tipoEntidad: te, nit: n, correoFacturacion: cf, rubro: rb } = pendingRegistroData;
+    const { nombre, correo, contrasena, tipoEntidad: te, nit: n, correoFacturacion: cf, rubro: rb, celular: cel, codigoPais: cp } = pendingRegistroData;
     const finalRole: UserRole = 'business';
 
-    const exito = await registrarUsuario(nombre, correo, finalRole, contrasena, te, n, cf, rb, true);
+    const exito = await registrarUsuario(nombre, correo, finalRole, contrasena, te, n, cf, rb, true, cel, cp);
     setCargando(false);
     setPendingRegistroData(null);
 
@@ -170,7 +250,8 @@ export default function LoginScreen() {
       setMostrarModal(true);
       setEsRegistro(false);
       setNombreRegistro('');
-      setCorreoOTelefonoRegistro('');
+      setCelular('');
+      setCorreoRegistro('');
       setContrasenaRegistro('');
       setNit('');
       setCorreoFacturacion('');
@@ -445,21 +526,59 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Celular / Correo */}
+              {/* Celular con Selector de Código de País */}
+              <Text style={styles.inputLabel}>Número de Celular:</Text>
+              <View style={styles.phoneRowContainer}>
+                <TouchableOpacity 
+                  style={[
+                    styles.countryDropdownBtn,
+                    tipoEntidad === 'empresa' ? styles.borderB2B : styles.borderNormal
+                  ]}
+                  onPress={() => setMostrarPaises(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.countryDropdownText}>
+                    {(PAISES_LATINOS.find(p => p.codigo === codigoPais)?.bandera || '🇧🇴')} +{codigoPais}
+                  </Text>
+                  <Ionicons name="chevron-down-outline" size={14} color="#666" style={{ marginLeft: 2 }} />
+                </TouchableOpacity>
+
+                <View style={[
+                  styles.phoneInputContainer,
+                  focusedInput === 'celularRegistro' && (tipoEntidad === 'empresa' ? styles.inputContainerFocusedB2B : styles.inputContainerFocused)
+                ]}>
+                  <Ionicons name="call-outline" size={18} color={focusedInput === 'celularRegistro' ? (tipoEntidad === 'empresa' ? '#6366f1' : '#cca000') : '#888'} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Número de celular"
+                    placeholderTextColor="#999"
+                    value={celular}
+                    onChangeText={setCelular}
+                    keyboardType="numeric"
+                    editable={!cargando}
+                    onFocus={() => setFocusedInput('celularRegistro')}
+                    onBlur={() => setFocusedInput(null)}
+                  />
+                </View>
+              </View>
+
+              {/* Correo Electrónico (Opcional) */}
+              <Text style={styles.inputLabel}>Correo electrónico (opcional):</Text>
               <View style={[
                 styles.inputContainer,
-                focusedInput === 'correoOTelefonoRegistro' && (tipoEntidad === 'empresa' ? styles.inputContainerFocusedB2B : styles.inputContainerFocused)
+                focusedInput === 'correoRegistro' && (tipoEntidad === 'empresa' ? styles.inputContainerFocusedB2B : styles.inputContainerFocused)
               ]}>
-                <Ionicons name="mail-outline" size={20} color={focusedInput === 'correoOTelefonoRegistro' ? (tipoEntidad === 'empresa' ? '#6366f1' : '#cca000') : '#888'} style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={20} color={focusedInput === 'correoRegistro' ? (tipoEntidad === 'empresa' ? '#6366f1' : '#cca000') : '#888'} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Celular o correo electrónico"
+                  placeholder="ejemplo@correo.com"
                   placeholderTextColor="#999"
-                  value={correoOTelefonoRegistro}
-                  onChangeText={setCorreoOTelefonoRegistro}
+                  value={correoRegistro}
+                  onChangeText={setCorreoRegistro}
                   autoCapitalize="none"
+                  keyboardType="email-address"
                   editable={!cargando}
-                  onFocus={() => setFocusedInput('correoOTelefonoRegistro')}
+                  onFocus={() => setFocusedInput('correoRegistro')}
                   onBlur={() => setFocusedInput(null)}
                 />
               </View>
@@ -705,6 +824,136 @@ export default function LoginScreen() {
           </View>
         </View>
       )}
+
+      {/* BANNER SIMULACIÓN SMS PIN */}
+      {smsToastText && (
+        <View style={styles.smsToast}>
+          <View style={styles.smsToastIcon}>
+            <Ionicons name="chatbubble-ellipses" size={22} color="#1a1a1a" />
+          </View>
+          <View style={styles.smsToastContent}>
+            <Text style={styles.smsToastTitle}>💬 Mensaje SMS Nuevo</Text>
+            <Text style={styles.smsToastMessage}>{smsToastText}</Text>
+          </View>
+          <TouchableOpacity style={styles.smsToastClose} onPress={() => setSmsToastText(null)}>
+            <Ionicons name="close" size={20} color="#cbd5e1" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* MODAL SELECCIONAR PAIS */}
+      <Modal visible={mostrarPaises} transparent animationType="fade" onRequestClose={() => setMostrarPaises(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '70%', paddingBottom: 20 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#2F2F2F' }}>Elegir Código de País</Text>
+              <TouchableOpacity onPress={() => setMostrarPaises(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.paisesList}>
+              {PAISES_LATINOS.map((pais) => (
+                <TouchableOpacity
+                  key={pais.codigo}
+                  style={styles.paisItem}
+                  onPress={() => {
+                    setCodigoPais(pais.codigo);
+                    setMostrarPaises(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.paisBandera}>{pais.bandera}</Text>
+                  <Text style={styles.paisNombre}>{pais.nombre}</Text>
+                  <Text style={styles.paisCodigo}>+{pais.codigo}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL VERIFICACIÓN DOBLE FACTOR PIN */}
+      <Modal visible={mostrarModalPIN} transparent animationType="slide" onRequestClose={() => setMostrarModalPIN(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxWidth: 360 }]}>
+            <Ionicons name="shield-checkmark-outline" size={48} color="#FFB400" style={{ alignSelf: 'center', marginBottom: 12 }} />
+            <Text style={[styles.modalTitle, { textAlign: 'center', fontSize: 18 }]}>Verificación del Teléfono</Text>
+            <Text style={[styles.modalMessage, { textAlign: 'center', color: '#64748b' }]}>
+              Por favor, introduce el código de 4 dígitos enviado por SMS a:
+              {"\n"}<Text style={{ fontWeight: '700', color: '#1e293b' }}>+{codigoPais} {celular}</Text>
+            </Text>
+
+            {/* Input PIN */}
+            <View style={styles.pinContainer}>
+              {[0, 1, 2, 3].map((idx) => {
+                const char = pinIngresado[idx] || '';
+                return (
+                  <TextInput
+                    key={idx}
+                    style={[
+                      styles.pinInputBox,
+                      pinIngresado.length === idx && styles.pinInputBoxFocused
+                    ]}
+                    maxLength={1}
+                    keyboardType="numeric"
+                    value={char}
+                    onChangeText={(val) => {
+                      if (val) {
+                        const newPin = pinIngresado + val;
+                        setPinIngresado(newPin.slice(0, 4));
+                        setPinError('');
+                      } else {
+                        setPinIngresado(pinIngresado.slice(0, -1));
+                      }
+                    }}
+                    editable={!cargando}
+                    selectTextOnFocus
+                  />
+                );
+              })}
+            </View>
+
+            {pinError ? (
+              <Text style={{ color: '#ef4444', textAlign: 'center', fontSize: 13, marginBottom: 12 }}>{pinError}</Text>
+            ) : null}
+
+            <Text style={styles.countdownText}>
+              {smsCountdown > 0 
+                ? `El código expira en ${smsCountdown}s` 
+                : 'El código ha expirado'}
+            </Text>
+
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={confirmarPinYRegistrar}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalConfirmText}>Verificar y Activar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.resendBtn, smsCountdown > 0 && { opacity: 0.5 }]}
+                disabled={smsCountdown > 0}
+                onPress={enviarSmsPin}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.resendText, smsCountdown > 0 && styles.resendTextDisabled]}>
+                  Reenviar código por SMS
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 8, alignItems: 'center' }}
+                onPress={() => setMostrarModalPIN(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: '#64748b', fontSize: 13, fontWeight: '500' }}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* POPUP SIMULACIÓN OAUTH FLOTANTE (Google / LinkedIn) */}
       {proveedorOauth && (
@@ -1554,5 +1803,154 @@ const styles = StyleSheet.create({
   purposeActiveText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  phoneRowContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+    height: 54,
+  },
+  countryDropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 14,
+    backgroundColor: '#f9f9f9',
+    width: '32%',
+    height: 54,
+  },
+  countryDropdownText: {
+    fontSize: 13,
+    color: '#2f2f2f',
+    fontWeight: '600',
+  },
+  borderNormal: {
+    borderColor: '#eee',
+  },
+  borderB2B: {
+    borderColor: '#eee',
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    width: '65%',
+    height: 54,
+  },
+  // Modal Paises Styles
+  paisesList: {
+    paddingVertical: 10,
+  },
+  paisItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  paisBandera: {
+    fontSize: 22,
+    marginRight: 12,
+  },
+  paisNombre: {
+    fontSize: 15,
+    color: '#1e293b',
+    flex: 1,
+    fontWeight: '500',
+  },
+  paisCodigo: {
+    fontSize: 15,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  // Modal PIN Styles
+  pinContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginVertical: 24,
+  },
+  pinInputBox: {
+    width: 50,
+    height: 56,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    backgroundColor: '#f8fafc',
+  },
+  pinInputBoxFocused: {
+    borderColor: '#FFB400',
+    backgroundColor: '#fff',
+  },
+  countdownText: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 16,
+  },
+  resendBtn: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  resendText: {
+    fontSize: 14,
+    color: '#FFB400',
+    fontWeight: '600',
+  },
+  resendTextDisabled: {
+    color: '#cbd5e1',
+  },
+  smsToast: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    zIndex: 99999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  smsToastIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFB400',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smsToastContent: {
+    flex: 1,
+  },
+  smsToastTitle: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  smsToastMessage: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  smsToastClose: {
+    padding: 4,
   },
 });

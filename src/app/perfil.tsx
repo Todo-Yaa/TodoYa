@@ -9,6 +9,7 @@ const FACEBOOK_LINK = 'https://www.instagram.com/todoo__ya';
 const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
+import KYCVerifierModal from '../components/kyc-verifier-modal';
 
 
 /**
@@ -18,12 +19,12 @@ import Storage from '../utils/storage';
  */
 export default function PerfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor } = useUser();
+  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc } = useUser();
   const isBusiness = userRole === 'business';
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
 
-  // Estados del onboarding
+  // Estados del onboarding y KYC
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([]);
@@ -31,6 +32,21 @@ export default function PerfilScreen() {
   const [cobertura, setCobertura] = useState('Local');
   const [descripcion, setDescripcion] = useState('');
   const [errorOnboarding, setErrorOnboarding] = useState('');
+  const [showKYCModal, setShowKYCModal] = useState(false);
+
+  const handleKYCVerified = async (detalles: string) => {
+    // 1. Actualizar KYC del usuario en base de datos y context
+    await actualizarKyc(true, detalles);
+    
+    // 2. Si ya está configurado como proveedor, cambiar rol de inmediato. Si no, iniciar onboarding de proveedor
+    if (activeUser?.proveedorConfigurado) {
+      setRole('provider');
+      router.replace('/leads');
+    } else {
+      setOnboardingStep(1);
+      setShowOnboarding(true);
+    }
+  };
 
   const toggleServicio = (serv: string) => {
     if (serviciosSeleccionados.includes(serv)) {
@@ -189,7 +205,10 @@ export default function PerfilScreen() {
                   ]}
                   onPress={() => {
                     if (item.role === 'provider') {
-                      if (activeUser?.proveedorConfigurado) {
+                      if (activeUser?.tipoEntidad === 'natural' && !activeUser?.kycVerificado) {
+                        // Obligar verificación KYC si es persona natural no verificada
+                        setShowKYCModal(true);
+                      } else if (activeUser?.proveedorConfigurado) {
                         setRole('provider');
                         router.replace('/leads');
                       } else {
@@ -265,7 +284,9 @@ export default function PerfilScreen() {
 
               <TouchableOpacity style={styles.accountRow} activeOpacity={0.7}>
                 <Ionicons name="call-outline" size={24} color="#666" />
-                <Text style={styles.accountText}>+591 7XXX XXXX</Text>
+                <Text style={styles.accountText}>
+                  {activeUser?.codigoPais ? `+${activeUser.codigoPais} ${activeUser.celular}` : (activeUser?.correoOTelefono || '+591 7XXX XXXX')}
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -626,6 +647,14 @@ export default function PerfilScreen() {
           </View>
         </View>
       )}
+
+      {/* MODAL KYC — Verificación de Identidad obligatoria antes de Onboarding de Proveedor */}
+      <KYCVerifierModal
+        visible={showKYCModal}
+        userName={userName}
+        onVerified={handleKYCVerified}
+        onClose={() => setShowKYCModal(false)}
+      />
     </View>
   );
 }

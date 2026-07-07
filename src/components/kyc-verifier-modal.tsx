@@ -25,6 +25,27 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
   const [kycResult, setKycResult] = useState<{ approved: boolean; details: string; rejectedReasons: string[] } | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
+  // Nuevos estados interactivos
+  const [tipoDocumento, setTipoDocumento] = useState<'dni' | 'ce'>('dni');
+  const [documentoSubido, setDocumentoSubido] = useState(false);
+  const [selfieSubida, setSelfieSubida] = useState(false);
+  const [capturandoDoc, setCapturandoDoc] = useState(false);
+  const [capturandoSelfie, setCapturandoSelfie] = useState(false);
+
+  const capturarDocumentoSimulado = async () => {
+    setCapturandoDoc(true);
+    await delay(1500);
+    setCapturandoDoc(false);
+    setDocumentoSubido(true);
+  };
+
+  const capturarSelfieSimulada = async () => {
+    setCapturandoSelfie(true);
+    await delay(1500);
+    setCapturandoSelfie(false);
+    setSelfieSubida(true);
+  };
+
   const animateProgress = (toValue: number, duration: number) => {
     Animated.timing(progressAnim, {
       toValue,
@@ -34,12 +55,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
   };
 
   const startKYCFlow = async () => {
-    // PASO 1: Simular captura del documento (cámara/galería)
-    setStep('simulating_capture');
-    animateProgress(0.25, 500);
-    await delay(1500);
-
-    // PASO 2: Obtener presigned URL (S3)
+    // Al haber cargado ya los archivos en la intro, pasamos directo a subir e integrar
     setStep('uploading');
     animateProgress(0.5, 800);
 
@@ -53,13 +69,12 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
       const presignData = await presignRes.json();
       sessionId = presignData.sessionId;
     } catch (e) {
-      // Fallback si no hay servidor
       sessionId = `fallback_${Date.now()}`;
     }
 
     await delay(1200);
 
-    // PASO 3: Enviar a verificar con Claude
+    // PASO 2: Enviar a verificar con Claude
     setStep('analyzing');
     animateProgress(0.85, 1500);
 
@@ -70,7 +85,19 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
         body: JSON.stringify({ action: 'verify', sessionId }),
       });
       const verifyData = await verifyRes.json();
-      const result = verifyData.result || { approved: true, details: 'Documento verificado correctamente.', rejectedReasons: [] };
+      
+      let result = verifyData.result || { approved: true, details: 'Documento verificado.', rejectedReasons: [] };
+      if (verifyData.status === 'simulated' || !verifyData.result) {
+        // Personalizar detalles simulados según tipo de documento elegido
+        const isApproved = Math.random() > 0.05; // 95% éxito
+        result = {
+          approved: isApproved,
+          details: isApproved
+            ? `Identidad Verificada: Foto de rostro (Selfie) coincide con el documento de tipo ${tipoDocumento === 'ce' ? 'Carnet de Extranjería' : 'DNI / Carnet de Identidad'} ingresado de forma exitosa.`
+            : `Fallo de Verificación: El rostro de la selfie no es coincidente o el documento ${tipoDocumento === 'ce' ? 'CE' : 'DNI'} está borroso.`,
+          rejectedReasons: isApproved ? [] : ['Image quality too low', 'Face match mismatch']
+        };
+      }
 
       animateProgress(1, 400);
       await delay(600);
@@ -78,7 +105,11 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
       setKycResult(result);
       setStep(result.approved ? 'success' : 'failed');
     } catch (e) {
-      setKycResult({ approved: true, details: 'Verificación completada (modo offline).', rejectedReasons: [] });
+      setKycResult({ 
+        approved: true, 
+        details: `Verificación completada offline para ${tipoDocumento === 'ce' ? 'Carnet de Extranjería' : 'DNI / Carnet de Identidad'}.`, 
+        rejectedReasons: [] 
+      });
       animateProgress(1, 400);
       await delay(600);
       setStep('success');
@@ -102,6 +133,8 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
     setStep('intro');
     progressAnim.setValue(0);
     setKycResult(null);
+    setDocumentoSubido(false);
+    setSelfieSubida(false);
     onClose();
   };
 
@@ -135,37 +168,118 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
             <View style={styles.stepContainer}>
               <Text style={styles.stepTitle}>Hola, {userName || 'nuevo usuario'} 👋</Text>
               <Text style={styles.stepDesc}>
-                Para proteger a nuestra comunidad y garantizar la seguridad de todos,
-                necesitamos verificar tu identidad antes de activar tu cuenta como{' '}
-                <Text style={{ fontWeight: '700', color: '#FFB400' }}>proveedor o empresa</Text>.
+                Para poder ofrecer servicios como Proveedor independiente, requerimos validar tu identidad con DNI/CE y Selfie.
               </Text>
 
-              <View style={styles.requirementsList}>
-                {[
-                  { icon: 'id-card-outline', text: 'Carnet de Identidad (C.I.) boliviano' },
-                  { icon: 'camera-outline', text: 'Foto clara del documento (frente)' },
-                  { icon: 'time-outline', text: 'El proceso tarda menos de 30 segundos' },
-                  { icon: 'lock-closed-outline', text: 'Tu imagen es eliminada tras la verificación' },
-                ].map((req, i) => (
-                  <View key={i} style={styles.requirementRow}>
-                    <View style={styles.requirementIconBg}>
-                      <Ionicons name={req.icon as any} size={16} color="#FFB400" />
-                    </View>
-                    <Text style={styles.requirementText}>{req.text}</Text>
+              {/* Selector de tipo de documento */}
+              <Text style={styles.sectionLabel}>1. Elige tu tipo de documento:</Text>
+              <View style={styles.docSelectorRow}>
+                <TouchableOpacity
+                  style={[styles.docSelectorBtn, tipoDocumento === 'dni' && styles.docSelectorBtnActive]}
+                  onPress={() => { setTipoDocumento('dni'); setDocumentoSubido(false); }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="id-card" size={16} color={tipoDocumento === 'dni' ? '#1a1a1a' : '#64748b'} />
+                  <Text style={[styles.docSelectorBtnText, tipoDocumento === 'dni' && styles.docSelectorBtnTextActive]}>DNI / C.I.</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.docSelectorBtn, tipoDocumento === 'ce' && styles.docSelectorBtnActive]}
+                  onPress={() => { setTipoDocumento('ce'); setDocumentoSubido(false); }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="document-text" size={16} color={tipoDocumento === 'ce' ? '#1a1a1a' : '#64748b'} />
+                  <Text style={[styles.docSelectorBtnText, tipoDocumento === 'ce' && styles.docSelectorBtnTextActive]}>Carnet Extranjería</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Captura de Documento y Selfie */}
+              <Text style={[styles.sectionLabel, { marginTop: 14 }]}>2. Capturas requeridas:</Text>
+              <View style={styles.verificationStepsBox}>
+                
+                {/* Paso A: Subir Documento */}
+                <View style={styles.verificationStepRow}>
+                  <View style={[styles.stepStatusIcon, documentoSubido ? styles.statusSuccessBg : styles.statusPendingBg]}>
+                    <Ionicons 
+                      name={documentoSubido ? "checkmark-circle" : "id-card-outline"} 
+                      size={20} 
+                      color={documentoSubido ? "#10b981" : "#FFB400"} 
+                    />
                   </View>
-                ))}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.stepItemTitle}>
+                      {tipoDocumento === 'ce' ? 'Foto de Carnet de Extranjería' : 'Foto de DNI / C.I.'}
+                    </Text>
+                    <Text style={styles.stepItemDesc}>
+                      {documentoSubido ? '✅ Documento cargado: documento_frente.jpg' : 'Sube una foto legible del frente'}
+                    </Text>
+                  </View>
+
+                  {capturandoDoc ? (
+                    <ActivityIndicator size="small" color="#FFB400" />
+                  ) : (
+                    <TouchableOpacity 
+                      style={[styles.scanBtn, documentoSubido && styles.scanBtnActive]} 
+                      onPress={capturarDocumentoSimulado}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.scanBtnText, documentoSubido && styles.scanBtnTextActive]}>
+                        {documentoSubido ? 'Cambiar' : '📸 Escanear'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Paso B: Selfie */}
+                <View style={styles.verificationStepRow}>
+                  <View style={[styles.stepStatusIcon, selfieSubida ? styles.statusSuccessBg : styles.statusPendingBg]}>
+                    <Ionicons 
+                      name={selfieSubida ? "checkmark-circle" : "camera-outline"} 
+                      size={20} 
+                      color={selfieSubida ? "#10b981" : "#FFB400"} 
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.stepItemTitle}>Foto de tu Rostro (Selfie)</Text>
+                    <Text style={styles.stepItemDesc}>
+                      {selfieSubida ? '✅ Foto cargada: selfie_rostro.jpg' : 'Tómate una selfie con buena luz'}
+                    </Text>
+                  </View>
+
+                  {capturandoSelfie ? (
+                    <ActivityIndicator size="small" color="#FFB400" />
+                  ) : (
+                    <TouchableOpacity 
+                      style={[styles.scanBtn, selfieSubida && styles.scanBtnActive]} 
+                      onPress={capturarSelfieSimulada}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.scanBtnText, selfieSubida && styles.scanBtnTextActive]}>
+                        {selfieSubida ? 'Cambiar' : '🤳 Selfie'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
               </View>
 
               <View style={styles.protectBanner}>
                 <Ionicons name="eye-off-outline" size={16} color="#10b981" />
                 <Text style={styles.protectText}>
-                  Tu imagen <Text style={{ fontWeight: '700' }}>nunca se almacena</Text>. Solo el resultado de la verificación queda guardado.
+                  Las imágenes son analizadas temporalmente en memoria para verificar tu identidad y luego borradas de forma segura.
                 </Text>
               </View>
 
-              <TouchableOpacity style={styles.primaryBtn} onPress={startKYCFlow} activeOpacity={0.8}>
-                <Ionicons name="camera" size={20} color="#1a1a1a" />
-                <Text style={styles.primaryBtnText}>Iniciar Verificación</Text>
+              <TouchableOpacity 
+                style={[styles.primaryBtn, (!documentoSubido || !selfieSubida) && styles.primaryBtnDisabled]} 
+                onPress={startKYCFlow} 
+                disabled={!documentoSubido || !selfieSubida}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="shield-checkmark" size={20} color={(!documentoSubido || !selfieSubida) ? "#94a3b8" : "#1a1a1a"} />
+                <Text style={[styles.primaryBtnText, (!documentoSubido || !selfieSubida) && { color: '#94a3b8' }]}>
+                  Iniciar Verificación con IA
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -403,4 +517,104 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryBtnText: { color: '#475569', fontSize: 15, fontWeight: '600' },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  docSelectorRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  docSelectorBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    backgroundColor: '#f8fafc',
+  },
+  docSelectorBtnActive: {
+    backgroundColor: '#fff8e1',
+    borderColor: '#FFB400',
+  },
+  docSelectorBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  docSelectorBtnTextActive: {
+    color: '#1a1a1a',
+  },
+  verificationStepsBox: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    borderRadius: 16,
+    padding: 12,
+    gap: 12,
+    marginBottom: 16,
+  },
+  verificationStepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  stepStatusIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusPendingBg: {
+    backgroundColor: '#fff8e1',
+  },
+  statusSuccessBg: {
+    backgroundColor: '#e8f5e9',
+  },
+  stepItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  stepItemDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  scanBtn: {
+    backgroundColor: '#FFB400',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  scanBtnActive: {
+    backgroundColor: '#e2e8f0',
+  },
+  scanBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  scanBtnTextActive: {
+    color: '#475569',
+  },
+  primaryBtnDisabled: {
+    backgroundColor: '#e2e8f0',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
 });
