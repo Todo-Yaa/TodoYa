@@ -96,6 +96,17 @@ export default function SolicitarScreen() {
   const { addOrder, userRole } = useUser();
   const isBusiness = userRole === 'business';
   const [inputText, setInputText] = useState('');
+  const scanTimeoutRef = useRef<any>(null);
+
+  const cancelarEscaneo = () => {
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
+    }
+    setFaseBusqueda('input');
+    setShowResult(true);
+  };
+
   const [correctedText, setCorrectedText] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [servicio, setServicio] = useState('');
@@ -392,6 +403,7 @@ export default function SolicitarScreen() {
   useEffect(() => {
     return () => {
       if (timerIntervalId) clearInterval(timerIntervalId);
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
       if (voiceIntervalRef.current) clearInterval(voiceIntervalRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
@@ -511,7 +523,7 @@ export default function SolicitarScreen() {
     setFaseBusqueda('scanning');
     
     // Simular escaneo de 2 segundos (radar de transmisión de señal)
-    setTimeout(() => {
+    scanTimeoutRef.current = setTimeout(() => {
       const filtered = getCandidates(servicio);
       
       if (isBusiness) {
@@ -696,6 +708,10 @@ export default function SolicitarScreen() {
   };
 
   const resetForm = () => {
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
+    }
     setInputText('');
     setCorrectedText('');
     setFaseBusqueda('input');
@@ -886,18 +902,39 @@ export default function SolicitarScreen() {
           </Text>
           <Text style={[
             styles.scanningSubtitle, 
-            { color: '#666666' }
+            { color: '#666666', marginBottom: 30 }
           ]}>
             {t('solicitud.scanning_subtitle', { servicio })}
           </Text>
+
+          <TouchableOpacity 
+            style={[styles.cancelScanningBtn, isBusiness && { borderColor: '#818cf8' }]}
+            onPress={cancelarEscaneo}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close-circle-outline" size={20} color="#e53935" />
+            <Text style={styles.cancelScanningText}>Cancelar Búsqueda</Text>
+          </TouchableOpacity>
         </Animated.View>
       )}
 
       {faseBusqueda === 'offers' && (
         <>
           {/* Header Bidding */}
-          <View style={[styles.header, isBusiness && styles.b2bHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-            <View>
+          <View style={[styles.header, isBusiness && styles.b2bHeader, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+            <TouchableOpacity 
+              style={{ padding: 4 }} 
+              onPress={() => {
+                if (timerIntervalId) clearInterval(timerIntervalId);
+                setFaseBusqueda('input');
+                setShowResult(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={24} color={isBusiness ? '#fff' : '#2F2F2F'} />
+            </TouchableOpacity>
+            
+            <View style={{ flex: 1 }}>
               <Text style={[styles.headerTitle, isBusiness && { color: '#fff' }]}>{t('chat.provider_offers')}</Text>
               <Text style={[styles.headerSubtitle, isBusiness && { color: '#94a3b8' }]}>{servicio} · {urgencia}</Text>
             </View>
@@ -1712,6 +1749,25 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
     fontSize: 14,
     fontWeight: '700',
+  },
+  cancelScanningBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#e53935',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    marginTop: 10,
+    alignSelf: 'center',
+  },
+  cancelScanningText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#e53935',
   },
 });
 
