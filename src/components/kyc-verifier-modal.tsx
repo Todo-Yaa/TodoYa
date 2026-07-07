@@ -127,6 +127,8 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
     setStep('intro');
     progressAnim.setValue(0);
     setKycResult(null);
+    setDocumentoSubido(false);
+    setSelfieSubida(false);
   };
 
   const resetAndClose = () => {

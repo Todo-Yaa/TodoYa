@@ -99,6 +99,7 @@ export default function LoginScreen() {
   const enviarSmsPin = () => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setPinGenerado(code);
+    setPinIngresado('');
     setSmsCountdown(60);
     setPinError('');
     setSmsToastText(`SMS de Todo Ya: Tu código de verificación de doble factor es ${code}.`);
