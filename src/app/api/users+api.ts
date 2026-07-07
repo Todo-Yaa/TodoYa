@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken, kycVerificado, kycDetalles } = body;
+    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken, kycVerificado, kycDetalles, baneado } = body;
 
     if (!correoOTelefono) {
       return Response.json({ error: 'El identificador de correo/teléfono es requerido' }, { status: 400 });
@@ -134,6 +134,9 @@ export async function PUT(request: Request) {
     }
     if (kycDetalles !== undefined) {
       updateData.kycDetalles = kycDetalles;
+    }
+    if (baneado !== undefined) {
+      updateData.baneado = baneado;
     }
 
     if (!isDbConnected() || !db) {

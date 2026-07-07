@@ -38,6 +38,9 @@ export const users = pgTable('users', {
   kycVerificado: boolean('kyc_verificado').default(false),
   kycDetalles: text('kyc_detalles'), // Resultado de Claude: descripción del documento analizado
 
+  // Estado de baneo/suspensión del usuario por denuncias
+  baneado: boolean('baneado').default(false),
+
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -132,5 +135,20 @@ export const applications = pgTable('applications', {
 }, (table) => ({
   orderIdx: index('applications_order_idx').on(table.orderId),
   proveedorIdx: index('applications_proveedor_idx').on(table.proveedorId),
+}));
+
+// Tabla de Reportes / Denuncias a Proveedores
+export const reports = pgTable('reports', {
+  id: serial('id').primaryKey(),
+  pedidoId: integer('pedido_id').references(() => orders.id, { onDelete: 'cascade' }), // Pedido donde ocurrió el problema (opcional)
+  reportanteId: integer('reportante_id').references(() => users.id, { onDelete: 'cascade' }), // Quién denuncia
+  reportadoNombre: varchar('reportado_nombre', { length: 256 }).notNull(), // Nombre del proveedor reportado
+  motivo: varchar('motivo', { length: 256 }).notNull(), // Motivo de la denuncia
+  descripcion: text('descripcion').notNull(), // Detalles del problema
+  estado: varchar('estado', { length: 50 }).$type<'pendiente' | 'revisado' | 'baneado' | 'descartado'>().default('pendiente'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  pedidoIdx: index('reports_pedido_idx').on(table.pedidoId),
+  reportanteIdx: index('reports_reportante_idx').on(table.reportanteId),
 }));
 

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking, Modal, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 // Configura los enlaces de tus redes sociales aquí:
@@ -19,7 +19,7 @@ import KYCVerifierModal from '../components/kyc-verifier-modal';
  */
 export default function PerfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc } = useUser();
+  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados } = useUser();
   const isBusiness = userRole === 'business';
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
@@ -33,6 +33,28 @@ export default function PerfilScreen() {
   const [descripcion, setDescripcion] = useState('');
   const [errorOnboarding, setErrorOnboarding] = useState('');
   const [showKYCModal, setShowKYCModal] = useState(false);
+
+  // Estados del Panel de Administración de Denuncias
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [reportsList, setReportsList] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+
+  const cargarReportes = async () => {
+    setLoadingReports(true);
+    try {
+      const res = await fetch('/api/reports');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'success') {
+          setReportsList(data.data || []);
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar reportes para panel de admin:', err);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
 
   const handleKYCVerified = async (detalles: string) => {
     // 1. Actualizar KYC del usuario en base de datos y context
@@ -334,6 +356,22 @@ export default function PerfilScreen() {
               </View>
             </View>
           </View>
+
+          {/* Panel de Control de Denuncias (Simulación de Administración) */}
+          <TouchableOpacity 
+            style={[styles.accountRow, { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}
+            onPress={() => {
+              cargarReportes();
+              setShowAdminPanel(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="shield-outline" size={24} color="#4f46e5" />
+            <Text style={[styles.accountText, { color: '#4f46e5', fontWeight: 'bold' }]}>Administrar Denuncias (Soporte)</Text>
+            <View style={{ backgroundColor: '#e0e7ff', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: 'auto' }}>
+              <Text style={{ fontSize: 10, color: '#4f46e5', fontWeight: '700' }}>Admin</Text>
+            </View>
+          </TouchableOpacity>
 
           <TouchableOpacity 
             style={[styles.accountRow, { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}
@@ -655,6 +693,111 @@ export default function PerfilScreen() {
         onVerified={handleKYCVerified}
         onClose={() => setShowKYCModal(false)}
       />
+
+      {/* MODAL DE PANEL DE ADMINISTRACIÓN DE REPORTES / BANEO */}
+      <Modal visible={showAdminPanel} transparent animationType="slide" onRequestClose={() => setShowAdminPanel(false)}>
+        <View style={styles.adminModalOverlay}>
+          <View style={styles.adminModalContent}>
+            <View style={styles.adminHeader}>
+              <Ionicons name="shield-checkmark" size={22} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.adminTitle}>Panel de Control: Denuncias</Text>
+              <TouchableOpacity onPress={() => setShowAdminPanel(false)} style={{ marginLeft: 'auto', padding: 4 }}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingReports ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+                <ActivityIndicator size="large" color="#4f46e5" />
+                <Text style={{ marginTop: 12, color: '#64748b' }}>Cargando denuncias registradas...</Text>
+              </View>
+            ) : (
+              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
+                <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 6 }}>
+                  Aquí puedes ver las quejas de los usuarios sobre los proveedores y tomar decisiones de suspender (banear) o perdonar la cuenta.
+                </Text>
+
+                {reportsList.length === 0 ? (
+                  <View style={{ alignItems: 'center', marginVertical: 40, gap: 12 }}>
+                    <Ionicons name="checkmark-circle-outline" size={48} color="#10b981" />
+                    <Text style={{ fontSize: 14, color: '#475569', fontWeight: '600' }}>¡No hay denuncias pendientes!</Text>
+                  </View>
+                ) : (
+                  reportsList.map((rep) => {
+                    // Buscar si el proveedor reportado está actualmente baneado
+                    const matchesUser = usuariosRegistrados.find(u => u.nombre.toLowerCase() === rep.reportadoNombre.toLowerCase());
+                    const isCurrentlyBanned = matchesUser ? matchesUser.baneado === true : false;
+                    const providerEmailOrPhone = matchesUser ? matchesUser.correoOTelefono : '';
+
+                    return (
+                      <View key={rep.id} style={styles.reportCard}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={styles.reportedName}>Técnico: {rep.reportadoNombre}</Text>
+                          <View style={[styles.statusBadge, isCurrentlyBanned ? styles.bannedBadge : styles.pendingBadge]}>
+                            <Text style={isCurrentlyBanned ? styles.bannedBadgeText : styles.pendingBadgeText}>
+                              {isCurrentlyBanned ? 'Suspendido' : 'Activo'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.reportCardRow}>
+                          <Text style={{ fontWeight: '700' }}>Motivo:</Text> {rep.motivo}
+                        </Text>
+                        <Text style={styles.reportCardRow}>
+                          <Text style={{ fontWeight: '700' }}>Detalles:</Text> {rep.descripcion}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                          Reportado en: {new Date(rep.createdAt).toLocaleString()}
+                        </Text>
+
+                        {matchesUser ? (
+                          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10 }}>
+                            {isCurrentlyBanned ? (
+                              <TouchableOpacity
+                                style={[styles.adminActionBtn, { backgroundColor: '#10b981' }]}
+                                onPress={async () => {
+                                  const ok = await banearProveedor(providerEmailOrPhone, false);
+                                  if (ok) {
+                                    alert(`Se ha levantado la suspensión a ${rep.reportadoNombre}.`);
+                                    cargarReportes();
+                                  }
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name="checkmark-done" size={14} color="#fff" />
+                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', marginLeft: 4 }}>Reactivar Cuenta</Text>
+                              </TouchableOpacity>
+                            ) : (
+                              <TouchableOpacity
+                                style={[styles.adminActionBtn, { backgroundColor: '#ef4444' }]}
+                                onPress={async () => {
+                                  const ok = await banearProveedor(providerEmailOrPhone, true);
+                                  if (ok) {
+                                    alert(`Se ha baneado y suspendido permanentemente la cuenta de ${rep.reportadoNombre}.`);
+                                    cargarReportes();
+                                  }
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name="ban" size={14} color="#fff" />
+                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', marginLeft: 4 }}>Banear y Suspender</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        ) : (
+                          <Text style={{ fontSize: 11, color: '#e53935', marginTop: 6, fontStyle: 'italic' }}>
+                            * El proveedor no está registrado localmente en la sesión activa (semilla estática).
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -971,5 +1114,85 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 5,
     elevation: 2,
+  },
+  // Admin Panel Styles
+  adminModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  adminModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 420,
+    height: '75%',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  adminHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4f46e5',
+    padding: 18,
+  },
+  adminTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    flex: 1,
+  },
+  reportCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 12,
+    marginBottom: 8,
+  },
+  reportedName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  reportCardRow: {
+    fontSize: 12,
+    color: '#475569',
+    marginTop: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  pendingBadge: {
+    backgroundColor: '#ecfdf5',
+  },
+  pendingBadgeText: {
+    color: '#059669',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  bannedBadge: {
+    backgroundColor: '#fef2f2',
+  },
+  bannedBadgeText: {
+    color: '#ef4444',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  adminActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
 });

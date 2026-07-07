@@ -27,6 +27,7 @@ export interface UsuarioRegistrado {
   codigoPais?: string;
   kycVerificado?: boolean;
   kycDetalles?: string;
+  baneado?: boolean;
 }
 
 // Interfaz para representar un pedido dentro de la aplicación
@@ -90,6 +91,8 @@ interface UserContextType {
   markAllNotificationsRead: () => void;
   clearAllNotifications: () => void;
   dismissToast: () => void;
+  reportarProveedor: (pedidoId: number | undefined, reportadoNombre: string, motivo: string, descripcion: string) => Promise<boolean>;
+  banearProveedor: (correoOTelefono: string, baneado: boolean) => Promise<boolean>;
 }
 
 // Creación del React Context
@@ -871,6 +874,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
           const usuarioEncontrado = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
           
           if (usuarioEncontrado) {
+            if (usuarioEncontrado.baneado) {
+              showNotification('⚠️ Cuenta Suspendida', 'Tu acceso ha sido bloqueado debido a reportes de comportamiento. Escríbenos a soporte@todoya.com', 'warning');
+              return false;
+            }
             if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
               return false;
             }
@@ -899,6 +906,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     let rol: UserRole = 'client';
 
     if (usuarioEncontrado) {
+      if (usuarioEncontrado.baneado) {
+        showNotification('⚠️ Cuenta Suspendida', 'Tu acceso ha sido bloqueado debido a reportes de comportamiento. Escríbenos a soporte@todoya.com', 'warning');
+        return false;
+      }
       if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
         return false;
       }
@@ -1301,6 +1312,82 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Registra un reporte o denuncia contra un proveedor.
+   */
+  const reportarProveedor = async (
+    pedidoId: number | undefined,
+    reportadoNombre: string,
+    motivo: string,
+    descripcion: string
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pedidoId,
+          reportanteId: activeUser?.id,
+          reportadoNombre,
+          motivo,
+          descripcion
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.status === 'success';
+      }
+      return false;
+    } catch (err) {
+      console.error('Error al registrar reporte de proveedor:', err);
+      return false;
+    }
+  };
+
+  /**
+   * Banear/suspender o reactivar la cuenta de un proveedor.
+   */
+  const banearProveedor = async (
+    correoOTelefono: string,
+    baneado: boolean
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          correoOTelefono,
+          baneado
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'success') {
+          // Si el proveedor baneado es el usuario activo, actualizarlo localmente
+          if (activeUser && activeUser.correoOTelefono.toLowerCase() === correoOTelefono.toLowerCase()) {
+            const updatedUser = { ...activeUser, baneado };
+            setActiveUser(updatedUser);
+            await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+          }
+
+          // Actualizar la lista local de registrados
+          const listaActualizada = usuariosRegistrados.map(u => 
+            (u.correoOTelefono || '').toLowerCase() === correoOTelefono.toLowerCase()
+              ? { ...u, baneado }
+              : u
+          );
+          setUsuariosRegistrados(listaActualizada);
+          await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
+          return true;
+        }
+      }
+      return false;
+    } catch (err) {
+      console.error('Error al banear proveedor:', err);
+      return false;
+    }
+  };
+
+  /**
    * Registra la calificación dada por el cliente a un pedido completado.
    */
   const rateOrder = (orderId: number, estrellas: number, etiquetas: string[]) => {
@@ -1495,6 +1582,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       markAllNotificationsRead,
       clearAllNotifications,
       dismissToast,
+      reportarProveedor,
+      banearProveedor,
     }}>
       {children}
     </UserContext.Provider>

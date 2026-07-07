@@ -11,6 +11,7 @@ export interface LocalDbSchema {
   transactions: any[];
   ratings: any[];
   applications: any[];
+  reports: any[];
 }
 
 const initialSeedUsers = [
@@ -134,7 +135,8 @@ class LocalDb {
           messages: [],
           transactions: [],
           ratings: initialSeedRatings,
-          applications: []
+          applications: [],
+          reports: []
         });
       }
       const data = fs.readFileSync(DB_FILE_PATH, 'utf-8');
@@ -142,10 +144,11 @@ class LocalDb {
       // Migración automática: asegurar que las tablas nuevas existan en DB viejas
       if (!parsed.ratings) parsed.ratings = initialSeedRatings;
       if (!parsed.applications) parsed.applications = [];
+      if (!parsed.reports) parsed.reports = [];
       return parsed;
     } catch (e) {
       console.error('Error reading local JSON database:', e);
-      return { users: [], orders: [], messages: [], transactions: [], ratings: [], applications: [] };
+      return { users: [], orders: [], messages: [], transactions: [], ratings: [], applications: [], reports: [] };
     }
   }
 
@@ -396,6 +399,30 @@ class LocalDb {
       promedioEstrellas: Math.round(promedio * 10) / 10,
       totalTrabajosCompletados: totalJobs
     };
+  }
+
+  // --- REPORTS (NUEVA TABLA) ---
+  getReports(pedidoId?: number) {
+    const rps = this.read().reports || [];
+    if (pedidoId !== undefined) {
+      return rps.filter(r => r.pedidoId === pedidoId);
+    }
+    return rps;
+  }
+
+  insertReport(report: any) {
+    const dbData = this.read();
+    if (!dbData.reports) dbData.reports = [];
+    const newId = dbData.reports.reduce((max, r) => Math.max(max, r.id || 0), 0) + 1;
+    const newReport = {
+      ...report,
+      id: newId,
+      estado: report.estado || 'pendiente',
+      createdAt: new Date().toISOString()
+    };
+    dbData.reports.push(newReport);
+    this.write(dbData);
+    return newReport;
   }
 }
 

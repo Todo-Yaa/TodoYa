@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, View, Platform, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Platform, TouchableOpacity, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import { useUser, Order } from '../context/user-context';
@@ -176,11 +176,49 @@ const generateTrackingMapHtml = (orderId: number, providerName: string, serviceN
 };
 
 export default function PedidosScreen() {
-  const { orders: pedidos, userRole, userName } = useUser();
+  const { orders: pedidos, userRole, userName, reportarProveedor } = useUser();
   const isBusiness = userRole === 'business';
   
   // Tracking states
   const [activeTrackingOrder, setActiveTrackingOrder] = useState<Order | null>(null);
+
+  // Estados para denunciar/reportar a un proveedor
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportOrderId, setReportOrderId] = useState<number | undefined>(undefined);
+  const [reportProviderName, setReportProviderName] = useState('');
+  const [reportReason, setReportReason] = useState('Cobro excesivo / Cambió precio');
+  const [reportDescription, setReportDescription] = useState('');
+  const [sendingReport, setSendingReport] = useState(false);
+  const [showReportSuccessModal, setShowReportSuccessModal] = useState(false);
+
+  const abrirModalReporte = (orderId: number, providerName: string) => {
+    setReportOrderId(orderId);
+    setReportProviderName(providerName);
+    setReportReason('Cobro excesivo / Cambió precio');
+    setReportDescription('');
+    setShowReportModal(true);
+  };
+
+  const enviarReporte = async () => {
+    if (!reportDescription.trim()) {
+      alert('Por favor describe brevemente el problema.');
+      return;
+    }
+    setSendingReport(true);
+    const exito = await reportarProveedor(
+      reportOrderId,
+      reportProviderName,
+      reportReason,
+      reportDescription.trim()
+    );
+    setSendingReport(false);
+    setShowReportModal(false);
+    if (exito) {
+      setShowReportSuccessModal(true);
+    } else {
+      alert('Hubo un problema al registrar la denuncia. Reintenta por favor.');
+    }
+  };
   const [etaSeconds, setEtaSeconds] = useState(300);
   const [currentStep, setCurrentStep] = useState<'driving' | 'arrived'>('driving');
   
@@ -354,6 +392,20 @@ export default function PedidosScreen() {
                       ))}
                     </View>
                   )}
+                </View>
+              )}
+
+              {/* Opción de Reportar Proveedor */}
+              {pedido.proveedor && (
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 8 }}>
+                  <TouchableOpacity
+                    style={styles.reportBtn}
+                    onPress={() => abrirModalReporte(pedido.id, pedido.proveedor!)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="flag-outline" size={13} color="#ef4444" style={{ marginRight: 4 }} />
+                    <Text style={styles.reportBtnText}>Reportar Proveedor</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -591,6 +643,97 @@ export default function PedidosScreen() {
           </View>
         </View>
       )}
+
+      {/* MODAL DE DENUNCIA / REPORTE DE PROVEEDOR */}
+      <Modal visible={showReportModal} transparent animationType="slide" onRequestClose={() => setShowReportModal(false)}>
+        <View style={styles.reportModalOverlay}>
+          <View style={styles.reportModalContent}>
+            <View style={styles.reportHeader}>
+              <Ionicons name="flag" size={22} color="#fff" />
+              <Text style={styles.reportTitle}>Reportar a {reportProviderName}</Text>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              <Text style={styles.reportLabel}>1. Selecciona el motivo de la denuncia:</Text>
+              <View style={styles.reasonList}>
+                {['Cobro excesivo / Cambió precio', 'Incumplimiento de horario / No llegó', 'Mal comportamiento / Agresión', 'Trabajo defectuoso / Daños', 'Otro problema'].map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[styles.reasonItem, reportReason === m && styles.reasonItemActive]}
+                    onPress={() => setReportReason(m)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons 
+                      name={reportReason === m ? "radio-button-on" : "radio-button-off"} 
+                      size={18} 
+                      color={reportReason === m ? "#ef4444" : "#64748b"} 
+                    />
+                    <Text style={[styles.reasonText, reportReason === m && styles.reasonTextActive]}>{m}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.reportLabel, { marginTop: 16 }]}>2. Detalles del problema (mín. 10 caracteres):</Text>
+              <TextInput
+                style={styles.reportInput}
+                multiline
+                numberOfLines={4}
+                value={reportDescription}
+                onChangeText={setReportDescription}
+                placeholder="Describe qué ocurrió detalladamente para que podamos investigar y tomar medidas de baneo si corresponde..."
+                placeholderTextColor="#999"
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                <TouchableOpacity
+                  style={[styles.reportCancelBtn, { flex: 1 }]}
+                  onPress={() => setShowReportModal(false)}
+                  disabled={sendingReport}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: '#475569', fontWeight: '700' }}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.reportSubmitBtn, { flex: 1.5 }, (!reportDescription.trim() || reportDescription.length < 10) && { backgroundColor: '#fca5a5' }]}
+                  onPress={enviarReporte}
+                  disabled={sendingReport || !reportDescription.trim() || reportDescription.length < 10}
+                  activeOpacity={0.8}
+                >
+                  {sendingReport ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="send" size={14} color="#fff" style={{ marginRight: 6 }} />
+                      <Text style={{ color: '#fff', fontWeight: '700' }}>Enviar Denuncia</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE ÉXITO DE REPORTE */}
+      <Modal visible={showReportSuccessModal} transparent animationType="fade" onRequestClose={() => setShowReportSuccessModal(false)}>
+        <View style={styles.reportModalOverlay}>
+          <View style={[styles.reportModalContent, { alignItems: 'center', padding: 24, maxWidth: 340, alignSelf: 'center', borderRadius: 20 }]}>
+            <Ionicons name="checkmark-circle" size={56} color="#10b981" style={{ marginBottom: 12 }} />
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1e293b', textAlign: 'center' }}>Denuncia Registrada</Text>
+            <Text style={{ fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 8, lineHeight: 18 }}>
+              Gracias por ayudarnos a mantener la seguridad en Todo Ya. Analizaremos tu reporte contra el proveedor y tomaremos acciones disciplinarias si es necesario.
+            </Text>
+            <TouchableOpacity
+              style={[styles.reportSubmitBtn, { backgroundColor: '#10b981', width: '100%', marginTop: 20 }]}
+              onPress={() => setShowReportSuccessModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700' }}>Entendido</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1052,5 +1195,114 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#cbd5e1',
+  },
+  reportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#fff5f5',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  reportBtnText: {
+    color: '#ef4444',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  // Modal Reporte Styles
+  reportModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  reportModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 400,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#ef4444',
+    padding: 18,
+  },
+  reportTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  reportLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  reasonList: {
+    gap: 8,
+  },
+  reasonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+  },
+  reasonItemActive: {
+    backgroundColor: '#fff5f5',
+    borderColor: '#fecaca',
+  },
+  reasonText: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  reasonTextActive: {
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  reportInput: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: '#1e293b',
+    backgroundColor: '#fff',
+    textAlignVertical: 'top',
+    height: 100,
+    marginTop: 4,
+  },
+  reportCancelBtn: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  reportSubmitBtn: {
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
 });
