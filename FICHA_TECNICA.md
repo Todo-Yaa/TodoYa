@@ -47,7 +47,8 @@ Todo_ya-/
         └── api/                     # Endpoints Backend (Serverless Routes)
             ├── db-status+api.ts     # GET: Chequeo de conexión con Neon.db
             ├── matching+api.ts      # POST: Endpoint integrado con Google Gemini API
-            └── users+api.ts         # PUT: Actualización de perfiles en Neon.db
+            ├── reports+api.ts       # GET/POST: Registro y consulta de quejas/denuncias
+            └── users+api.ts         # PUT: Actualización de perfiles en Neon.db y baneo
 ```
 
 ---
@@ -143,6 +144,7 @@ export interface UsuarioRegistrado {
   codigoPais?: string; // Código de país telefónico (ej. 591, 51, etc.)
   kycVerificado?: boolean; // Estado de verificación de identidad
   kycDetalles?: string; // Descripción del análisis de identidad de la IA
+  baneado?: boolean; // Estado de suspensión por denuncias
 }
 
 export interface Order {
@@ -192,6 +194,7 @@ erDiagram
         varchar codigo_pais
         boolean kyc_verificado
         text kyc_detalles
+        boolean baneado
         timestamp created_at
     }
 
@@ -257,6 +260,17 @@ erDiagram
         timestamp created_at
     }
 
+    reports {
+        int id PK
+        int pedido_id FK
+        int reportante_id FK
+        varchar reportado_nombre
+        varchar motivo
+        text descripcion
+        varchar estado
+        timestamp created_at
+    }
+
     users ||--o{ orders : "solicita (como cliente)"
     users ||--o{ orders : "atiende (como proveedor)"
     users ||--o{ messages : "envia"
@@ -264,10 +278,12 @@ erDiagram
     users ||--o{ ratings : "califica"
     users ||--o{ ratings : "recibe_calificacion"
     users ||--o{ applications : "postula"
+    users ||--o{ reports : "reporta (como denunciante)"
 
     orders ||--o{ messages : "contiene"
     orders ||--o{ ratings : "tiene"
     orders ||--o{ applications : "recibe"
+    orders ||--o{ reports : "involucra"
 ```
 
 ---
@@ -420,6 +436,12 @@ graph LR
   - Tomarse una selfie facial.
   - El sistema procesa la validación con IA y, tras el éxito, actualiza su estado a verificado en base de datos y le permite continuar con el onboarding de proveedor.
 
+### 9. Sistema de Denuncias contra Proveedores y Baneo Administrativo
+- **Denuncias en Tiempo Real**: Tanto clientes como empresas pueden reportar a un proveedor con el que tengan un pedido activo o completado directamente desde las tarjetas de su historial de pedidos (`pedidos.tsx`).
+- **Motivos de Reporte**: Incluye un selector interactivo con categorías comunes: cobro excesivo, inasistencia, daños materiales o mal comportamiento, junto con un campo de descripción libre.
+- **Bandeja de Soporte y Baneo**: Desarrollamos una consola de administración en `/perfil` que consulta dinámicamente las denuncias desde `/api/reports`. El administrador de soporte de **Todo Ya** puede presionar un botón para banear y suspender de inmediato el acceso del proveedor reportado, o reactivar su cuenta si se resuelve la disputa.
+- **Restricción de Acceso Activo**: Las cuentas de usuarios con la columna `baneado: true` en la base de datos no podrán iniciar sesión, desplegándose una advertencia de cuenta suspendida en la pantalla de login.
+
 ### 4. Control de Acceso por Suscripciones Mensuales y VeriPagos (`leads.tsx`)
 * Regulación de acceso a leads para proveedores en base a su nivel de suscripción activa:
   * **Plan 1 (Natural):** Leads residenciales ilimitados. Leads B2B bloqueados.
@@ -518,6 +540,13 @@ Una vez que el bundle Metro compile correctamente, presiona **`w`** para abrir l
    * Haz clic en **Cambiar de Plan** en la tarjeta de suscripción.
    * Selecciona un plan superior (ej: Plan 3 o Plan Empresa 3), escanea el código QR simulado de VeriPagos y presiona **Confirmar Pago**.
    * Observa la activación inmediata de la membresía y el desbloqueo de la insignia Premium o la Bolsa Nacional en tiempo real.
+4. **Prueba de Denuncias y Baneo de Proveedores**:
+   * Crea un pedido e ingresa a la pestaña **Mis Pedidos** con un cliente que tenga un técnico asignado (ej: Juan Ríos).
+   * Haz clic en el botón rojo **Reportar Proveedor** al pie de la tarjeta del pedido.
+   * Selecciona un motivo de la lista, escribe una descripción detallada (mín. 10 caracteres) y envíala.
+   * Ve a la pestaña **Perfil** y presiona **Administrar Denuncias (Soporte)**.
+   * Verás la queja registrada. Presiona **Banear y Suspender** para suspender la cuenta del proveedor.
+   * Cierra sesión e intenta iniciar sesión con las credenciales del proveedor suspendido (ej: `juan.rios@todoya.com` / `demo1234`). Verás la alerta de que la cuenta está bloqueada debido a denuncias.
 
 ---
 

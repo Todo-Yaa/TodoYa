@@ -58,6 +58,20 @@
 ### 7. Corrección del Acceso Rápido y Persistencia de Roles (Bugfix)
 * **Consistencia de forceRole**: Corregido un problema en la función `login` de [user-context.tsx](file:///c:/Users/PCZ/Desktop/todo-ya/src/context/user-context.tsx) donde al iniciar sesión mediante los botones de acceso rápido de prueba (que fuerzan un rol específico, como `'business'`), se terminaba cargando el rol anterior persistido en la base de datos local (`usuarioEncontrado.rol` que podía ser `'provider'`). Ahora se respeta estrictamente el `forceRole` provisto por el botón, previniendo redirecciones incorrectas y bloqueos de navegación.
 
+### 8. Registro Regional con Celular y Doble Factor (PIN SMS)
+* **Soporte para Latinoamérica**: El formulario de registro integra selectores de códigos de país con banderas para países latinos (Bolivia 🇧🇴, Perú 🇵🇪, etc.) y campos numéricos para celular.
+* **Seguridad de Acceso (SMS PIN)**: El proceso de registro cuenta con una verificación de doble factor, enviando un PIN de 4 dígitos (simulado vía toast superior en tiempo real) que el usuario debe validar en un modal interactivo con cuenta regresiva.
+
+### 9. Verificación KYC de Proveedores
+* **Modulo KYC Obligatorio**: Si un usuario residencial desea pasar de cliente a proveedor en su perfil, se le exige realizar un proceso KYC interactivo.
+* **Carga de Identidad y Selfie**: Requiere subir fotos del documento (DNI o Carnet de Extranjería) y una selfie facial, las cuales son validadas mediante un proceso de análisis simulado antes de autorizar el cambio de rol.
+
+### 10. Sistema de Denuncias y Control de Baneo (Administrador)
+* **Reportar Proveedor**: Los clientes y empresas disponen de un botón con el icono de bandera (`flag-outline`) en las tarjetas de sus pedidos (activos o completados) para denunciar problemas con proveedores.
+* **Modal de Quejas**: Permite seleccionar el motivo (cobro excesivo, no llegó, mal comportamiento, etc.) y describir la situación.
+* **Panel de Control Administrativo**: En `/perfil` se dispone de un botón **"Administrar Denuncias"** exclusivo para soporte. Permite ver todos los reportes en tiempo real y presionar **"Banear y Suspender"** para desactivar la cuenta del infractor de forma inmediata, o **"Reactivar Cuenta"** para levantar la sanción.
+* **Restricción de Acceso**: Las cuentas marcadas como baneadas son bloqueadas en el login e informadas con un banner de advertencia.
+
 ---
 
 ## 💻 Pila Tecnológica (Tech Stack)

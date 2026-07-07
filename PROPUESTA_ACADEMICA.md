@@ -40,6 +40,7 @@ Desarrollar un prototipo de aplicación universal multiplataforma (Móvil y Web)
 6.  Integrar un módulo de traducción i18n para soportar 5 idiomas principales: Español, Inglés, Quechua, Aymara y Guaraní.
 7.  Configurar la arquitectura de backend mediante Expo API Routes conectadas a Drizzle ORM y base de datos relacional Neon.db.
 8.  Implementar un modelo híbrido de persistencia nativa segura (cifrado con SecureStore y almacenamiento persistente estructurado con AsyncStorage) y flujos de eliminación física de cuentas en cumplimiento con las directrices de seguridad y políticas de privacidad requeridas para la publicación comercial en Google Play Store.
+9.  Desarrollar un sistema regional de registro con número celular latinoamericano, doble factor PIN por SMS, verificación de identidad KYC para prestadores de servicios técnicos y un módulo de denuncias con baneo administrativo para garantizar la seguridad y reputación del ecosistema.
 
 ---
 
@@ -228,8 +229,11 @@ erDiagram
         int monedas
         varchar plan_id
         varchar push_token
+        varchar celular
+        varchar codigo_pais
         boolean kyc_verificado
         text kyc_detalles
+        boolean baneado
         timestamp created_at
     }
 
@@ -295,6 +299,17 @@ erDiagram
         timestamp created_at
     }
 
+    reports {
+        int id PK
+        int pedido_id FK
+        int reportante_id FK
+        varchar reportado_nombre
+        varchar motivo
+        text descripcion
+        varchar estado
+        timestamp created_at
+    }
+
     users ||--o{ orders : "solicita (como cliente)"
     users ||--o{ orders : "atiende (como proveedor)"
     users ||--o{ messages : "envia"
@@ -302,10 +317,12 @@ erDiagram
     users ||--o{ ratings : "califica"
     users ||--o{ ratings : "recibe_calificacion"
     users ||--o{ applications : "postula"
+    users ||--o{ reports : "reporta (como denunciante)"
 
     orders ||--o{ messages : "contiene"
     orders ||--o{ ratings : "tiene"
     orders ||--o{ applications : "recibe"
+    orders ||--o{ reports : "involucra"
 ```
 
 #### 3. Diagrama de Arquitectura del Software
@@ -325,6 +342,7 @@ graph TD
         Transcribe[/api/transcribe]
         Matching[/api/matching]
         Users[/api/users]
+        Reports[/api/reports]
         Drizzle[Drizzle ORM]
     end
 
@@ -337,12 +355,13 @@ graph TD
     App & Web --> I18n
     App & Web --> Map
 
-    Routes --> Transcribe & Matching & Users
+    Routes --> Transcribe & Matching & Users & Reports
     
     Transcribe --> Gemini
     Matching --> Gemini
     
     Users --> Drizzle
+    Reports --> Drizzle
     Drizzle --> Neon
 ```
 ```
