@@ -18,7 +18,8 @@ export default function LeadsScreen() {
     showNotification,
     notificationsList, 
     markAllNotificationsRead, 
-    clearAllNotifications 
+    clearAllNotifications,
+    triggerLocationCheck
   } = useUser();
   const [refreshing, setRefreshing] = useState(false);
   const [isTrayOpen, setIsTrayOpen] = useState(false);
@@ -185,7 +186,9 @@ export default function LeadsScreen() {
   // Load history on load or user changes
   useEffect(() => {
     loadTransactionHistory();
+    triggerLocationCheck().catch(() => {});
   }, [activeUser, loadTransactionHistory]);
+
 
   // Function to call /api/veripagos and generate QR
   const handleGenerateQR = async (plan: { id: string; name: string; priceBs: number }) => {

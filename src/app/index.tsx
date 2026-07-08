@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import MapView from '../components/map-view';
@@ -8,7 +8,12 @@ import { matchProviders } from '../services/ai-matching';
 import NotificationTray from '../components/notification-tray';
 
 export default function HomeScreen() {
-  const { userRole, userName, orders, addOrder, notificationsList, markAllNotificationsRead, clearAllNotifications } = useUser();
+  const { userRole, userName, orders, addOrder, notificationsList, markAllNotificationsRead, clearAllNotifications, lastKnownCity, triggerLocationCheck } = useUser();
+
+  useEffect(() => {
+    triggerLocationCheck().catch(() => {});
+  }, []);
+
   const [showModal, setShowModal] = useState(false);
   const [panicDesc, setPanicDesc] = useState('');
   const [isPanicLoading, setIsPanicLoading] = useState(false);
@@ -74,7 +79,9 @@ export default function HomeScreen() {
             </View>
             <View>
               <Text style={styles.b2bGreeting}>{userName} 🏢</Text>
-              <Text style={styles.b2bLocation}>Cuenta Empresa · Santa Cruz</Text>
+              <TouchableOpacity onPress={() => triggerLocationCheck(true)} activeOpacity={0.7}>
+                <Text style={styles.b2bLocation}>Cuenta Empresa · {lastKnownCity || 'Santa Cruz'}</Text>
+              </TouchableOpacity>
             </View>
           </View>
           <TouchableOpacity onPress={() => setIsTrayOpen(true)} style={styles.bellContainer} activeOpacity={0.7}>
@@ -156,7 +163,9 @@ export default function HomeScreen() {
           </View>
           <View>
             <Text style={styles.greeting}>Hola, {userName || 'Usuario'} 👋</Text>
-            <Text style={styles.location}>Santa Cruz de la Sierra</Text>
+            <TouchableOpacity onPress={() => triggerLocationCheck(true)} activeOpacity={0.7}>
+              <Text style={styles.location}>{lastKnownCity || 'Santa Cruz de la Sierra'}</Text>
+            </TouchableOpacity>
           </View>
         </View>
         <TouchableOpacity onPress={() => setIsTrayOpen(true)} style={styles.bellContainer} activeOpacity={0.7}>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import Storage from '../utils/storage';
+import * as Location from 'expo-location';
 
 // Definición de roles de usuario disponibles: cliente, proveedor o empresa (B2B)
 export type UserRole = 'client' | 'provider' | 'business';
@@ -93,6 +94,14 @@ interface UserContextType {
   dismissToast: () => void;
   reportarProveedor: (pedidoId: number | undefined, reportadoNombre: string, motivo: string, descripcion: string) => Promise<boolean>;
   banearProveedor: (correoOTelefono: string, baneado: boolean) => Promise<boolean>;
+  lastKnownCity: string | null;
+  detectedCity: string | null;
+  showLocationChangeModal: boolean;
+  locationChangeFrom: string | null;
+  locationChangeTo: string | null;
+  triggerLocationCheck: (forceShow?: boolean) => Promise<void>;
+  confirmCityChange: () => void;
+  declineCityChange: () => void;
 }
 
 // Creación del React Context
@@ -184,6 +193,117 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [activeToast, setActiveToast] = useState<any | null>(null);
   const lastMaxMsgIdRef = useRef(0);
   const wasOnlineRef = useRef(false); // Rastrear estado previo para detectar reconexión
+
+  // Estados para ubicación real y detección de cambio de ciudad
+  const [lastKnownCity, setLastKnownCity] = useState<string | null>(null);
+  const [detectedCity, setDetectedCity] = useState<string | null>(null);
+  const [showLocationChangeModal, setShowLocationChangeModal] = useState<boolean>(false);
+  const [locationChangeFrom, setLocationChangeFrom] = useState<string | null>(null);
+  const [locationChangeTo, setLocationChangeTo] = useState<string | null>(null);
+  const [declinedCity, setDeclinedCity] = useState<string | null>(null);
+
+  const confirmCityChange = () => {
+    if (detectedCity) {
+      setLastKnownCity(detectedCity);
+      Storage.setItem('todo_ya_last_known_city', detectedCity).catch(() => {});
+    }
+    setShowLocationChangeModal(false);
+  };
+
+  const declineCityChange = () => {
+    if (detectedCity) {
+      setDeclinedCity(detectedCity);
+    }
+    setShowLocationChangeModal(false);
+  };
+
+  const triggerLocationCheck = async (forceShow?: boolean) => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('[Location] Permisos de ubicación denegados.');
+        return;
+      }
+
+      // Obtener ubicación real
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      // Obtener nombre de la ciudad
+      const geocode = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude
+      });
+
+      let city = '';
+      if (geocode && geocode.length > 0) {
+        const item = geocode[0];
+        city = item.city || item.subregion || item.region || item.district || '';
+      }
+
+      // Normalización e identificación de la ciudad
+      if (city) {
+        const cityLower = city.toLowerCase();
+        if (cityLower.includes('arequipa')) {
+          city = 'Arequipa';
+        } else if (cityLower.includes('lima') || cityLower.includes('callao')) {
+          city = 'Lima';
+        } else if (cityLower.includes('santa cruz')) {
+          city = 'Santa Cruz de la Sierra';
+        }
+      } else {
+        // Fallback geográfico estricto por coordenadas en caso de que reverseGeocodeAsync no devuelva nombre (ej: en Web)
+        const lat = loc.coords.latitude;
+        const lng = loc.coords.longitude;
+        // Distancias aproximadas a las ciudades conocidas
+        const targets = [
+          { name: 'Arequipa', lat: -16.4090, lng: -71.5375 },
+          { name: 'Lima', lat: -12.0464, lng: -77.0428 },
+          { name: 'Santa Cruz de la Sierra', lat: -17.7833, lng: -63.1821 }
+        ];
+        let closest = targets[0];
+        let minDist = Infinity;
+        for (const t of targets) {
+          const dx = lat - t.lat;
+          const dy = lng - t.lng;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < minDist) {
+            minDist = d;
+            closest = t;
+          }
+        }
+        city = closest.name;
+      }
+
+      setDetectedCity(city);
+
+      // Cargar la última ciudad conocida de storage si no la tenemos en estado
+      let prevCity = lastKnownCity;
+      if (!prevCity) {
+        const saved = await Storage.getItem('todo_ya_last_known_city');
+        if (saved) {
+          prevCity = saved;
+          setLastKnownCity(saved);
+        }
+      }
+
+      if (!prevCity) {
+        // Es la primera vez que se detecta ubicación, guardar silenciosamente sin alertar
+        setLastKnownCity(city);
+        await Storage.setItem('todo_ya_last_known_city', city);
+      } else if (prevCity !== city) {
+        // Detectamos cambio de ciudad
+        if (declinedCity !== city || forceShow) {
+          setLocationChangeFrom(prevCity);
+          setLocationChangeTo(city);
+          setShowLocationChangeModal(true);
+        }
+      }
+    } catch (err) {
+      console.warn('[Location] Error al obtener/verificar la ubicación:', err);
+    }
+  };
 
   const showNotification = (title: string, message: string, type: 'info' | 'success' | 'warning') => {
     setNotification({ title, message, type });
@@ -347,13 +467,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const savedPlan = await Storage.getItem('todo_ya_plan_id');
       if (savedPlan) setPlanId(savedPlan as any);
 
+      const savedName = await Storage.getItem('todo_ya_username');
+      if (savedName) setUserName(savedName);
+
+      const savedCity = await Storage.getItem('todo_ya_last_known_city');
+      if (savedCity) {
+        setLastKnownCity(savedCity);
+      }
+
       const savedAuth = await Storage.getItem('todo_ya_auth');
       if (savedAuth === 'true') {
         setIsAuthenticated(true);
+        // Verificar ubicación en tiempo real al iniciar sesión de forma diferida
+        setTimeout(() => {
+          triggerLocationCheck().catch(() => {});
+        }, 1200);
       }
-
-      const savedName = await Storage.getItem('todo_ya_username');
-      if (savedName) setUserName(savedName);
 
       const savedActiveUser = await Storage.getItem('todo_ya_active_user');
       if (savedActiveUser) {
@@ -609,6 +738,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setActiveUser(updatedUser);
         Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
       }
+
+      if (nextRole === 'provider') {
+        triggerLocationCheck().catch(() => {});
+      }
       
       setTimeout(() => {
         setIsSwitchingRole(false);
@@ -628,6 +761,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const updatedUser: UsuarioRegistrado = { ...activeUser, rol: role };
         setActiveUser(updatedUser);
         Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+      }
+      if (role === 'provider') {
+        triggerLocationCheck().catch(() => {});
       }
       setTimeout(() => {
         setIsSwitchingRole(false);
@@ -1584,6 +1720,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
       dismissToast,
       reportarProveedor,
       banearProveedor,
+      lastKnownCity,
+      detectedCity,
+      showLocationChangeModal,
+      locationChangeFrom,
+      locationChangeTo,
+      triggerLocationCheck,
+      confirmCityChange,
+      declineCityChange,
     }}>
       {children}
     </UserContext.Provider>

@@ -93,7 +93,7 @@ const getCandidates = (cat: string) => {
 
 export default function SolicitarScreen() {
   const { t } = useTranslation();
-  const { addOrder, userRole } = useUser();
+  const { addOrder, userRole, triggerLocationCheck } = useUser();
   const isBusiness = userRole === 'business';
   const [inputText, setInputText] = useState('');
   const scanTimeoutRef = useRef<any>(null);
@@ -133,8 +133,11 @@ export default function SolicitarScreen() {
       } catch (e) {
         console.warn('[SolicitarScreen] Error al obtener GPS de cliente:', e);
       }
+      // Verificar si hubo un cambio de ciudad en tiempo real
+      triggerLocationCheck().catch(() => {});
     })();
   }, []);
+
 
   // Controladores del modal de alerta/confirmación personalizado
   const [showConfirmModal, setShowConfirmModal] = useState(false);

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
@@ -17,7 +17,12 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
  */
 export default function PperfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser, deleteAccount } = useUser();
+  const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser, deleteAccount, triggerLocationCheck } = useUser();
+
+  useEffect(() => {
+    triggerLocationCheck().catch(() => {});
+  }, []);
+
 
   // Controladores del modal de confirmación personalizado
   const [showConfirmModal, setShowConfirmModal] = useState(false);

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking, Modal, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -19,8 +19,13 @@ import KYCVerifierModal from '../components/kyc-verifier-modal';
  */
 export default function PerfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados } = useUser();
+  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados, lastKnownCity, triggerLocationCheck } = useUser();
   const isBusiness = userRole === 'business';
+
+  useEffect(() => {
+    triggerLocationCheck().catch(() => {});
+  }, []);
+
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
 
@@ -299,9 +304,9 @@ export default function PerfilScreen() {
             </>
           ) : (
             <>
-              <TouchableOpacity style={styles.accountRow} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={() => triggerLocationCheck(true)}>
                 <Ionicons name="location-outline" size={24} color="#666" />
-                <Text style={styles.accountText}>Santa Cruz de la Sierra</Text>
+                <Text style={styles.accountText}>{lastKnownCity || 'Santa Cruz de la Sierra'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.accountRow} activeOpacity={0.7}>

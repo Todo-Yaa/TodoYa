@@ -7,6 +7,7 @@ import { UserProvider, useUser } from '../context/user-context';
 import LoginScreen from '../components/login-screen';
 import RatingOverlayModal from '../components/rating-overlay-modal';
 import NotificationBanner from '../components/notification-banner';
+import LocationChangeModal from '../components/location-change-modal';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 
@@ -218,6 +219,9 @@ function NavigationLayout() {
 
       {/* Banner de Notificación In-App Global */}
       <NotificationBanner toast={activeToast} onDismiss={dismissToast} />
+
+      {/* Modal flotante global de cambio de ubicación por GPS */}
+      <LocationChangeModal />
 
       {/* Pantalla flotante de transición de rol con micro-animación de desvanecimiento */}
       {isSwitchingRole && (

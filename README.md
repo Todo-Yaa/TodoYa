@@ -72,6 +72,12 @@
 * **Panel de Control Administrativo**: En `/perfil` se dispone de un botón **"Administrar Denuncias"** exclusivo para soporte. Permite ver todos los reportes en tiempo real y presionar **"Banear y Suspender"** para desactivar la cuenta del infractor de forma inmediata, o **"Reactivar Cuenta"** para levantar la sanción.
 * **Restricción de Acceso**: Las cuentas marcadas como baneadas son bloqueadas en el login e informadas con un banner de advertencia.
 
+### 11. Permisos GPS en Tiempo Real y Cambio de Ciudad
+* **Solicitud de Permisos Reales**: Gestión nativa de permisos de localización mediante el módulo de `expo-location` para acceder al GPS del dispositivo en tiempo real.
+* **Geocodificación Inversa Real**: Resuelve de forma automática las coordenadas del GPS mediante `Location.reverseGeocodeAsync` para detectar el nombre de la ciudad del usuario (Arequipa, Lima, Santa Cruz de la Sierra, etc.), con un algoritmo de fallback geográfico en base a coordenadas para entornos Web.
+* **Alerta Flotante Global**: Despliega un modal flotante e interactivo si el sistema capta que el usuario estaba previamente en una ciudad y ahora se encuentra en otra distinta. Dicho chequeo ocurre al iniciar la app, ingresar a las pantallas de solicitud de servicio (`solicitar.tsx`), acceder al panel de Leads (`leads.tsx`) o al cambiar de rol en la aplicación.
+* **Actualización en Caliente**: Permite confirmar la nueva ciudad en caliente (guardándola en `Storage`) o mantener la anterior de forma de sesión. Además, el usuario puede presionar sobre su ciudad en la cabecera del dashboard o perfil para forzar una lectura del GPS en cualquier instante de forma proactiva.
+
 ---
 
 ## 💻 Pila Tecnológica (Tech Stack)
