@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Image, Platform, useWindowDimensions } from 'react-native';
 import { useEffect, useState } from 'react';
 import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated'; // Para una animación fluida de desvanecimiento
 import { UserProvider, useUser } from '../context/user-context';
@@ -21,6 +21,72 @@ if (Platform.OS !== 'web') {
       shouldShowList: true,
     }),
   });
+}
+
+interface ResponsiveWrapperProps {
+  children: React.ReactNode;
+}
+
+function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
+  const { width } = useWindowDimensions();
+  const isLargeScreen = Platform.OS === 'web' && width > 768;
+
+  if (isLargeScreen) {
+    const userContext = useUser();
+    const esEmpresa = userContext?.activeUser?.tipoEntidad === 'empresa';
+    const colorMarca = esEmpresa ? '#818cf8' : '#FFB400';
+    
+    return (
+      <View style={styles.webRoot}>
+        {/* Glowing blurred backgrounds */}
+        <View style={styles.glowOrange} />
+        <View style={styles.glowIndigo} />
+
+        <View style={styles.webContainer}>
+          {/* Columna Izquierda: Branding e Información */}
+          <View style={styles.webHeroColumn}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={[styles.webLogo, { borderColor: colorMarca }]}
+            />
+            <Text style={styles.webTitle}>Todo Ya</Text>
+            <Text style={styles.webSlogan}>Servicios locales en minutos 🚀</Text>
+            
+            <View style={styles.webFeatureList}>
+              <View style={styles.webFeatureItem}>
+                <Ionicons name="flash-outline" size={20} color="#FFB400" />
+                <Text style={styles.webFeatureText}>Conexión ultra rápida con proveedores en un radio de 5 km.</Text>
+              </View>
+              <View style={styles.webFeatureItem}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#818cf8" />
+                <Text style={styles.webFeatureText}>Verificación de identidad (KYC obligatoria) para tu seguridad.</Text>
+              </View>
+              <View style={styles.webFeatureItem}>
+                <Ionicons name="location-outline" size={20} color="#FFB400" />
+                <Text style={styles.webFeatureText}>Detección en tiempo real de cambios de ciudad vía GPS nativo.</Text>
+              </View>
+              <View style={styles.webFeatureItem}>
+                <Ionicons name="sync-outline" size={20} color="#818cf8" />
+                <Text style={styles.webFeatureText}>Sincronización robusta con base de datos Neon DB (PostgreSQL).</Text>
+              </View>
+            </View>
+
+            <Text style={styles.webFooter}>Todo Ya © 2026 · Experiencia Web Optimizada</Text>
+          </View>
+
+          {/* Columna Derecha: El Emulador / Teléfono Mockup */}
+          <View style={styles.phoneMockupFrame}>
+            <View style={styles.phoneCameraNotch} />
+            <View style={styles.phoneScreenContent}>
+              {children}
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 /**
@@ -91,7 +157,11 @@ function NavigationLayout() {
   // [AUTH GUARD]: Si el usuario no ha iniciado sesión, se bloquea la navegación de pestañas
   // y se despliega la pantalla de Login a pantalla completa.
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    return (
+      <ResponsiveWrapper>
+        <LoginScreen />
+      </ResponsiveWrapper>
+    );
   }
 
   const unratedOrder = isConsumer
@@ -99,7 +169,8 @@ function NavigationLayout() {
     : undefined;
 
   return (
-    <View style={{ flex: 1 }}>
+    <ResponsiveWrapper>
+      <View style={{ flex: 1 }}>
 
       {/* ✅ Badge de estado: Offline / Sincronizando */}
       {(!isDbOnline || isSyncing) && (
@@ -256,6 +327,7 @@ function NavigationLayout() {
         </Animated.View>
       )}
     </View>
+    </ResponsiveWrapper>
   );
 }
 
@@ -425,5 +497,128 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  // Estilos responsivos de Web para Laptop y Tablets
+  webRoot: {
+    flex: 1,
+    backgroundColor: '#0f172a', // Slate 900
+    position: 'relative',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  glowOrange: {
+    position: 'absolute',
+    width: 500,
+    height: 500,
+    borderRadius: 250,
+    backgroundColor: 'rgba(255, 180, 0, 0.05)',
+    top: -100,
+    left: -100,
+    filter: 'blur(100px)',
+  } as any,
+  glowIndigo: {
+    position: 'absolute',
+    width: 600,
+    height: 600,
+    borderRadius: 300,
+    backgroundColor: 'rgba(99, 102, 241, 0.05)',
+    bottom: -150,
+    right: -150,
+    filter: 'blur(120px)',
+  } as any,
+  webContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+    maxWidth: 1200,
+    paddingHorizontal: 40,
+    gap: 80,
+  },
+  webHeroColumn: {
+    flex: 1,
+    maxWidth: 500,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingRight: 20,
+  },
+  webLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+  },
+  webTitle: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#f8fafc',
+    letterSpacing: -1,
+    marginBottom: 8,
+  },
+  webSlogan: {
+    fontSize: 18,
+    color: '#94a3b8',
+    marginBottom: 40,
+    fontWeight: '500',
+  },
+  webFeatureList: {
+    gap: 20,
+    marginBottom: 50,
+    width: '100%',
+  },
+  webFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  webFeatureText: {
+    fontSize: 14,
+    color: '#cbd5e1',
+    lineHeight: 20,
+    flex: 1,
+  },
+  webFooter: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 20,
+  },
+  phoneMockupFrame: {
+    width: 390,
+    height: '90%',
+    maxHeight: 800,
+    backgroundColor: '#000',
+    borderRadius: 40,
+    padding: 10,
+    borderWidth: 8,
+    borderColor: '#334155', // Slate 700 para emular el bisel del celular
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 25 },
+    shadowOpacity: 0.35,
+    shadowRadius: 30,
+    elevation: 20,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  phoneCameraNotch: {
+    position: 'absolute',
+    top: 15,
+    left: '50%',
+    transform: [{ translateX: -60 }],
+    width: 120,
+    height: 20,
+    backgroundColor: '#000',
+    borderRadius: 10,
+    zIndex: 999999,
+  },
+  phoneScreenContent: {
+    flex: 1,
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
   },
 });
