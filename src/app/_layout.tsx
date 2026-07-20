@@ -94,7 +94,7 @@ function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
  */
 function NavigationLayout() {
-  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification, isDbOnline, isSyncing, triggerSync, activeToast, dismissToast } = useUser();
+  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification, isDbOnline, isSyncing, triggerSync, activeToast, dismissToast, simulationState, simulationStep, nextSimulationStep, stopSimulation } = useUser();
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
@@ -293,6 +293,57 @@ function NavigationLayout() {
 
       {/* Modal flotante global de cambio de ubicación por GPS */}
       <LocationChangeModal />
+
+      {/* Panel Controlador de la Simulación Guiada */}
+      {simulationState && (
+        <Animated.View 
+          entering={FadeIn} 
+          exiting={FadeOut} 
+          style={[
+            styles.simulationFloater, 
+            simulationState === 'client' ? styles.simFloaterClient : styles.simFloaterProvider
+          ]}
+        >
+          <View style={styles.simFloaterHeader}>
+            <Ionicons 
+              name="cog-outline" 
+              size={18} 
+              color={simulationState === 'client' ? '#d97706' : '#818cf8'} 
+              style={{ marginRight: 6 }} 
+            />
+            <Text style={[styles.simFloaterHeaderText, { color: simulationState === 'client' ? '#d97706' : '#818cf8' }]}>
+              {simulationState === 'client' 
+                ? `🤖 Simulación Cliente (Paso ${simulationStep}/5)` 
+                : `🤖 Simulación Proveedor (Paso ${simulationStep}/5)`}
+            </Text>
+            <TouchableOpacity onPress={stopSimulation} activeOpacity={0.7} style={styles.simFloaterClose}>
+              <Ionicons name="close-circle" size={20} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.simFloaterBody}>
+            {getSimulationText(simulationState, simulationStep)}
+          </Text>
+          <View style={styles.simFloaterActions}>
+            <TouchableOpacity 
+              style={[styles.simFloaterBtn, { backgroundColor: '#ef4444' }]} 
+              onPress={stopSimulation}
+            >
+              <Text style={[styles.simFloaterBtnText, { color: '#fff' }]}>Salir</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[
+                styles.simFloaterBtn, 
+                { backgroundColor: simulationState === 'client' ? '#FFB400' : '#6366f1' }
+              ]} 
+              onPress={nextSimulationStep}
+            >
+              <Text style={[styles.simFloaterBtnText, { color: simulationState === 'client' ? '#2F2F2F' : '#fff', fontWeight: 'bold' }]}>
+                {simulationStep === 5 ? 'Finalizar' : 'Siguiente Paso →'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
 
       {/* Pantalla flotante de transición de rol con micro-animación de desvanecimiento */}
       {isSwitchingRole && (
@@ -621,4 +672,96 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#fff',
   },
+  simulationFloater: {
+    position: 'absolute',
+    bottom: 75,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+    borderRadius: 20,
+    padding: 16,
+    zIndex: 999999,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  simFloaterClient: {
+    borderColor: '#FFB400',
+  },
+  simFloaterProvider: {
+    borderColor: '#6366f1',
+  },
+  simFloaterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  simFloaterHeaderText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  simFloaterClose: {
+    padding: 2,
+  },
+  simFloaterBody: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  simFloaterActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  simFloaterBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  simFloaterBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });
+
+function getSimulationText(state: 'client' | 'provider', step: number): string {
+  if (state === 'client') {
+    switch (step) {
+      case 1:
+        return "¡Bienvenido Carlos! Has accedido a la pantalla principal como Cliente. Presiona 'Siguiente' para dirigirte al formulario de solicitud de servicio.";
+      case 2:
+        return "Escribiremos automáticamente un requerimiento de cortocircuito. La IA corregirá el texto e identificará la categoría 'Electricidad' y la urgencia alta. Presiona 'Siguiente' para iniciar la búsqueda.";
+      case 3:
+        return "El radar de 90s se ha iniciado buscando electricistas a la redonda. En segundos cargarán los técnicos disponibles en tiempo real. Presiona 'Siguiente' para verlos.";
+      case 4:
+        return "Hemos encontrado a Carlos Mamani y Fernando Ruiz. Haz clic en 'Aceptar Oferta' de Fernando o presiona 'Siguiente' para aceptarla automáticamente e ir al chat.";
+      case 5:
+        return "Estás en el chat coordinando con tu técnico. Presiona 'Finalizar' para simular que completó el trabajo, realizar el cobro del saldo y mostrar el sistema de calificación obligatoria.";
+      default:
+        return "";
+    }
+  } else {
+    switch (step) {
+      case 1:
+        return "¡Bienvenido Pedro! Has iniciado sesión como Proveedor Premium (Plan 2) con un saldo de 24 monedas. Presiona 'Siguiente' para buscar leads de trabajo.";
+      case 2:
+        return "Visualizas una solicitud de Luis Alberto buscando plomero por S/.15. Presiona 'Siguiente' para simular tu postulación (gasto de 2 monedas) e ir al panel de trabajos.";
+      case 3:
+        return "¡El cliente aceptó tu postulación! El trabajo ahora está 'En progreso'. Presiona 'Siguiente' para abrir la sala de chat de negociación.";
+      case 4:
+        return "Estás en la sala de chat. Puedes coordinar detalles. Presiona 'Siguiente' para volver al panel de trabajos y proceder con la simulación del término de obra.";
+      case 5:
+        return "Presiona 'Finalizar' para simular la entrega del trabajo. Dado tu Plan 2, se debitará un 10% de comisión (2 monedas en vez de 4), dejando tu saldo en 22 monedas.";
+      default:
+        return "";
+    }
+  }
+}

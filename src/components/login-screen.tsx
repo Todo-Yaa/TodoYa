@@ -33,7 +33,7 @@ const PAISES_LATINOS = [
  * Todos los métodos, variables y parámetros nuevos están en español para su fácil lectura y modificación.
  */
 export default function LoginScreen() {
-  const { login, usuariosRegistrados, registrarEIniciarSesion, registrarUsuario } = useUser();
+  const { login, usuariosRegistrados, registrarEIniciarSesion, registrarUsuario, startClientSimulation, startProviderSimulation } = useUser();
   const [correoOTelefono, setCorreoOTelefono] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [cargando, setCargando] = useState(false); // Spinner de carga al enviar
@@ -782,6 +782,38 @@ export default function LoginScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.demoBtnText}>Empresa PRO (Beta)</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Simulaciones Guiadas de Casos Reales */}
+        <View style={[styles.demoCard, { borderColor: '#818cf8', borderWidth: 1, marginTop: 15 }]}>
+          <Text style={[styles.demoTitle, { color: '#6366f1', fontWeight: 'bold' }]}>🤖 Simulaciones Guiadas (Casos Reales):</Text>
+          <Text style={{ fontSize: 11, color: '#666', marginBottom: 8, textAlign: 'center' }}>
+            Simula paso a paso flujos completos para clientes o proveedores.
+          </Text>
+          <View style={styles.demoButtons}>
+            <TouchableOpacity 
+              style={[styles.demoBtn, { backgroundColor: '#fffbeb', borderColor: '#d97706' }]} 
+              onPress={() => {
+                setCargando(true);
+                startClientSimulation().finally(() => setCargando(false));
+              }}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.demoBtnText, { color: '#d97706', fontWeight: 'bold' }]}>Simular Cliente 🏠</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.demoBtn, { backgroundColor: '#e0e7ff', borderColor: '#4f46e5' }]} 
+              onPress={() => {
+                setCargando(true);
+                startProviderSimulation().finally(() => setCargando(false));
+              }}
+              disabled={cargando}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.demoBtnText, { color: '#4f46e5', fontWeight: 'bold' }]}>Simular Proveedor 🛠️</Text>
             </TouchableOpacity>
           </View>
         </View>

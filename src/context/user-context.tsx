@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import Storage from '../utils/storage';
 import * as Location from 'expo-location';
+import { router } from 'expo-router';
 
 // Definición de roles de usuario disponibles: cliente, proveedor o empresa (B2B)
 export type UserRole = 'client' | 'provider' | 'business';
@@ -103,6 +104,13 @@ interface UserContextType {
   triggerLocationCheck: (forceShow?: boolean) => Promise<void>;
   confirmCityChange: () => void;
   declineCityChange: () => void;
+  simulationState: 'client' | 'provider' | null;
+  simulationStep: number;
+  setSimulationStep: (step: number) => void;
+  startClientSimulation: () => Promise<void>;
+  startProviderSimulation: () => Promise<void>;
+  nextSimulationStep: () => Promise<void>;
+  stopSimulation: () => void;
 }
 
 // Creación del React Context
@@ -1740,12 +1748,177 @@ export function UserProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.error('Error forzando sincronización:', e);
       }
-    } else {
-      const savedOrders = await Storage.getItem('todo_ya_orders');
-      if (savedOrders) {
-        setOrders(JSON.parse(savedOrders));
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // LÓGICA DE SIMULACIÓN EN VIVO (Demo Guiada)
+  // ─────────────────────────────────────────────────────────────────────────────
+  const [simulationState, setSimulationState] = useState<'client' | 'provider' | null>(null);
+  const [simulationStep, setSimulationStep] = useState<number>(0);
+
+  const startClientSimulation = async () => {
+    const correoSimulado = 'cliente_demo@todoya.com';
+    const nombreSimulado = 'Carlos Cliente (Simulación)';
+    
+    let user = usuariosRegistrados.find(u => u.correoOTelefono === correoSimulado);
+    if (!user) {
+      await registrarUsuario(
+        nombreSimulado,
+        correoSimulado,
+        'client',
+        'demo1234',
+        'natural',
+        undefined,
+        undefined,
+        undefined,
+        false,
+        '70001111',
+        '591'
+      );
+      const newU = {
+        nombre: nombreSimulado,
+        correoOTelefono: correoSimulado,
+        rol: 'client' as const,
+        contrasena: 'demo1234',
+        tipoProveedor: 'normal' as const,
+        tipoEntidad: 'natural' as const,
+        celular: '70001111',
+        codigoPais: '591'
+      };
+      setUsuariosRegistrados(prev => [...prev, newU]);
+      await Storage.setItem('todo_ya_registered_users', JSON.stringify([...usuariosRegistrados, newU]));
+    }
+    
+    const exito = await login(correoSimulado, 'demo1234', 'client');
+    if (exito) {
+      setSimulationState('client');
+      setSimulationStep(1);
+      setOrders(prev => prev.filter(o => o.id <= 4)); 
+      router.replace('/');
+    }
+  };
+
+  const startProviderSimulation = async () => {
+    const correoSimulado = 'pedro_demo@todoya.com';
+    const nombreSimulado = 'Pedro Proveedor (Simulación)';
+    
+    let user = usuariosRegistrados.find(u => u.correoOTelefono === correoSimulado);
+    if (!user) {
+      await registrarUsuario(
+        nombreSimulado,
+        correoSimulado,
+        'provider',
+        'demo1234',
+        'natural',
+        undefined,
+        undefined,
+        undefined,
+        false,
+        '70002222',
+        '591'
+      );
+    }
+    
+    const updatedUsers = usuariosRegistrados.map(u => 
+      u.correoOTelefono === correoSimulado 
+        ? { ...u, proveedorConfigurado: true, serviciosOfrecidos: ['Plomería'], planId: 'provider_2' as const, monedas: 24 }
+        : u
+    );
+    const exists = updatedUsers.find(u => u.correoOTelefono === correoSimulado);
+    const finalUsers = exists ? updatedUsers : [...updatedUsers, {
+      nombre: nombreSimulado,
+      correoOTelefono: correoSimulado,
+      rol: 'provider' as const,
+      contrasena: 'demo1234',
+      tipoProveedor: 'normal' as const,
+      tipoEntidad: 'natural' as const,
+      celular: '70002222',
+      codigoPais: '591',
+      proveedorConfigurado: true,
+      serviciosOfrecidos: ['Plomería'],
+      planId: 'provider_2' as const,
+      monedas: 24
+    }];
+    setUsuariosRegistrados(finalUsers);
+    await Storage.setItem('todo_ya_registered_users', JSON.stringify(finalUsers));
+
+    const exito = await login(correoSimulado, 'demo1234', 'provider');
+    if (exito) {
+      setCoins(24);
+      setPlanId('provider_2');
+      setSimulationState('provider');
+      setSimulationStep(1);
+      const testOrder: Order = {
+        id: 999,
+        titulo: 'Arreglar grifo cocina goteando',
+        proveedor: null,
+        servicio: 'Plomería',
+        description: 'Tengo un grifo de la cocina goteando constantemente y hace ruido molesto.',
+        estado: 'Buscando proveedor',
+        progreso: 25,
+        hora: 'Hace un momento',
+        color: '#FFB400',
+        precio: 'S/. 15',
+        urgencia: 'Normal'
+      };
+      setOrders(prev => [testOrder, ...prev.filter(o => o.id !== 999)]);
+      router.replace('/leads');
+    }
+  };
+
+  const nextSimulationStep = async () => {
+    if (simulationState === 'client') {
+      if (simulationStep === 1) {
+        setSimulationStep(2);
+        router.replace('/solicitar');
+      } else if (simulationStep === 2) {
+        setSimulationStep(3);
+      } else if (simulationStep === 3) {
+        setSimulationStep(4);
+      } else if (simulationStep === 4) {
+        setSimulationStep(5);
+        router.replace('/chat-room');
+      } else if (simulationStep === 5) {
+        const simOrder = orders.find(o => o.description.includes('cortocircuito'));
+        if (simOrder) {
+          completeJob(simOrder.id);
+        }
+        setSimulationState(null);
+        setSimulationStep(0);
+        router.replace('/pedidos');
+      }
+    } else if (simulationState === 'provider') {
+      if (simulationStep === 1) {
+        setSimulationStep(2);
+        router.replace('/leads');
+      } else if (simulationStep === 2) {
+        const targetOrder = orders.find(o => o.id === 999);
+        if (targetOrder) {
+          applyToLead(999, 2, 'Pedro Proveedor (Simulación)');
+        }
+        setSimulationStep(3);
+        router.replace('/trabajos');
+      } else if (simulationStep === 3) {
+        setSimulationStep(4);
+        router.replace('/chat-room');
+      } else if (simulationStep === 4) {
+        setSimulationStep(5);
+        router.replace('/trabajos');
+      } else if (simulationStep === 5) {
+        completeJob(999);
+        setCoins(22);
+        setSimulationState(null);
+        setSimulationStep(0);
+        router.replace('/pperfil');
       }
     }
+  };
+
+  const stopSimulation = () => {
+    setSimulationState(null);
+    setSimulationStep(0);
+    logout();
   };
 
   return (
@@ -1798,6 +1971,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
       triggerLocationCheck,
       confirmCityChange,
       declineCityChange,
+      simulationState,
+      simulationStep,
+      setSimulationStep,
+      startClientSimulation,
+      startProviderSimulation,
+      nextSimulationStep,
+      stopSimulation,
     }}>
       {children}
     </UserContext.Provider>

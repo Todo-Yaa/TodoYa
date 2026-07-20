@@ -28,7 +28,7 @@ export default function ChatRoomScreen() {
     titulo: string;
     providerName: string;
   }>();
-  const { userName, userRole, activeUser } = useUser();
+  const { userName, userRole, activeUser, simulationState, simulationStep } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -72,17 +72,33 @@ export default function ChatRoomScreen() {
   };
 
   useEffect(() => {
-    fetchMessages(true);
-
-    // Polling cada 3 segundos para simular tiempo real
-    pollingIntervalRef.current = setInterval(() => {
-      fetchMessages(false);
-    }, 3000);
+    if (simulationState) {
+      setIsLoading(true);
+      if (simulationState === 'client') {
+        setMessages([
+          { id: 1, orderId: Number(orderId), senderName: 'Juan Ríos', messageText: '¡Hola Carlos! Ya recibí tu orden para arreglar el cortocircuito en tu sala. Voy saliendo de inmediato.', createdAt: new Date(Date.now() - 60000).toISOString() },
+          { id: 2, orderId: Number(orderId), senderName: 'Tú', messageText: 'Excelente Juan. Por favor ten cuidado al entrar, huele un poco a quemado cerca de la caja de fusibles.', createdAt: new Date(Date.now() - 30000).toISOString() },
+          { id: 3, orderId: Number(orderId), senderName: 'Juan Ríos', messageText: 'Entendido. Llevo disyuntores de repuesto y multímetro. Estaré allí en 15 minutos.', createdAt: new Date().toISOString() },
+        ]);
+      } else if (simulationState === 'provider') {
+        setMessages([
+          { id: 1, orderId: Number(orderId), senderName: 'Luis Alberto', messageText: 'Hola Pedro, gracias por postularte. El grifo de la cocina gotea mucho y ya inundó parte del piso.', createdAt: new Date(Date.now() - 60000).toISOString() },
+          { id: 2, orderId: Number(orderId), senderName: 'Tú', messageText: 'Hola Luis. Por favor cierra la llave de paso principal para detener la inundación. Llego en 10 minutos con repuestos.', createdAt: new Date(Date.now() - 30000).toISOString() },
+          { id: 3, orderId: Number(orderId), senderName: 'Luis Alberto', messageText: 'Listo, acabo de cerrar la llave de paso. Te espero.', createdAt: new Date().toISOString() },
+        ]);
+      }
+      setIsLoading(false);
+    } else {
+      fetchMessages(true);
+      pollingIntervalRef.current = setInterval(() => {
+        fetchMessages(false);
+      }, 3000);
+    }
 
     return () => {
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     };
-  }, [orderId]);
+  }, [orderId, simulationState]);
 
   const sendMessage = async () => {
     const text = inputText.trim();

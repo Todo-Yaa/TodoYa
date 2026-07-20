@@ -93,7 +93,7 @@ const getCandidates = (cat: string) => {
 
 export default function SolicitarScreen() {
   const { t } = useTranslation();
-  const { addOrder, userRole, triggerLocationCheck, activeUser } = useUser();
+  const { addOrder, userRole, triggerLocationCheck, activeUser, simulationState, simulationStep, setSimulationStep } = useUser();
   const isBusiness = userRole === 'business';
   const [inputText, setInputText] = useState('');
   const scanTimeoutRef = useRef<any>(null);
@@ -161,6 +161,23 @@ export default function SolicitarScreen() {
       triggerLocationCheck().catch(() => {});
     })();
   }, []);
+
+  // --- LÓGICA DE SIMULACIÓN AUTOMATIZADA ---
+  useEffect(() => {
+    if (simulationState === 'client') {
+      if (simulationStep === 2) {
+        setInputText('Tengo un cortocircuito en la sala y huele a quemado');
+      } else if (simulationStep === 3) {
+        if (!showResult && !loading) {
+          processNLP('Tengo un cortocircuito en la sala y huele a quemado');
+        }
+      } else if (simulationStep === 4) {
+        if (faseBusqueda === 'input') {
+          iniciarEscaneoRealTime();
+        }
+      }
+    }
+  }, [simulationState, simulationStep]);
 
 
   // Controladores del modal de alerta/confirmación personalizado
