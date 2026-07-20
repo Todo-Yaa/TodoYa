@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useRe
 import Storage from '../utils/storage';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
+import { Platform } from 'react-native';
 
 // Definición de roles de usuario disponibles: cliente, proveedor o empresa (B2B)
 export type UserRole = 'client' | 'provider' | 'business';
@@ -612,6 +613,73 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
     loadData();
   }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // OAUTH REAL (Captura de tokens redireccionados en Web)
+  // ─────────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const handleWebOAuth = async () => {
+        const hash = window.location.hash;
+        const search = window.location.search;
+        
+        // 1. Google OAuth (Implicit Flow returns access_token in URL hash)
+        if (hash && hash.includes('access_token=')) {
+          const params = new URLSearchParams(hash.substring(1));
+          const accessToken = params.get('access_token');
+          if (accessToken) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            
+            try {
+              const res = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`);
+              if (res.ok) {
+                const profile = await res.json();
+                const email = profile.email;
+                const name = profile.name || email.split('@')[0];
+                
+                showNotification('🔑 Conexión Google', `Autenticado con éxito como ${name}.`, 'success');
+                await registrarEIniciarSesion(name, email, 'client', 'google');
+                router.replace('/');
+              }
+            } catch (err) {
+              console.error('Error al obtener perfil de Google:', err);
+            }
+          }
+        }
+        
+        // 2. LinkedIn OAuth (Code Flow returns auth code in URL query)
+        if (search && search.includes('code=')) {
+          const params = new URLSearchParams(search);
+          const code = params.get('code');
+          if (code) {
+            window.history.replaceState(null, '', window.location.pathname);
+            
+            try {
+              const res = await fetch('/api/auth-linkedin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, redirectUri: window.location.origin })
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                  showNotification('🔑 Conexión LinkedIn', `Autenticado con éxito como ${data.name}.`, 'success');
+                  await registrarEIniciarSesion(data.name, data.email, 'client', 'linkedin');
+                  router.replace('/');
+                } else {
+                  console.warn('Fallo en LinkedIn Auth:', data.message);
+                }
+              }
+            } catch (err) {
+              console.error('Error al intercambiar código de LinkedIn:', err);
+            }
+          }
+        }
+      };
+      
+      handleWebOAuth();
+    }
+  }, [usuariosRegistrados]);
 
   // Polling para Notificaciones Reales sobre Neon DB
   useEffect(() => {

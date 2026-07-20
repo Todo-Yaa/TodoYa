@@ -351,14 +351,111 @@ export default function LoginScreen() {
   /**
    * Inicia el flujo de autenticación social flotante (OAuth)
    */
-  const iniciarOauth = (proveedor: 'google' | 'linkedin') => {
-    setProveedorOauth(proveedor);
-    setPasoOauth('login');
-    setCorreoOauth('');
-    setNombreOauth('');
-    setRolOauth('client');
-    setCorreoOauthPersonalizado('');
-    setMostrarEntradaCorreoPersonalizado(false);
+  /**
+   * Inicia el flujo de autenticación social flotante (OAuth Real o Simulado como fallback)
+   */
+  const iniciarOauth = async (proveedor: 'google' | 'linkedin') => {
+    const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+    const linkedinClientId = process.env.EXPO_PUBLIC_LINKEDIN_CLIENT_ID;
+
+    // 1. FLUJO DE GOOGLE REAL
+    if (proveedor === 'google' && googleClientId) {
+      const redirectUri = Platform.OS === 'web' 
+        ? window.location.origin 
+        : 'https://todo-ya.vercel.app';
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=profile%20email`;
+      
+      if (Platform.OS === 'web') {
+        window.location.href = authUrl;
+      } else {
+        try {
+          const WebBrowser = await import('expo-web-browser');
+          const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+          if (result.type === 'success' && result.url) {
+            const hashIdx = result.url.indexOf('#');
+            if (hashIdx !== -1) {
+              const hash = result.url.substring(hashIdx + 1);
+              const params = new URLSearchParams(hash);
+              const accessToken = params.get('access_token');
+              if (accessToken) {
+                setCargando(true);
+                const googleRes = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`);
+                if (googleRes.ok) {
+                  const profile = await googleRes.json();
+                  const email = profile.email;
+                  const name = profile.name || email.split('@')[0];
+                  await registrarEIniciarSesion(name, email, 'client', 'google');
+                }
+                setCargando(false);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Error en Google Sign-In nativo:', e);
+        }
+      }
+      return;
+    }
+
+    // 2. FLUJO DE LINKEDIN REAL
+    if (proveedor === 'linkedin' && linkedinClientId) {
+      const redirectUri = Platform.OS === 'web' 
+        ? window.location.origin 
+        : 'https://todo-ya.vercel.app';
+      const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${linkedinClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email`;
+      
+      if (Platform.OS === 'web') {
+        window.location.href = authUrl;
+      } else {
+        try {
+          const WebBrowser = await import('expo-web-browser');
+          const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+          if (result.type === 'success' && result.url) {
+            const urlObj = new URL(result.url);
+            const code = urlObj.searchParams.get('code');
+            if (code) {
+              setCargando(true);
+              const res = await fetch('/api/auth-linkedin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, redirectUri })
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                  await registrarEIniciarSesion(data.name, data.email, 'client', 'linkedin');
+                }
+              }
+              setCargando(false);
+            }
+          }
+        } catch (e) {
+          console.warn('Error en LinkedIn Sign-In nativo:', e);
+        }
+      }
+      return;
+    }
+
+    // 3. FALLBACK DE SIMULACIÓN INTERACTIVA (Si no hay variables de entorno configuradas)
+    setConfiguracionModal({
+      titulo: `ℹ️ Modo de Simulación de ${proveedor === 'google' ? 'Google' : 'LinkedIn'}`,
+      mensaje: `Estamos mostrando la simulación interactiva porque no has configurado tus credenciales OAuth.\n\nPara habilitar el login real de ${proveedor === 'google' ? 'Google/Gmail' : 'LinkedIn'} en producción, por favor agrega las variables a tu archivo .env o en el panel de Vercel:\n\n` + 
+        (proveedor === 'google' 
+          ? 'EXPO_PUBLIC_GOOGLE_CLIENT_ID="TU_GOOGLE_CLIENT_ID"' 
+          : 'EXPO_PUBLIC_LINKEDIN_CLIENT_ID="TU_LINKEDIN_CLIENT_ID"\nEXPO_PUBLIC_LINKEDIN_CLIENT_SECRET="TU_LINKEDIN_CLIENT_SECRET"')
+    });
+    setMostrarModal(true);
+
+    // Abrir el modal de simulación después de cerrar la alerta
+    setTimeout(() => {
+      setProveedorOauth(proveedor);
+      setPasoOauth('login');
+      setCorreoOauth('');
+      setNombreOauth('');
+      setRolOauth('client');
+      setCorreoOauthPersonalizado('');
+      setMostrarEntradaCorreoPersonalizado(false);
+    }, 2500);
   };
 
   /**
