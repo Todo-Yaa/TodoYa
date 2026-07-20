@@ -14,9 +14,11 @@
 
 ## 🛠️ Características Principales Implementadas
 
-### 1. Registro Simplificado e Inicio de Sesión Social (OAuth)
+### 1. Registro Validado e Inicio de Sesión Multimodal (Flexibilidad y Seguridad)
+* **Registro de Usuarios con Correo Real**: Se captura y valida la dirección de correo real (con control de formato `@` y no vacío) para el registro de cuentas de personas y empresas.
 * **Registro por Defecto**: Los usuarios nuevos se registran automáticamente con rol de comprador (`client` para personas naturales y `business` para empresas B2B).
-* **Simulación OAuth**: Flujo visual de inicio de sesión y registro social a través de Google Account y LinkedIn que sincroniza datos de perfil en un entorno simulado de navegador.
+* **Login Flexible**: El sistema de autenticación admite el inicio de sesión indicando indistintamente el correo (`correoOTelefono`), el número celular (`celular`) o con el código de país (`+${codigoPais} ${celular}`).
+* **Simulación OAuth**: Flujo visual de inicio de sesión y registro social a través de Google Account y LinkedIn.
 
 ### 2. Onboarding Modal e Interceptación de Proveedores
 * Al intentar cambiar al rol de **Proveedor** (`provider`) por primera vez, la aplicación intercepta la acción y abre un formulario interactivo según el tipo de entidad:
@@ -33,12 +35,17 @@
 
 
 ### 4. Búsqueda de Proveedores en Tiempo Real (Estilo inDriver)
-* **Radar de Escaneo**: Al confirmar un servicio, la aplicación transmite la solicitud en un radio de 5km mediante un radar animado.
+* **Geocodificación de Moneda por GPS**: El sistema obtiene por GPS las coordenadas del cliente y usa `Location.reverseGeocodeAsync` para detectar el país. Si es detectado, aplica automáticamente el símbolo monetario de esa región (Bs. para Bolivia, S/. para Perú, COP$ para Colombia, etc.) o cae en fallback del prefijo telefónico.
 * **Flujo Residencial**:
-  * Cuenta regresiva visual de **15 segundos**.
+  * Cuenta regresiva visual de **90 segundos**.
+  * Cobertura y costo sugerido de consulta dinámicos y progresivos:
+    * **0 - 30 segundos**: Radio de cobertura de `1.0 km` y costo de `10`.
+    * **31 - 60 segundos**: Radio de cobertura de `1.5 km` y costo de `15`.
+    * **61 - 90 segundos**: Radio de cobertura de `2.0 km` y costo de `20`.
   * Mapa Leaflet dinámico con marcadores de proveedores cercanos con emojis personalizados según su oficio.
   * Si el tiempo expira sin seleccionar un proveedor, se ofrece la opción de reintentar o publicar en la lista general.
 * **Flujo Corporativo B2B (Contraofertas)**:
+  * Cuenta regresiva visual de **30 segundos** en el que se expande la cobertura progresivamente de 1.5 km a 5.0 km.
   * Se define un **presupuesto objetivo** corporativo en la solicitud.
   * Las empresas proveedoras se postulan de forma progresiva enviando cotizaciones personalizadas: aceptando el presupuesto objetivo o enviando contraofertas (a la baja o al alza por servicios premium).
 
@@ -77,6 +84,14 @@
 * **Geocodificación Inversa Real**: Resuelve de forma automática las coordenadas del GPS mediante `Location.reverseGeocodeAsync` para detectar el nombre de la ciudad del usuario (Arequipa, Lima, Santa Cruz de la Sierra, etc.), con un algoritmo de fallback geográfico en base a coordenadas para entornos Web.
 * **Alerta Flotante Global**: Despliega un modal flotante e interactivo si el sistema capta que el usuario estaba previamente en una ciudad y ahora se encuentra en otra distinta. Dicho chequeo ocurre al iniciar la app, ingresar a las pantallas de solicitud de servicio (`solicitar.tsx`), acceder al panel de Leads (`leads.tsx`) o al cambiar de rol en la aplicación.
 * **Actualización en Caliente**: Permite confirmar la nueva ciudad en caliente (guardándola en `Storage`) o mantener la anterior de forma de sesión. Además, el usuario puede presionar sobre su ciudad en la cabecera del dashboard o perfil para forzar una lectura del GPS en cualquier instante de forma proactiva.
+
+### 12. Monedas y Cobro de Comisiones a Proveedores
+* **Gestión de Saldo (Monedas)**: Los usuarios proveedores poseen un atributo `monedas` que representa su saldo para operar en la aplicación.
+* **Débito de Comisión por Plan**: Al aceptar una solicitud residencial, se le debita una comisión sobre el valor de la consulta calculada automáticamente según su plan de suscripción activa:
+  * **Plan 1 (Básico):** Cobra el 20% del valor de la consulta en monedas.
+  * **Plan 2 (Premium):** Cobra el 10% del valor de la consulta en monedas.
+  * **Plan 3 (Ilimitado):** Cobra el 0% (comisión exenta).
+* **Transacciones de Wallet**: En caso de que la conexión de base de datos remota esté activa (`isDbOnline`), se registra la transacción por POST en `/api/wallet` para fines contables e historial del proveedor.
 
 ---
 

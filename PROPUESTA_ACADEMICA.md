@@ -6,8 +6,8 @@ Este documento detalla la fundamentación académica, la pertinencia, la arquite
 
 ## 📋 1. Resumen Ejecutivo del Prototipo
 **Todo Ya** es una plataforma móvil universal y web (desarrollada con **React Native, Expo, Drizzle ORM, Neon.db e i18n**) que conecta clientes con proveedores de servicios generales en tiempo real. Dispone de dos flujos separados y optimizados:
-1. **Residencial (B2C):** Búsqueda inmediata de técnicos (plomeros, electricistas, pintores) mediante un radar de 15 segundos y mapas interactivos.
-2. **Corporativo (B2B):** Sistema de subastas invertidas y contraofertas progresivas con chat de negociación en vivo para insumos y servicios industriales.
+1. **Residencial (B2C):** Búsqueda inmediata de técnicos (plomeros, electricistas, pintores) mediante un radar de 90 segundos con tarifas y radios dinámicos y mapas interactivos.
+2. **Corporativo (B2B):** Sistema de subastas invertidas y contraofertas progresivas (radar de 30 segundos) con chat de negociación en vivo para insumos y servicios industriales.
 
 ---
 
@@ -34,7 +34,7 @@ Desarrollar un prototipo de aplicación universal multiplataforma (Móvil y Web)
 ### Objetivos Específicos:
 1.  Diseñar e implementar un sistema estricto de roles de usuario (Cliente natural vs. Empresa B2B) que filtre dinámicamente las pantallas de acuerdo al tipo de entidad registrada.
 2.  Desarrollar un formulario interactivo inteligente con la API de Google Gemini (modelo gemini-2.5-flash) que admita entrada de voz real (micrófono con MediaRecorder) y texto libre en lenguaje natural, corrigiendo errores ortográficos y gramaticales (ej. 'tengo un fga de gua' -> 'Tengo una fuga de agua'), clasificando automáticamente el servicio, estimando costos, y rechazando entradas incoherentes o sin sentido con el mensaje "Vuelve a escribirlo" mediante filtros online (IA) y offline (heurísticos locales).
-3.  Implementar un flujo de búsqueda residencial (B2C) interactivo por mapa con una cuenta regresiva de 15 segundos mediante un radar de escaneo animado.
+3.  Implementar un flujo de búsqueda residencial (B2C) interactivo por mapa con una cuenta regresiva de 90 segundos mediante un radar de escaneo animado, con un algoritmo de ajuste dinámico de radio de cobertura y cobro de consulta basado en el tiempo transcurrido.
 4.  Crear un módulo corporativo (B2B) de subastas en vivo donde proveedores de insumos compitan enviando contraofertas progresivas (a la baja o al alza por servicios premium) con un chat de negociación en vivo.
 5.  Desarrollar un sistema de calificación forzada con bloqueo de interfaz raíz (Rating Overlay) para garantizar la retroalimentación de los trabajos completados.
 6.  Integrar un módulo de traducción i18n para soportar 5 idiomas principales: Español, Inglés, Quechua, Aymara y Guaraní.
@@ -86,6 +86,34 @@ $$\delta_{i} = \text{random}(-0.10, 0.20) + K_{rep}$$
 *   $\text{random}(a, b)$ es una distribución uniforme en el intervalo $[a, b]$. Un valor negativo representa una oferta competitiva a la baja para ganar el contrato; un valor positivo representa una propuesta al alza debido a insumos de mayor calidad.
 *   $K_{rep}$ es la constante de reputación premium del proveedor (ej. $+0.05$ para técnicos con calificación $\ge 4.8\star$), justificando un cobro extra por garantía y excelencia.
 
+### C. Algoritmo de Tarifa y Radio Dinámico Residencial (B2C)
+Para incentivar la aceptación de consultas y expandir la cobertura cuando no se encuentran técnicos cercanos de manera inmediata, el prototipo residencial aumenta dinámicamente el radio de búsqueda $R(t)$ en kilómetros y el costo sugerido de la consulta $F(t)$ en función del tiempo transcurrido $t$ en segundos (donde $0 \le t \le 90$):
+
+$$R(t) = \begin{cases} 
+1.0\text{ km} & \text{si } 0 \le t \le 30 \\ 
+1.5\text{ km} & \text{si } 30 < t \le 60 \\ 
+2.0\text{ km} & \text{si } t > 60 
+\end{cases}$$
+
+$$F(t) = \begin{cases} 
+10 & \text{si } 0 \le t \le 30 \\ 
+15 & \text{si } 30 < t \le 60 \\ 
+20 & \text{si } t > 60 
+\end{cases}$$
+
+### D. Algoritmo de Comisión por Plan de Suscripción
+Al concretarse una asignación de pedido residencial al proveedor, el sistema calcula de forma determinista la cantidad de monedas a debitar $C_{\text{debit}}$ de su cuenta como:
+
+$$C_{\text{debit}} = \text{round}\left(F(t) \cdot r_{\text{com}}\right)$$
+
+Donde la tasa de comisión $r_{\text{com}}$ varía según el plan de suscripción activa del proveedor:
+
+$$r_{\text{com}} = \begin{cases} 
+0.20 & \text{para Plan 1 (Básico / default)} \\ 
+0.10 & \text{para Plan 2 (Premium)} \\ 
+0.00 & \text{para Plan 3 (Ilimitado)} 
+\end{cases}$$
+
 ---
 
 ## 🏛️ 7. Sustentación Académica y Pertinencia
@@ -119,6 +147,7 @@ Se alinea estrictamente al perfil de egreso del ingeniero, fomentando el desarro
 2.  **Solución a la Fragmentación de Roles:** La separación lógica y estricta de roles por tipo de entidad (Natural vs. Empresa) resolvió la confusión de flujos, unificando la estética B2B (slate e índigo) e impidiendo desviaciones a pantallas incompatibles.
 3.  **Inclusión Lingüística Exitosa:** La incorporación de traducciones i18n al Quechua, Aymara y Guaraní demostró que es posible construir interfaces tecnológicas complejas que respeten y promuevan la identidad cultural de los trabajadores de oficios generales.
 4.  **Resiliencia y Accesibilidad en Entrada de Voz:** Se validó que la combinación de captura de audio real via `MediaRecorder` y transcripción asíncrona por IA incrementa la accesibilidad y velocidad de carga de requerimientos. El diseño híbrido del validador (online con Gemini y fallback heurístico local offline) garantiza que la entrada de texto sin sentido sea rechazada de forma consistente con el mensaje "Vuelve a escribirlo", aun bajo restricciones técnicas como límites de cuota (error 429).
+5.  **Alineación Comercial y Monetización del Proveedor:** Se demostró la viabilidad de un modelo de negocio sostenible en la gig economy local mediante la integración de un monedero digital (`monedas`). El sistema de comisiones estructurado cobra de forma justa y en caliente de acuerdo al nivel del plan mensual del proveedor, incentivando el salto a planes premium de menor tasa impositiva.
 
 ---
 
@@ -171,7 +200,7 @@ graph LR
         UC1((Registrar Cuenta / Seleccionar Rol))
         UC2((Crear Requerimiento con Voz o Texto))
         UC3((Corregir y Categorizar Requerimiento))
-        UC4((Escanear Radar de Técnicos 15s))
+        UC4((Escanear Radar de Técnicos Residencial 90s / Empresa 30s))
         UC5((Crear Subasta / Licitación B2B))
         UC6((Enviar Contraofertas Progresivas))
         UC7((Chatear en Tiempo Real))

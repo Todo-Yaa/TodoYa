@@ -139,6 +139,7 @@ export interface UsuarioRegistrado {
   descripcionProveedor?: string;
   coberturaB2B?: string;
   planId?: string; // Suscripción activa ('provider_1', 'provider_2', 'provider_3', etc.)
+  monedas?: number; // Monedas/saldo del proveedor para comisiones
   pushToken?: string; // Token de notificaciones push de Expo
   celular?: string; // Teléfono celular del usuario
   codigoPais?: string; // Código de país telefónico (ej. 591, 51, etc.)
@@ -341,8 +342,8 @@ graph TD
     G & I --> J[Confirmar e Iniciar Escaneo]
     
     J --> K{¿Tipo de Cuenta?}
-    K -->|Residencial| L[Radar de 15 segundos con temporizador]
-    K -->|Empresa B2B| M[Licitación corporativa sin límite de tiempo]
+    K -->|Residencial| L[Radar de 90 segundos con tarifas y radios dinámicos]
+    K -->|Empresa B2B| M[Radar de 30 segundos con cotizaciones y contraofertas]
 ```
 
 ### C. Casos de Uso del Sistema
@@ -360,10 +361,9 @@ graph LR
     end
 
     subgraph Sistema Todo Ya
-        UC1((Registrar Cuenta / Seleccionar Rol))
         UC2((Crear Requerimiento con Voz o Texto))
         UC3((Corregir y Categorizar Requerimiento))
-        UC4((Escanear Radar de Técnicos 15s))
+        UC4((Escanear Radar de Técnicos Residencial 90s / Empresa 30s))
         UC5((Crear Subasta / Licitación B2B))
         UC6((Enviar Contraofertas Progresivas))
         UC7((Chatear en Tiempo Real))
@@ -398,7 +398,7 @@ graph LR
 
 | Actor | Caso de Uso | Descripción |
 | :--- | :--- | :--- |
-| **Cliente Natural** | Crear Pedido Domiciliario | Describe una necesidad, valida la categoría y la corrección ortográfica de Gemini, escanea por 15s y acepta una oferta. |
+| **Cliente Natural** | Crear Pedido Domiciliario | Describe una necesidad, valida la categoría y la corrección ortográfica de Gemini, escanea por 90s con tarifas dinámicas y acepta una oferta. |
 | **Empresa (Cliente B2B)** | Licitación Corporativa | Define requerimientos y presupuesto. Recibe cotizaciones y contraofertas, coordinando facturación vía chat interactivo. |
 | **Proveedor Residencial** | Postularse a Leads de Bolsa | Utiliza su suscripción activa (Plan 1, 2 o 3) para postularse a los leads disponibles residenciales o corporativos (Plan 2/3) en la bolsa general. |
 | **Proveedor B2B** | Enviar Contraofertas | Envía cotizaciones personalizadas a licitaciones corporativas y negocia la logística por chat. |
@@ -407,13 +407,19 @@ graph LR
 
 ## ⚙️ 6. Componentes Técnicos e Implementación
 
-### 1. Formulario de Solicitud y Google Gemini API (`solicitar.tsx`)
+### 1. Formulario de Solicitud, Localización Regional y Radar Dinámico (`solicitar.tsx`)
 * **Google Gemini API Integration (gemini-2.5-flash)**: Conexión asíncrona mediante Expo API Routes para analizar la descripción en lenguaje natural escrita por el usuario. El servicio:
   * Corrige errores gramaticales y ortográficos en tiempo real (ej. *"tengo un fga de gua"* -> *"Tengo una fuga de agua"*).
   * Clasifica y recomienda la categoría de servicio exacta de entre las 14 categorías oficiales.
   * Identifica el nivel de urgencia ("Normal" o "Alta").
   * Cuenta con un fallback transparente a procesamiento de diccionarios locales (NLP offline) si la API no está disponible o falla la red.
 * **Visualización de Correcciones**: En la UI de resultados se despliega una alerta con fondo verde suave y el icono `sparkles` informando la descripción profesional corregida por la IA, la cual se utilizará para registrar la orden final.
+* **Geocodificación Inversa y Detección de Moneda**: Obtiene por GPS las coordenadas del cliente y utiliza `Location.reverseGeocodeAsync` para detectar el país de origen. Mapea el país o los códigos prefijos del perfil a su moneda local (ej. Soles `S/.` para Perú, Pesos Bolivianos `Bs.` para Bolivia, `COP$` para Colombia, etc.) para aplicar las tarifas en la moneda regional correspondiente.
+* **Radar y Tarifario Dinámico Residencial (B2C)**: El temporizador de escaneo se extiende a **90 segundos**, y de forma incremental se expande el radio de cobertura y el costo sugerido por consulta técnica según el tiempo transcurrido:
+  * **0 - 30 segundos**: Radio de cobertura de `1.0 km` y costo de consulta de `10` unidades de la moneda local.
+  * **31 - 60 segundos**: Radio de cobertura de `1.5 km` y costo de consulta de `15` unidades de la moneda local.
+  * **61 - 90 segundos**: Radio de cobertura de `2.0 km` y costo de consulta de `20` unidades de la moneda local.
+* **Radar Corporativo (B2B)**: Ejecuta una cuenta regresiva de **30 segundos** en el que se expande el radio de escaneo de `1.5 km` a `3.0 km` y finalmente a `5.0 km`, permitiendo la llegada e integración de cotizaciones y contraofertas de insumos.
 
 ### 2. Grabación de Voz Real y Transcripción con IA (`/api/transcribe`)
 * **Captura de Audio con MediaRecorder**: Implementación de grabación de audio nativa mediante el navegador o WebView del dispositivo empleando la API `MediaRecorder`.
@@ -428,8 +434,10 @@ graph LR
   * **Notificación de Incoherencia**: Al detectarse una descripción sin sentido, se despliega un modal con el título `⚠️ No se entiende` y el mensaje interactivo `Vuelve a escribirlo` bloqueando el registro de la orden.
 
 ### 8. Registro Regional, Doble Verificación (PIN SMS) y Verificación de Proveedores (KYC)
+* **Registro con Correo Electrónico Real**: El proceso de registro de usuarios (naturales y corporativos) se efectúa capturando y validando el correo real del usuario (con control de formato `@` y no vacío), en lugar de mapear el celular en el campo correo.
 * **Registro de Celular y Código de País**: El formulario de registro manual integra un selector de prefijo de país de Latinoamérica con banderas (Bolivia 🇧🇴, Perú 🇵🇪, Colombia 🇨🇴, etc.) y un campo numérico para el celular. Esto aplica para usuarios individuales y corporativos.
 - **Verificación Doble Factor por PIN**: Al presionar "Registrarse", se genera un PIN dinámico y se simula la entrega de un SMS en pantalla (Toast). El usuario ingresa el PIN en un modal con cuenta regresiva. Si el PIN coincide, se procede a la creación definitiva de la cuenta.
+- **Acceso Multimodal (Login Flexible)**: El motor de autenticación unifica y permite el inicio de sesión del usuario ingresando indistintamente su correo registrado (`correoOTelefono`), su celular (`celular`) o el formato completo con código de país (`+${codigoPais} ${celular}`).
 - **Validación de Identidad KYC para Proveedores (Persona Natural)**: Si un cliente residencial intenta pasar a Proveedor (ofrecer servicios) desde su menú de perfil, y no está verificado (`kycVerificado` es `false`), se le despliega un modal KYC interactivo. Aquí debe:
   - Seleccionar su documento (DNI o Carnet de Extranjería).
   - Capturar una foto legible del frente del documento.
@@ -441,6 +449,14 @@ graph LR
 - **Motivos de Reporte**: Incluye un selector interactivo con categorías comunes: cobro excesivo, inasistencia, daños materiales o mal comportamiento, junto con un campo de descripción libre.
 - **Bandeja de Soporte y Baneo**: Desarrollamos una consola de administración en `/perfil` que consulta dinámicamente las denuncias desde `/api/reports`. El administrador de soporte de **Todo Ya** puede presionar un botón para banear y suspender de inmediato el acceso del proveedor reportado, o reactivar su cuenta si se resuelve la disputa.
 - **Restricción de Acceso Activo**: Las cuentas de usuarios con la columna `baneado: true` en la base de datos no podrán iniciar sesión, desplegándose una advertencia de cuenta suspendida en la pantalla de login.
+
+### 10. Gestión de Monedas y Comisiones de Proveedores
+* **Esquema de Comisiones**: Al asignarse un proveedor para un servicio residencial (B2C), se debita de su balance de `monedas` una comisión porcentual en base a la tarifa de consulta (10, 15 o 20) y de acuerdo a su suscripción contratada:
+  * **Plan 1 (Básico / default):** 20% de comisión.
+  * **Plan 2 (Premium):** 10% de comisión.
+  * **Plan 3 (Ilimitado):** 0% de comisión.
+* **Persistencia y Actualización en Caliente**: Las monedas debitadas actualizan instantáneamente el estado del proveedor activo y se guardan localmente en `todo_ya_registered_users` y `todo_ya_active_user` dentro de `Storage`.
+* **Registro de Transacciones Remoto**: Si el sistema está en línea (`isDbOnline` es verdadero), se realiza un POST al backend `/api/wallet` detallando la transacción (`userId`, `monto`, `tipo: 'gasto'` y el desglose de suscripción/tarifa) para mantener el historial consolidado.
 
 ### 4. Control de Acceso por Suscripciones Mensuales y VeriPagos (`leads.tsx`)
 * Regulación de acceso a leads para proveedores en base a su nivel de suscripción activa:

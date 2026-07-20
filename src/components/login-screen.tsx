@@ -117,13 +117,11 @@ export default function LoginScreen() {
     }
 
     setMostrarModalPIN(false);
-    
-    const loginIdentifier = `+${codigoPais} ${celular}`;
 
     if (tipoEntidad === 'empresa') {
       setPendingRegistroData({
         nombre: nombreRegistro.trim(),
-        correo: loginIdentifier,
+        correo: correoRegistro.trim().toLowerCase(),
         contrasena: contrasenaRegistro,
         tipoEntidad,
         nit: nit.trim(),
@@ -142,7 +140,7 @@ export default function LoginScreen() {
 
       const exito = await registrarUsuario(
         nombreRegistro.trim(),
-        loginIdentifier,
+        correoRegistro.trim().toLowerCase(),
         finalRole,
         contrasenaRegistro,
         tipoEntidad,
@@ -184,6 +182,14 @@ export default function LoginScreen() {
       setConfiguracionModal({
         titulo: '⚠️ Nombre vacío',
         mensaje: 'Por favor ingresa tu nombre o razón social.'
+      });
+      setMostrarModal(true);
+      return;
+    }
+    if (!correoRegistro.trim() || !correoRegistro.includes('@')) {
+      setConfiguracionModal({
+        titulo: '⚠️ Correo inválido',
+        mensaje: 'Por favor ingresa un correo electrónico de registro válido.'
       });
       setMostrarModal(true);
       return;

@@ -24,6 +24,7 @@ export interface UsuarioRegistrado {
   descripcionProveedor?: string;
   coberturaB2B?: string;
   planId?: 'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3' | null;
+  monedas?: number;
   celular?: string;
   codigoPais?: string;
   kycVerificado?: boolean;
@@ -782,6 +783,68 @@ export function UserProvider({ children }: { children: ReactNode }) {
     urgencia: string, 
     proveedor: string | null = null
   ) => {
+    // Si se especificó un proveedor (se aceptó el servicio residencial), cobrar comisión según plan
+    if (proveedor) {
+      try {
+        const providerUser = usuariosRegistrados.find(u => u.nombre === proveedor);
+        if (providerUser) {
+          let feeValue = 10;
+          if (precio.includes('15')) feeValue = 15;
+          else if (precio.includes('20')) feeValue = 20;
+
+          const userPlan = providerUser.planId || 'provider_1';
+          let commissionRate = 0.20; // Plan 1: 20%
+          if (userPlan === 'provider_2') {
+            commissionRate = 0.10; // Plan 2: 10%
+          } else if (userPlan === 'provider_3') {
+            commissionRate = 0.00; // Plan 3: 0%
+          }
+
+          const debitCoins = Math.round(feeValue * commissionRate);
+
+          if (debitCoins > 0) {
+            const currentCoins = providerUser.monedas !== undefined ? providerUser.monedas : 24;
+            const newCoins = Math.max(0, currentCoins - debitCoins);
+
+            // Actualizar localmente la lista de usuarios
+            const updatedUsers = usuariosRegistrados.map(u => 
+              u.nombre === proveedor ? { ...u, monedas: newCoins } : u
+            );
+            setUsuariosRegistrados(updatedUsers);
+            await Storage.setItem('todo_ya_registered_users', JSON.stringify(updatedUsers));
+
+            // Si el proveedor activo es quien fue seleccionado, actualizar su estado
+            if (activeUser && activeUser.nombre === proveedor) {
+              setCoins(newCoins);
+              setActiveUser({ ...activeUser, monedas: newCoins });
+              await Storage.setItem('todo_ya_coins', newCoins.toString());
+              await Storage.setItem('todo_ya_active_user', JSON.stringify({ ...activeUser, monedas: newCoins }));
+            }
+
+            // Registrar transacción en base de datos si está online
+            if (isDbOnline && providerUser.id) {
+              try {
+                await fetch('/api/wallet', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: providerUser.id,
+                    monto: debitCoins,
+                    tipo: 'gasto',
+                    detalle: `Comisión Consulta Técnica (${precio}) - Suscripción: ${userPlan === 'provider_1' ? 'Plan 1' : 'Plan 2'}`
+                  })
+                });
+              } catch (walletErr) {
+                console.warn('[addOrder] Error debitando monedas en BD remota:', walletErr);
+              }
+            }
+          }
+        }
+      } catch (coinErr) {
+        console.warn('[addOrder] Error al procesar comisiones del proveedor:', coinErr);
+      }
+    }
+
     const newOrder: Order = {
       id: Date.now(),
       titulo,
@@ -1007,7 +1070,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const resData = await response.json();
         if (resData.status === 'success') {
           const dbUsers: UsuarioRegistrado[] = resData.data;
-          const usuarioEncontrado = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
+          const usuarioEncontrado = dbUsers.find(u => {
+            const correoRegistrado = (u.correoOTelefono || '').toLowerCase();
+            const celularRegistrado = u.celular || '';
+            const celularCompleto = `+${u.codigoPais || ''} ${u.celular || ''}`.trim().toLowerCase();
+            return correoRegistrado === claveCorreo || celularRegistrado === claveCorreo || celularCompleto === claveCorreo;
+          });
           
           if (usuarioEncontrado) {
             if (usuarioEncontrado.baneado) {
@@ -1035,7 +1103,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     const usuarioEncontrado = usuariosRegistrados.find(u => {
       const correoRegistrado = (u.correoOTelefono || '').toLowerCase();
-      return correoRegistrado === claveCorreo;
+      const celularRegistrado = u.celular || '';
+      const celularCompleto = `+${u.codigoPais || ''} ${u.celular || ''}`.trim().toLowerCase();
+      return correoRegistrado === claveCorreo || celularRegistrado === claveCorreo || celularCompleto === claveCorreo;
     });
 
     let nombre = '';

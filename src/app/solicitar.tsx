@@ -93,7 +93,7 @@ const getCandidates = (cat: string) => {
 
 export default function SolicitarScreen() {
   const { t } = useTranslation();
-  const { addOrder, userRole, triggerLocationCheck } = useUser();
+  const { addOrder, userRole, triggerLocationCheck, activeUser } = useUser();
   const isBusiness = userRole === 'business';
   const [inputText, setInputText] = useState('');
   const scanTimeoutRef = useRef<any>(null);
@@ -118,6 +118,7 @@ export default function SolicitarScreen() {
   const [loadingText, setLoadingText] = useState('');
 
   const [clientCoords, setClientCoords] = useState<{ lat: number; lng: number }>({ lat: -17.784, lng: -63.180 });
+  const [detectedCountry, setDetectedCountry] = useState<string>('');
 
   useEffect(() => {
     (async () => {
@@ -125,10 +126,33 @@ export default function SolicitarScreen() {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
           const loc = await Location.getCurrentPositionAsync({});
-          setClientCoords({
-            lat: loc.coords.latitude,
-            lng: loc.coords.longitude
-          });
+          const lat = loc.coords.latitude;
+          const lng = loc.coords.longitude;
+          setClientCoords({ lat, lng });
+
+          // Detectar país mediante reverse geocoding
+          try {
+            const geocode = await Location.reverseGeocodeAsync({
+              latitude: lat,
+              longitude: lng
+            });
+            let country = '';
+            if (geocode && geocode.length > 0) {
+              country = geocode[0].country || '';
+            }
+
+            if (!country) {
+              // Fallback aproximado por coordenadas para Bolivia y Perú
+              if (lat >= -22.9 && lat <= -9.7 && lng >= -69.6 && lng <= -57.4) {
+                country = 'Bolivia';
+              } else {
+                country = 'Peru';
+              }
+            }
+            setDetectedCountry(country);
+          } catch (geoErr) {
+            console.warn('[SolicitarScreen] Error al reverse geocodificar coordenadas:', geoErr);
+          }
         }
       } catch (e) {
         console.warn('[SolicitarScreen] Error al obtener GPS de cliente:', e);
@@ -162,7 +186,80 @@ export default function SolicitarScreen() {
     const num = parseFloat(distanceStr);
     return isNaN(num) ? 0 : num;
   };
-  const currentRadius = contador > 15 ? 1.5 : (contador > 5 ? 3.0 : 5.0);
+
+  const getDynamicRadiusAndFee = () => {
+    const CURRENCIES_BY_COUNTRY: Record<string, string> = {
+      'Peru': 'S/.', 'Perú': 'S/.', 'Bolivia': 'Bs.', 'Colombia': 'COP$',
+      'Chile': 'CLP$', 'Mexico': 'MXN$', 'México': 'MXN$', 'Argentina': 'ARS$',
+      'Ecuador': 'USD$', 'Uruguay': 'UYU$', 'Paraguay': 'PYG', 'Venezuela': 'VES',
+      'Costa Rica': 'CRC', 'Guatemala': 'GTQ', 'Honduras': 'HNL', 'Nicaragua': 'NIO',
+      'Panama': 'PAB', 'Panamá': 'PAB', 'El Salvador': 'USD$', 'Dominican Republic': 'DOP$',
+      'República Dominicana': 'DOP$'
+    };
+
+    const CURRENCY_BY_PREFIX: Record<string, string> = {
+      '51': 'S/.', '591': 'Bs.', '57': 'COP$', '56': 'CLP$', '52': 'MXN$',
+      '54': 'ARS$', '593': 'USD$', '598': 'UYU$', '595': 'PYG', '506': 'CRC',
+      '502': 'GTQ', '504': 'HNL', '505': 'NIO', '507': 'PAB'
+    };
+
+    const getCurrencySymbol = () => {
+      // 1. Intentar por GPS detectado en tiempo real
+      if (detectedCountry) {
+        const match = CURRENCIES_BY_COUNTRY[detectedCountry];
+        if (match) return match;
+        
+        for (const [country, symbol] of Object.entries(CURRENCIES_BY_COUNTRY)) {
+          if (detectedCountry.toLowerCase().includes(country.toLowerCase())) {
+            return symbol;
+          }
+        }
+      }
+
+      // 2. Intentar por datos de perfil del usuario
+      if (activeUser) {
+        if (activeUser.codigoPais && CURRENCY_BY_PREFIX[activeUser.codigoPais]) {
+          return CURRENCY_BY_PREFIX[activeUser.codigoPais];
+        }
+        if (activeUser.celular) {
+          for (const [prefix, symbol] of Object.entries(CURRENCY_BY_PREFIX)) {
+            if (activeUser.celular.startsWith(`+${prefix}`) || activeUser.celular.startsWith(prefix)) {
+              return symbol;
+            }
+          }
+        }
+        if (activeUser.correoOTelefono) {
+          for (const [prefix, symbol] of Object.entries(CURRENCY_BY_PREFIX)) {
+            if (activeUser.correoOTelefono.includes(`+${prefix}`)) {
+              return symbol;
+            }
+          }
+        }
+      }
+
+      // 3. Fallback predeterminado (Soles Peruanos)
+      return 'S/.';
+    };
+
+    const symbol = getCurrencySymbol();
+
+    if (isBusiness) {
+      const radius = contador > 15 ? 1.5 : (contador > 5 ? 3.0 : 5.0);
+      return { radius, feeText: '', feeValue: 0 };
+    } else {
+      // El temporizador de residencial baja de 90 a 0 segundos
+      const secondsElapsed = 90 - contador;
+      if (secondsElapsed <= 30) {
+        return { radius: 1.0, feeText: `${symbol} 10`, feeValue: 10 };
+      } else if (secondsElapsed <= 60) {
+        return { radius: 1.5, feeText: `${symbol} 15`, feeValue: 15 };
+      } else {
+        return { radius: 2.0, feeText: `${symbol} 20`, feeValue: 20 };
+      }
+    }
+  };
+
+  const { radius: currentRadius, feeText: currentFeeText, feeValue: currentFeeValue } = getDynamicRadiusAndFee();
   const activeCandidates = candidatos.filter(c => parseDistance(c.distance) <= currentRadius);
 
   // Animaciones para la pantalla de escaneo real-time
@@ -564,7 +661,8 @@ export default function SolicitarScreen() {
       }
 
       setFaseBusqueda('offers');
-      setContador(30); // Búsqueda de 30 segundos en total
+      const totalTime = isBusiness ? 30 : 90;
+      setContador(totalTime);
       
       const interval = setInterval(() => {
         setContador((prev) => {
@@ -577,7 +675,7 @@ export default function SolicitarScreen() {
         });
       }, 1000);
       setTimerIntervalId(interval);
-    }, 5000);
+    }, 2000);
   };
 
   /**
@@ -615,7 +713,7 @@ export default function SolicitarScreen() {
         title = descToUse.substring(0, 25) + '...';
       }
 
-      addOrder(title, servicio, descToUse, pro.price, urgencia, pro.name);
+      addOrder(title, servicio, descToUse, isBusiness ? pro.price : `Consulta: ${currentFeeText}`, urgencia, pro.name);
 
       setConfirmConfig({
         title: '🎉 ¡Oferta Aceptada!',
@@ -945,7 +1043,7 @@ export default function SolicitarScreen() {
               <View style={[styles.timerBadge, { backgroundColor: '#e2e8f0', borderWidth: 1, borderColor: '#cbd5e1' }]}>
                 <Ionicons name="locate-outline" size={16} color="#475569" />
                 <Text style={[styles.timerText, { color: '#475569', fontWeight: 'bold' }]}>
-                  {contador > 15 ? '1.5 km' : (contador > 5 ? '3.0 km' : '5.0 km')}
+                  {currentRadius.toFixed(1)} km
                 </Text>
               </View>
               <View style={[styles.timerBadge, isBusiness && { backgroundColor: '#818cf8' }, contador < 8 && styles.timerDanger]}>
@@ -963,11 +1061,13 @@ export default function SolicitarScreen() {
           {/* Candidates Slider */}
           <ScrollView style={styles.candidatesList} showsVerticalScrollIndicator={true}>
             <Text style={styles.sectionTitle}>
-              {contador > 15 
-                ? `Buscando en 1.5 km (${activeCandidates.length} encontrados)` 
-                : (contador > 5 
-                    ? `Expandido a 3.0 km (${activeCandidates.length} encontrados)` 
-                    : `Expandido a 5.0 km (${activeCandidates.length} encontrados)`)}
+              {isBusiness 
+                ? (contador > 15 
+                    ? `Buscando en 1.5 km (${activeCandidates.length} encontrados)` 
+                    : (contador > 5 
+                        ? `Expandido a 3.0 km (${activeCandidates.length} encontrados)` 
+                        : `Expandido a 5.0 km (${activeCandidates.length} encontrados)`))
+                : `Buscando en ${currentRadius.toFixed(1)} km · Consulta: ${currentFeeText} (${activeCandidates.length} encontrados)`}
             </Text>
             {activeCandidates.map((pro, index) => {
               const avatarInit = pro.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
@@ -980,7 +1080,7 @@ export default function SolicitarScreen() {
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={styles.candidateName}>{pro.name}</Text>
-                        <Text style={styles.candidatePrice}>{pro.price}</Text>
+                        <Text style={styles.candidatePrice}>{isBusiness ? pro.price : `Consulta: ${currentFeeText}`}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                         <Text style={[styles.candidateRating, !isBusiness && { color: '#b68000' }, isBusiness && { color: '#6366f1' }]}>{pro.rating}</Text>
