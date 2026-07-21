@@ -2,10 +2,16 @@ import { db, isDbConnected } from '../../db';
 import { messages } from '../../db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { localDb } from '../../db/localDb';
+import { getClientIp, isRateLimited, isPayloadTooLarge } from '../../utils/rate-limiter';
 
 // GET: Obtener todos los mensajes de una orden específica (o todos si all=true)
 export async function GET(request: Request) {
   try {
+    // Anti-DDoS / Rate Limiting (Máximo 120 consultas por minuto = 2 por segundo para tolerar polling)
+    const clientIp = getClientIp(request);
+    if (isRateLimited(clientIp, 120, 60000)) {
+      return Response.json({ error: 'Límite de peticiones excedido (Anti-DDoS).' }, { status: 429 });
+    }
     const url = new URL(request.url);
     const orderId = url.searchParams.get('orderId');
     const isGlobal = url.searchParams.get('all') === 'true';
@@ -46,6 +52,16 @@ export async function GET(request: Request) {
 // POST: Enviar un nuevo mensaje en una orden
 export async function POST(request: Request) {
   try {
+    // 1. Verificar DDoS / Tamaño del Payload (Límite 1MB)
+    if (isPayloadTooLarge(request)) {
+      return Response.json({ error: 'Payload excesivo. Petición rechazada por seguridad.' }, { status: 413 });
+    }
+
+    // 2. Anti-DDoS / Rate Limiting (Máximo 40 mensajes enviados por minuto por IP)
+    const clientIp = getClientIp(request);
+    if (isRateLimited(clientIp, 40, 60000)) {
+      return Response.json({ error: 'Límite de peticiones excedido (Anti-DDoS).' }, { status: 429 });
+    }
     const body = await request.json();
     // ✅ senderId es opcional pero se guarda si viene (FK real al usuario)
     const { orderId, senderName, messageText, senderId = null } = body;

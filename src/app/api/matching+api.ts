@@ -2,6 +2,7 @@
 import { db, isDbConnected } from '../../db';
 import { users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { getClientIp, isRateLimited, isPayloadTooLarge } from '../../utils/rate-limiter';
 
 // Datos de prueba locales para la simulación del Matching si no hay base de datos real
 const PROVEEDORES_MOCK = [
@@ -41,6 +42,17 @@ const CATEGORIAS_BASE: Record<string, string[]> = {
 
 export async function POST(request: Request) {
   try {
+    // 1. Verificar DDoS / Tamaño del Payload (Límite 1MB)
+    if (isPayloadTooLarge(request)) {
+      return Response.json({ error: 'Payload excesivo. Petición rechazada por seguridad.' }, { status: 413 });
+    }
+
+    // 2. Verificar DDoS / Límite de tasa (Máximo 15 peticiones de matching por minuto por IP)
+    const clientIp = getClientIp(request);
+    if (isRateLimited(clientIp, 15, 60000)) {
+      return Response.json({ error: 'Límite de peticiones excedido (Anti-DDoS). Por favor espera un minuto.' }, { status: 429 });
+    }
+
     const body = await request.json();
     const { descripcion, latCliente = -17.784, lngCliente = -17.784 } = body;
 
