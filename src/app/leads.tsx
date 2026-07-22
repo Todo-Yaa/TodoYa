@@ -37,9 +37,11 @@ export default function LeadsScreen() {
   const providerName = activeUser?.nombre || 'Juan Ríos';
   const providerInitials = providerName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
+  const serviciosListLeads = activeUser?.serviciosOfrecidos || [];
+  const serviciosCountLeads = serviciosListLeads.length;
   const professionText = isB2BProvider 
-    ? `Empresa de ${activeUser?.serviciosOfrecidos?.join(', ') || activeUser?.rubro || 'Branding & Lettering'}`
-    : `${activeUser?.serviciosOfrecidos?.join(', ') || 'Plomería'}`;
+    ? (activeUser?.rubro ? `Empresa de ${activeUser.rubro}` : (serviciosCountLeads === 1 ? `Empresa de ${serviciosListLeads[0]}` : 'Empresa Proveedora Corporativa B2B'))
+    : (serviciosCountLeads === 1 ? `Especialista en ${serviciosListLeads[0]}` : (serviciosCountLeads > 3 ? 'Técnico Especialista Multidisciplinario' : `Especialista en ${serviciosListLeads.join(', ')}`));
 
   const currentEntidad = activeUser?.tipoEntidad || 'natural';
   const userPlan = planId || activeUser?.planId || (currentEntidad === 'empresa' ? 'business_1' : 'provider_1');

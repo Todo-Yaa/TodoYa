@@ -158,9 +158,23 @@ export default function PperfilScreen() {
     ? (userPlan === 'provider_2' || userPlan === 'provider_3')
     : (userPlan === 'business_2' || userPlan === 'business_3');
 
-  const professionText = isB2BProvider
-    ? `Empresa Proveedora de ${activeUser?.serviciosOfrecidos?.join(', ') || activeUser?.rubro || 'Branding & Lettering'} · Cobertura: ${activeUser?.coberturaB2B || 'Nacional'}`
-    : `${activeUser?.serviciosOfrecidos?.join(', ') || 'Plomería'} · Experiencia: ${activeUser?.anosExperiencia || 'Más de 3 años'}`;
+  const serviciosList = activeUser?.serviciosOfrecidos || [];
+  const serviciosCount = serviciosList.length;
+
+  let mainProfessionTitle = 'Proveedor de Servicios Verificado';
+  if (isB2BProvider) {
+    mainProfessionTitle = activeUser?.rubro 
+      ? `Empresa Proveedora de ${activeUser.rubro}`
+      : (serviciosCount === 1 ? `Empresa de ${serviciosList[0]}` : 'Empresa Proveedora Corporativa B2B');
+  } else {
+    if (serviciosCount === 1) {
+      mainProfessionTitle = `Técnico Especialista en ${serviciosList[0]}`;
+    } else if (serviciosCount > 1 && serviciosCount <= 3) {
+      mainProfessionTitle = `Especialista en ${serviciosList.join(', ')}`;
+    } else if (serviciosCount > 3) {
+      mainProfessionTitle = 'Técnico Especialista Multidisciplinario';
+    }
+  }
 
   // Filtra y calcula los trabajos activos asignados al perfil del proveedor
   const myJobs = orders.filter(o => o.proveedor === providerName);
@@ -247,7 +261,24 @@ export default function PperfilScreen() {
               <Text style={[styles.proBadge, isB2BProvider && { backgroundColor: '#6366f1', color: '#fff' }]}> PRO</Text>
             )}
           </Text>
-          <Text style={styles.profession}>{professionText}</Text>
+          <Text style={styles.profession}>{mainProfessionTitle}</Text>
+
+          {/* Badges estéticos de Especialidad y Experiencia */}
+          <View style={styles.headerBadgesRow}>
+            <View style={[styles.headerBadgePill, isB2BProvider ? { backgroundColor: '#e0e7ff', borderColor: '#c7d2fe' } : { backgroundColor: '#fff7ed', borderColor: '#fed7aa' }]}>
+              <Ionicons name={isB2BProvider ? "earth-outline" : "construct-outline"} size={13} color={isB2BProvider ? "#4f46e5" : "#d97706"} />
+              <Text style={[styles.headerBadgeText, isB2BProvider ? { color: '#3730a3' } : { color: '#b45309' }]}>
+                {isB2BProvider ? `Cobertura: ${activeUser?.coberturaB2B || 'Nacional'}` : (serviciosCount > 1 ? `${serviciosCount} Especialidades` : (serviciosList[0] || 'Servicio General'))}
+              </Text>
+            </View>
+
+            <View style={styles.headerBadgePillGray}>
+              <Ionicons name="time-outline" size={13} color="#64748b" />
+              <Text style={styles.headerBadgeTextGray}>
+                {activeUser?.anosExperiencia || 'Más de 3 años de exp.'}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -552,7 +583,44 @@ const styles = StyleSheet.create({
   avatarTextBig: { color: '#2F2F2F', fontSize: 40, fontWeight: 'bold' },
   name: { fontSize: 20, fontWeight: '600', color: '#2F2F2F' },
   proBadge: { backgroundColor: '#FFB400', color: '#2F2F2F', fontSize: 12, paddingHorizontal: 8, borderRadius: 6, marginLeft: 6 },
-  profession: { fontSize: 14, color: '#666', marginTop: 4 },
+  profession: { fontSize: 14, fontWeight: '600', color: '#475569', marginTop: 4, textAlign: 'center' },
+  headerBadgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  headerBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  headerBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  headerBadgePillGray: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  headerBadgeTextGray: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#475569',
+  },
 
   statsRow: {
     flexDirection: 'row',
