@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { useUser, UserRole } from '../context/user-context';
 import { router } from 'expo-router'; // Importar enrutador para redireccionar tras login dinámico
 import KYCVerifierModal from './kyc-verifier-modal';
+import TermsPrivacyModal from './terms-privacy-modal';
 
 const PAISES_LATINOS = [
   { nombre: 'Bolivia', codigo: '591', bandera: '🇧🇴' },
@@ -78,6 +79,10 @@ export default function LoginScreen() {
   // Estado del Modal de Verificación KYC
   const [mostrarKYC, setMostrarKYC] = useState(false);
   const [pendingRegistroData, setPendingRegistroData] = useState<any>(null); // Datos del registro pendiente de KYC
+
+  // Estado del Modal de Términos, Privacidad y Cumplimiento Legal (App Store)
+  const [mostrarLegalModal, setMostrarLegalModal] = useState(false);
+  const [termsTab, setTermsTab] = useState<'terms' | 'privacy' | 'compliance'>('terms');
 
   // Configuración del modal de error/éxito personalizado
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -849,6 +854,34 @@ export default function LoginScreen() {
               {esRegistro ? '¿Ya tienes una cuenta? Inicia Sesión' : '¿No tienes cuenta? Regístrate aquí'}
             </Text>
           </TouchableOpacity>
+
+          {/* Leyenda Legal y Términos para Cumplimiento de App Store / Google Play */}
+          <View style={styles.legalNoticeContainer}>
+            <Ionicons name="shield-checkmark-outline" size={14} color="#71717a" style={{ marginRight: 4 }} />
+            <Text style={styles.legalNoticeText}>
+              Al continuar, aceptas nuestros{' '}
+              <Text 
+                style={styles.legalNoticeLink} 
+                onPress={() => {
+                  setTermsTab('terms');
+                  setMostrarLegalModal(true);
+                }}
+              >
+                Términos de Servicio
+              </Text>
+              {' '}y nuestra{' '}
+              <Text 
+                style={styles.legalNoticeLink} 
+                onPress={() => {
+                  setTermsTab('privacy');
+                  setMostrarLegalModal(true);
+                }}
+              >
+                Política de Privacidad
+              </Text>
+              .
+            </Text>
+          </View>
         </View>
 
         {/* Accesos Rápidos de Prueba (Con inicio de sesión automático y disabled al cargar) */}
@@ -946,12 +979,18 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      {/* MODAL KYC — Verificación de Identidad para Empresas y Proveedores */}
+      {/* Modal KYC — Verificación de Identidad para Proveedores */}
       <KYCVerifierModal
         visible={mostrarKYC}
-        userName={pendingRegistroData?.nombre}
-        onVerified={completarRegistroConKYC}
-        onClose={() => { setMostrarKYC(false); setPendingRegistroData(null); }}
+        onClose={() => setMostrarKYC(false)}
+        onVerified={(detalles) => completarRegistroConKYC(detalles)}
+      />
+
+      {/* Modal de Términos, Privacidad y Cumplimiento Legal (App Store 5.1.1) */}
+      <TermsPrivacyModal
+        visible={mostrarLegalModal}
+        onClose={() => setMostrarLegalModal(false)}
+        initialTab={termsTab}
       />
 
       {/* MODAL DE ERROR/ALERTA PERSONALIZADO */}
@@ -1468,6 +1507,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#5a4800',
     marginBottom: 8,
+  },
+  legalNoticeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    paddingHorizontal: 8,
+    flexWrap: 'wrap',
+  },
+  legalNoticeText: {
+    fontSize: 11,
+    color: '#71717a',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  legalNoticeLink: {
+    color: '#3b82f6',
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
   },
   demoButtons: {
     flexDirection: 'row',

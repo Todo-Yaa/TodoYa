@@ -5,6 +5,7 @@ import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, Activity
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
+import TermsPrivacyModal from '../components/terms-privacy-modal';
 
 // Configura los enlaces de tus redes sociales aquí:
 const FACEBOOK_LINK = 'https://www.instagram.com/todoo__ya';
@@ -15,9 +16,10 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
  * Despliega las estadísticas de trabajo, el saldo actual de monedas del proveedor,
  * los detalles de su membresía PRO y permite regresar al "Modo Cliente".
  */
-export default function PperfilScreen() {
+export default function ProviderPerfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser, deleteAccount, triggerLocationCheck, actualizarFotoPerfil } = useUser();
+  const { logout, deleteAccount, userRole, planId, coins, activeUser, toggleRole, actualizarFotoPerfil, triggerLocationCheck, orders } = useUser();
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   useEffect(() => {
     triggerLocationCheck().catch(() => {});
@@ -481,6 +483,15 @@ export default function PperfilScreen() {
         {/* Botones de Cuenta */}
         <View style={{ gap: 4, marginBottom: 30 }}>
           <TouchableOpacity 
+            style={[styles.logoutBtn, { borderColor: '#3b82f6', backgroundColor: '#eff6ff', borderWidth: 1, borderRadius: 12 }]} 
+            onPress={() => setShowTermsModal(true)} 
+            activeOpacity={0.7}
+          >
+            <Ionicons name="document-text-outline" size={22} color="#3b82f6" />
+            <Text style={[styles.logoutText, { color: '#3b82f6', fontWeight: 'bold' }]}>Términos, Privacidad & Cumplimiento Legal</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
             style={[styles.logoutBtn, { borderColor: '#ea4335', backgroundColor: '#fef2f2', borderWidth: 1, borderRadius: 12 }]} 
             onPress={() => {
               Linking.openURL('mailto:todoo.yap@gmail.com?subject=Sugerencia%20y%20Soporte%20-%20Todo%20Ya').catch(err => console.warn(err));
@@ -539,6 +550,11 @@ export default function PperfilScreen() {
           </View>
         </View>
       )}
+      {/* Modal de Términos, Privacidad & Cumplimiento Legal */}
+      <TermsPrivacyModal
+        visible={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
     </View>
   );
 }

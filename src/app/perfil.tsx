@@ -11,6 +11,7 @@ import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
 import KYCVerifierModal from '../components/kyc-verifier-modal';
 import OnboardingModal from '../components/onboarding-modal';
+import TermsPrivacyModal from '../components/terms-privacy-modal';
 
 
 /**
@@ -28,6 +29,7 @@ export default function PerfilScreen() {
   }, []);
 
   const [showTutorialModal, setShowTutorialModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [cargandoFoto, setCargandoFoto] = useState(false);
 
   // Estados para modal de edición de datos personales (30 días de candado)
@@ -493,6 +495,18 @@ export default function PerfilScreen() {
             </Text>
           </TouchableOpacity>
 
+          {/* Botón de Términos, Privacidad & Cumplimiento Legal (App Store 5.1.1) */}
+          <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={() => setShowTermsModal(true)}>
+            <Ionicons name="document-text-outline" size={24} color="#3b82f6" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.accountText, { color: '#3b82f6', fontWeight: '600' }]}>
+                Términos, Privacidad & Cumplimiento Legal
+              </Text>
+              <Text style={{ fontSize: 11, color: '#888' }}>Conforme a Apple App Store & GDPR</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#aaa" />
+          </TouchableOpacity>
+
           {/* Fila del selector de idiomas */}
           <View style={styles.accountRow}>
             <Ionicons name="globe-outline" size={24} color="#666" />
@@ -884,6 +898,12 @@ export default function PerfilScreen() {
       <OnboardingModal 
         visible={showTutorialModal}
         onClose={() => setShowTutorialModal(false)}
+      />
+
+      {/* Modal de Términos, Privacidad & Cumplimiento Legal */}
+      <TermsPrivacyModal
+        visible={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
       />
 
       {/* Modal de Edición de Datos Personales con Candado de 30 Días */}
