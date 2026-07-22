@@ -9,6 +9,7 @@ import RatingOverlayModal from '../components/rating-overlay-modal';
 import NotificationBanner from '../components/notification-banner';
 import LocationChangeModal from '../components/location-change-modal';
 import OnboardingModal from '../components/onboarding-modal';
+import PlanUpsellModal from '../components/plan-upsell-modal';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 
@@ -297,6 +298,9 @@ function NavigationLayout() {
 
       {/* Modal de Tutorial de Bienvenida (Onboarding Carousel de 5 pasos) */}
       <OnboardingModal />
+
+      {/* Modal no invasivo de Recomendación de Mejora de Plan (Estilo Uber One) */}
+      <PlanUpsellModal />
 
       {/* Panel Controlador de la Simulación Guiada */}
       {simulationState && (
