@@ -34,6 +34,7 @@ export interface UsuarioRegistrado {
   baneado?: boolean;
   fotoPerfil?: string | null;
   fechaUltimaModificacionFoto?: string | null;
+  fechaUltimaModificacionDatos?: string | null;
   b2bTrialStartDate?: string | Date | null;
   createdAt?: string | Date | null;
 }
@@ -117,6 +118,7 @@ interface UserContextType {
   nextSimulationStep: () => Promise<void>;
   stopSimulation: () => void;
   actualizarFotoPerfil: (foto: string | null) => Promise<boolean>;
+  actualizarDatosPersonales: (nuevosDatos: { nombre?: string; correoOTelefono?: string; celular?: string }) => Promise<{ success: boolean; message?: string; diasRestantes?: number }>;
   getB2BTrialStatus: (userTarget?: UsuarioRegistrado | null) => { active: boolean; daysLeft: number; totalDays: number };
 }
 
@@ -2046,6 +2048,79 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Actualiza el Nombre, Correo o Celular del usuario con un candado estricto de 30 Días.
+   */
+  const actualizarDatosPersonales = async (nuevosDatos: { nombre?: string; correoOTelefono?: string; celular?: string }): Promise<{ success: boolean; message?: string; diasRestantes?: number }> => {
+    if (!activeUser) return { success: false, message: 'No hay usuario activo.' };
+
+    const ultimaFecha = activeUser.fechaUltimaModificacionDatos;
+    if (ultimaFecha) {
+      const fechaUltima = new Date(ultimaFecha);
+      const diffMs = Date.now() - fechaUltima.getTime();
+      const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDias < 30) {
+        const diasRestantes = 30 - diffDias;
+        return {
+          success: false,
+          message: `Solo puedes cambiar tu información personal (Nombre, Correo o Celular) una vez cada 30 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
+          diasRestantes
+        };
+      }
+    }
+
+    const nowTimestamp = new Date().toISOString();
+    const updatedUser: UsuarioRegistrado = {
+      ...activeUser,
+      nombre: nuevosDatos.nombre !== undefined ? nuevosDatos.nombre : activeUser.nombre,
+      correoOTelefono: nuevosDatos.correoOTelefono !== undefined ? nuevosDatos.correoOTelefono : activeUser.correoOTelefono,
+      celular: nuevosDatos.celular !== undefined ? nuevosDatos.celular : activeUser.celular,
+      fechaUltimaModificacionDatos: nowTimestamp
+    };
+
+    setUsuariosRegistrados(prev => prev.map(u => 
+      (u.correoOTelefono || '').trim().toLowerCase() === (activeUser.correoOTelefono || '').trim().toLowerCase() 
+        ? updatedUser
+        : u
+    ));
+    
+    setActiveUser(updatedUser);
+    setUserName(updatedUser.nombre);
+    await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+    
+    const savedUsers = await Storage.getItem('todo_ya_registered_users');
+    if (savedUsers) {
+      const parsed = JSON.parse(savedUsers);
+      const updatedList = parsed.map((u: any) => 
+        (u.correoOTelefono || '').trim().toLowerCase() === (activeUser.correoOTelefono || '').trim().toLowerCase() 
+          ? updatedUser
+          : u
+      );
+      await Storage.setItem('todo_ya_registered_users', JSON.stringify(updatedList));
+    }
+    
+    if (isDbOnline) {
+      try {
+        await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            correoOTelefono: activeUser.correoOTelefono,
+            nombre: nuevosDatos.nombre,
+            nuevoCorreoOTelefono: nuevosDatos.correoOTelefono,
+            celular: nuevosDatos.celular,
+            fechaUltimaModificacionDatos: nowTimestamp
+          })
+        });
+      } catch (e) {
+        console.error('Error sincronizando datos personales con Neon:', e);
+      }
+    }
+    
+    showNotification('👤 Perfil Actualizado', 'Tus datos personales fueron modificados correctamente.', 'success');
+    return { success: true };
+  };
+
+  /**
    * Calcula el estado del Período de Prueba Gratis de 3 Meses (90 Días) para Empresas B2B
    */
   const getB2BTrialStatus = (userTarget?: UsuarioRegistrado | null) => {
@@ -2124,6 +2199,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       nextSimulationStep,
       stopSimulation,
       actualizarFotoPerfil,
+      actualizarDatosPersonales,
       getB2BTrialStatus,
     }}>
       {children}

@@ -20,7 +20,7 @@ import OnboardingModal from '../components/onboarding-modal';
  */
 export default function PerfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados, lastKnownCity, triggerLocationCheck, actualizarFotoPerfil, getB2BTrialStatus } = useUser();
+  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados, lastKnownCity, triggerLocationCheck, actualizarFotoPerfil, actualizarDatosPersonales, getB2BTrialStatus } = useUser();
   const isBusiness = userRole === 'business';
 
   useEffect(() => {
@@ -29,6 +29,43 @@ export default function PerfilScreen() {
 
   const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [cargandoFoto, setCargandoFoto] = useState(false);
+
+  // Estados para modal de edición de datos personales (30 días de candado)
+  const [showEditPersonalModal, setShowEditPersonalModal] = useState(false);
+  const [editNameInput, setEditNameInput] = useState('');
+  const [editEmailInput, setEditEmailInput] = useState('');
+  const [editPhoneInput, setEditPhoneInput] = useState('');
+
+  const handleOpenSupportMail = () => {
+    Linking.openURL('mailto:todoo.yap@gmail.com?subject=Sugerencia%20y%20Soporte%20-%20Todo%20Ya').catch(err => {
+      console.warn('Error abriendo cliente de correo:', err);
+    });
+  };
+
+  const handleEditPersonalInfo = () => {
+    const ultimaFecha = activeUser?.fechaUltimaModificacionDatos;
+    if (ultimaFecha) {
+      const fechaUltima = new Date(ultimaFecha);
+      const diffMs = Date.now() - fechaUltima.getTime();
+      const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDias < 30) {
+        const diasRestantes = 30 - diffDias;
+        setConfirmConfig({
+          title: '⚠️ Límite de 30 días activo',
+          message: `Solo puedes modificar tu información personal (Nombre, Correo o Celular) una vez cada 30 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
+          onConfirm: () => {},
+          singleButton: true
+        });
+        setShowConfirmModal(true);
+        return;
+      }
+    }
+
+    setEditNameInput(activeUser?.nombre || '');
+    setEditEmailInput(activeUser?.correoOTelefono || '');
+    setEditPhoneInput(activeUser?.celular || '');
+    setShowEditPersonalModal(true);
+  };
 
   const seleccionarImagen = () => {
     const ultimaFecha = activeUser?.fechaUltimaModificacionFoto;
@@ -104,7 +141,7 @@ export default function PerfilScreen() {
   };
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
+  const [confirmConfig, setConfirmConfig] = useState<{ title: string; message: string; onConfirm: () => void; singleButton?: boolean }>({ title: '', message: '', onConfirm: () => {} });
 
   // Estados del onboarding y KYC
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -426,12 +463,21 @@ export default function PerfilScreen() {
             </>
           ) : (
             <>
+              <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={handleEditPersonalInfo}>
+                <Ionicons name="create-outline" size={24} color={isBusiness ? "#6366f1" : "#FFB400"} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.accountText}>{activeUser?.nombre || 'Juan Ríos'}</Text>
+                  <Text style={{ fontSize: 11, color: '#888' }}>Modificar datos (Candado 30 días)</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#aaa" />
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={() => triggerLocationCheck(true)}>
                 <Ionicons name="location-outline" size={24} color="#666" />
                 <Text style={styles.accountText}>{lastKnownCity || 'Santa Cruz de la Sierra'}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.accountRow} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={handleEditPersonalInfo}>
                 <Ionicons name="call-outline" size={24} color="#666" />
                 <Text style={styles.accountText}>
                   {activeUser?.codigoPais ? `+${activeUser.codigoPais} ${activeUser.celular}` : (activeUser?.correoOTelefono || '+591 7XXX XXXX')}
@@ -491,7 +537,21 @@ export default function PerfilScreen() {
             </View>
           </View>
 
-          {/* Panel de Control de Denuncias (Simulación de Administración) */}
+          {/* Botón de Soporte y Recomendaciones (Abre Gmail todoo.yap@gmail.com) */}
+          <TouchableOpacity 
+            style={[styles.accountRow, { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}
+            onPress={handleOpenSupportMail}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="mail-outline" size={24} color="#ea4335" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.accountText, { color: '#ea4335', fontWeight: 'bold' }]}>
+                Soporte & Recomendaciones
+              </Text>
+              <Text style={{ fontSize: 11, color: '#888' }}>Enviar sugerencias a todoo.yap@gmail.com</Text>
+            </View>
+            <Ionicons name="open-outline" size={18} color="#ea4335" />
+          </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.accountRow, { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}
             onPress={() => {
@@ -825,6 +885,69 @@ export default function PerfilScreen() {
         visible={showTutorialModal}
         onClose={() => setShowTutorialModal(false)}
       />
+
+      {/* Modal de Edición de Datos Personales con Candado de 30 Días */}
+      {showEditPersonalModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>👤 Modificar Datos Personales</Text>
+            <Text style={{ fontSize: 13, color: '#666', marginBottom: 14, lineHeight: 18 }}>
+              Nota importante: Solo puedes modificar tu Nombre, Correo o Celular una vez cada 30 días.
+            </Text>
+
+            <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#444', marginTop: 8, marginBottom: 4 }}>Nombre Completo:</Text>
+            <TextInput 
+              style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 14, marginBottom: 12 }}
+              value={editNameInput}
+              onChangeText={setEditNameInput}
+              placeholder="Ej. Juan Pérez"
+            />
+
+            <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#444', marginBottom: 4 }}>Correo Electrónico / Identificador:</Text>
+            <TextInput 
+              style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 14, marginBottom: 12 }}
+              value={editEmailInput}
+              onChangeText={setEditEmailInput}
+              placeholder="ejemplo@correo.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#444', marginBottom: 4 }}>Número de Celular:</Text>
+            <TextInput 
+              style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 14, marginBottom: 16 }}
+              value={editPhoneInput}
+              onChangeText={setEditPhoneInput}
+              placeholder="70000000"
+              keyboardType="phone-pad"
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+              <TouchableOpacity 
+                style={styles.modalCancelBtn}
+                onPress={() => setShowEditPersonalModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.modalConfirmBtn, isBusiness && { backgroundColor: '#6366f1' }]}
+                onPress={async () => {
+                  if (!editNameInput.trim()) return;
+                  setShowEditPersonalModal(false);
+                  await actualizarDatosPersonales({
+                    nombre: editNameInput.trim(),
+                    correoOTelefono: editEmailInput.trim(),
+                    celular: editPhoneInput.trim()
+                  });
+                }}
+              >
+                <Text style={[styles.modalConfirmText, isBusiness && { color: '#fff' }]}>Guardar Cambios</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* MODAL KYC — Verificación de Identidad obligatoria antes de Onboarding de Proveedor */}
       <KYCVerifierModal

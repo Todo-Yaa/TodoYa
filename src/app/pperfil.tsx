@@ -480,6 +480,17 @@ export default function PperfilScreen() {
 
         {/* Botones de Cuenta */}
         <View style={{ gap: 4, marginBottom: 30 }}>
+          <TouchableOpacity 
+            style={[styles.logoutBtn, { borderColor: '#ea4335', backgroundColor: '#fef2f2', borderWidth: 1, borderRadius: 12 }]} 
+            onPress={() => {
+              Linking.openURL('mailto:todoo.yap@gmail.com?subject=Sugerencia%20y%20Soporte%20-%20Todo%20Ya').catch(err => console.warn(err));
+            }} 
+            activeOpacity={0.7}
+          >
+            <Ionicons name="mail-outline" size={22} color="#ea4335" />
+            <Text style={[styles.logoutText, { color: '#ea4335', fontWeight: 'bold' }]}>Soporte & Recomendaciones (todoo.yap@gmail.com)</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
             <Ionicons name="log-out-outline" size={22} color="#e53935" />
             <Text style={styles.logoutText}>{t('profile.logout')}</Text>

@@ -105,13 +105,17 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken, kycVerificado, kycDetalles, baneado, fotoPerfil, fechaUltimaModificacionFoto } = body;
+    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken, kycVerificado, kycDetalles, baneado, fotoPerfil, fechaUltimaModificacionFoto, nombre, nuevoCorreoOTelefono, celular, fechaUltimaModificacionDatos } = body;
 
     if (!correoOTelefono) {
       return Response.json({ error: 'El identificador de correo/teléfono es requerido' }, { status: 400 });
     }
 
     const updateData: any = {};
+    if (nombre !== undefined) updateData.nombre = nombre;
+    if (nuevoCorreoOTelefono !== undefined) updateData.correoOTelefono = nuevoCorreoOTelefono;
+    if (celular !== undefined) updateData.celular = celular;
+    if (fechaUltimaModificacionDatos !== undefined) updateData.fechaUltimaModificacionDatos = fechaUltimaModificacionDatos;
     if (planId !== undefined) {
       updateData.planId = planId;
     }
