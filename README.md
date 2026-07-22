@@ -51,12 +51,10 @@
 
 ---
 
-## 🏛️ Gobernanza Corporativa y Cap Table
+## 🏛️ Dossier de Inversión
 
 El proyecto cuenta con su documentación ejecutiva estructurada en:
 - [`DOSSIER_INVERSIONISTA.md`](file:///c:/Users/PCZ/Desktop/todo-ya/DOSSIER_INVERSIONISTA.md): Dossier completo para rondas de inversión.
-- [`CAP_TABLE_Y_GOBERNANZA.md`](file:///c:/Users/PCZ/Desktop/todo-ya/CAP_TABLE_Y_GOBERNANZA.md): Estructura accionaria maestra, esquema de Vesting (36 a 48 meses con Cliff) y reglas de control para el CEO.
-- [`CAP_TABLE_Y_GOBERNANZA.csv`](file:///c:/Users/PCZ/Desktop/todo-ya/CAP_TABLE_Y_GOBERNANZA.csv): Hoja de cálculo ejecutable para Microsoft Excel / Google Sheets.
 
 ---
 

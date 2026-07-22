@@ -43,3 +43,6 @@ example
 /android
 .vercel
 .env*
+
+# Confidential Legal & Governance documents
+CAP_TABLE_Y_GOBERNANZA.*
