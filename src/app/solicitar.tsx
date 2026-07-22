@@ -93,7 +93,7 @@ const getCandidates = (cat: string) => {
 
 export default function SolicitarScreen() {
   const { t } = useTranslation();
-  const { addOrder, userRole, triggerLocationCheck, activeUser, simulationState, simulationStep, setSimulationStep } = useUser();
+  const { addOrder, userRole, triggerLocationCheck, activeUser, simulationState, simulationStep, setSimulationStep, getB2BTrialStatus } = useUser();
   const isBusiness = userRole === 'business';
   const [inputText, setInputText] = useState('');
   const scanTimeoutRef = useRef<any>(null);
@@ -851,6 +851,24 @@ export default function SolicitarScreen() {
           </View>
 
           <ScrollView style={styles.body}>
+            {/* Banner de Beneficio B2B: 3 Meses Gratis */}
+            {isBusiness && (() => {
+              const trial = getB2BTrialStatus();
+              return (
+                <View style={{ backgroundColor: '#e0e7ff', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, marginBottom: 14, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#c7d2fe' }}>
+                  <Ionicons name="gift-outline" size={22} color="#4f46e5" style={{ marginRight: 10 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#3730a3' }}>
+                      {trial.active ? `🎁 Beneficio B2B: 3 Meses Gratis Activo` : `💼 Modo Empresa B2B`}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#4338ca', marginTop: 2 }}>
+                      {trial.active ? `Publica solicitudes corporativas ilimitadas sin costo (Quedan ${trial.daysLeft} días de prueba).` : `Publicación de licitaciones y compras para tu empresa.`}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
+
             {/* Chip informativo sobre IA */}
             <View style={[styles.aiChip, isBusiness && styles.b2bAiChip]}>
               <Ionicons name="sparkles" size={20} color={isBusiness ? '#818cf8' : '#FFB400'} />

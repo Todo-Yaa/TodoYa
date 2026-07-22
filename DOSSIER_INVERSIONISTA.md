@@ -43,17 +43,22 @@ En Latinoamérica, el sector de servicios técnicos independientes y compras cor
 
 ## 📊 Modelo de Negocio: Altamente Escalable y Rentable
 
-Monetizamos a través de dos canales recurrentes y de alta conversión:
+Monetizamos a través de tres canales estratégicos de alta conversión y crecimiento masivo:
 
-1. **Planes de Suscripción Mensual (SaaS):**
+1. **Estrategia de Adquisición B2B (Onboarding de 3 Meses Gratis):**
+   * **Incentivo de Entrada de Cero Fricción:** Todas las empresas compradoras (PyMEs y Corporativos) que se registren nuevas obtienen **3 meses completos de solicitudes B2B ilimitadas sin costo alguno**.
+   * **Generación de Hábito y Retención:** Durante 90 días, el departamento de compras comprueba el ahorro de costos y velocidad de cotización en vivo. Al finalizar la prueba, la empresa pasa al modelo de suscripción mensual fija o volumen Freemium.
+
+2. **Planes de Suscripción Mensual (SaaS):**
    * **Técnicos (Personas):** Planes de 3 niveles que desbloquean leads residenciales e insignias premium.
    * **Empresas (Proveedoras):** Planes corporativos para acceder a licitaciones B2B ilimitadas y a la Cartera Nacional de Clientes en tiempo real.
-2. **Microtransacciones por Comisiones (Billetera Virtual - Monedas):**
+
+3. **Microtransacciones por Comisiones (Billetera Virtual - Monedas):**
    * Cada proveedor cuenta con un saldo de **monedas** en la aplicación.
    * Al concretarse un pedido residencial, la app debita de inmediato una comisión según la tarifa del servicio y el plan activo del proveedor:
-     * **Plan Básico:** 20% de comisión.
-     * **Plan Premium:** 10% de comisión.
-     * **Plan Ilimitado:** 0% de comisión.
+     * **Plan Básico (Plan 1):** 20% de comisión.
+     * **Plan Profesional (Plan 2):** 10% de comisión.
+     * **Plan Élite (Plan 3):** 0% de comisión (SaaS puro).
    * *Este sistema incentiva a los proveedores a pagar la suscripción mensual superior para reducir su comisión al mínimo.*
 
 ---

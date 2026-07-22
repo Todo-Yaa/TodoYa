@@ -34,6 +34,8 @@ export interface UsuarioRegistrado {
   baneado?: boolean;
   fotoPerfil?: string | null;
   fechaUltimaModificacionFoto?: string | null;
+  b2bTrialStartDate?: string | Date | null;
+  createdAt?: string | Date | null;
 }
 
 // Interfaz para representar un pedido dentro de la aplicación
@@ -115,6 +117,7 @@ interface UserContextType {
   nextSimulationStep: () => Promise<void>;
   stopSimulation: () => void;
   actualizarFotoPerfil: (foto: string | null) => Promise<boolean>;
+  getB2BTrialStatus: (userTarget?: UsuarioRegistrado | null) => { active: boolean; daysLeft: number; totalDays: number };
 }
 
 // Creación del React Context
@@ -180,8 +183,8 @@ const initialSeedOrders: Order[] = [
 const initialSeedUsers: UsuarioRegistrado[] = [
   { nombre: 'Luis Alberto M.', correoOTelefono: 'luis@todoya.com', rol: 'client', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural' },
   { nombre: 'Juan Ríos', correoOTelefono: 'juan.rios@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural', proveedorConfigurado: true, serviciosOfrecidos: ['Plomería'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Plomero certificado con 5 años de experiencia residencial.' },
-  { nombre: 'Corporación Alfa S.A.', correoOTelefono: 'empresa@todoya.com', rol: 'business', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '481920028', correoFacturacion: 'facturas@alfa.corp.bo', rubro: 'Papelería' },
-  { nombre: 'Imprenta y Gráfica Beta', correoOTelefono: 'proveedor_empresa@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '839201992', correoFacturacion: 'facturas@beta.bo', rubro: 'Branding & Lettering', ofreceB2B: true, proveedorConfigurado: true, serviciosOfrecidos: ['Branding & Lettering'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.' }
+  { nombre: 'Corporación Alfa S.A.', correoOTelefono: 'empresa@todoya.com', rol: 'business', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '481920028', correoFacturacion: 'facturas@alfa.corp.bo', rubro: 'Papelería', b2bTrialStartDate: new Date().toISOString() },
+  { nombre: 'Imprenta y Gráfica Beta', correoOTelefono: 'proveedor_empresa@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '839201992', correoFacturacion: 'facturas@beta.bo', rubro: 'Branding & Lettering', ofreceB2B: true, proveedorConfigurado: true, serviciosOfrecidos: ['Branding & Lettering'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.', b2bTrialStartDate: new Date().toISOString() }
 ];
 
 /**
@@ -2042,6 +2045,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  /**
+   * Calcula el estado del Período de Prueba Gratis de 3 Meses (90 Días) para Empresas B2B
+   */
+  const getB2BTrialStatus = (userTarget?: UsuarioRegistrado | null) => {
+    const u = userTarget !== undefined ? userTarget : activeUser;
+    if (!u || u.tipoEntidad !== 'empresa') {
+      return { active: false, daysLeft: 0, totalDays: 90 };
+    }
+    const startDateStr = u.b2bTrialStartDate || u.createdAt;
+    const startDate = startDateStr ? new Date(startDateStr) : new Date();
+    const diffMs = Date.now() - startDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const totalDays = 90; // 3 meses gratis
+    const daysLeft = Math.max(0, totalDays - diffDays);
+    return {
+      active: daysLeft > 0,
+      daysLeft,
+      totalDays
+    };
+  };
+
   return (
     <UserContext.Provider value={{ 
       userRole, 
@@ -2100,6 +2124,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       nextSimulationStep,
       stopSimulation,
       actualizarFotoPerfil,
+      getB2BTrialStatus,
     }}>
       {children}
     </UserContext.Provider>

@@ -42,6 +42,7 @@ export const users = pgTable('users', {
   baneado: boolean('baneado').default(false),
   fotoPerfil: text('foto_perfil'),
   fechaUltimaModificacionFoto: varchar('fecha_ultima_modificacion_foto', { length: 100 }),
+  b2bTrialStartDate: timestamp('b2b_trial_start_date'),
 
   createdAt: timestamp('created_at').defaultNow(),
 });

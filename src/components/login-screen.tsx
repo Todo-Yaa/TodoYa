@@ -612,6 +612,15 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
+              {tipoEntidad === 'empresa' && (
+                <View style={{ backgroundColor: '#e0e7ff', padding: 10, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#c7d2fe', flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="gift-outline" size={20} color="#4f46e5" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 11, color: '#3730a3', flex: 1, lineHeight: 15, fontWeight: '600' }}>
+                    🎁 ¡Promoción Nuevas Empresas! Obtén <Text style={{ fontWeight: 'bold', color: '#4f46e5' }}>3 MESES GRATIS</Text> de solicitudes B2B ilimitadas sin costo alguno.
+                  </Text>
+                </View>
+              )}
+
               {/* Nombre / Razón Social */}
               <View style={[
                 styles.inputContainer,

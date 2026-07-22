@@ -19,7 +19,7 @@ import KYCVerifierModal from '../components/kyc-verifier-modal';
  */
 export default function PerfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados, lastKnownCity, triggerLocationCheck, actualizarFotoPerfil } = useUser();
+  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados, lastKnownCity, triggerLocationCheck, actualizarFotoPerfil, getB2BTrialStatus } = useUser();
   const isBusiness = userRole === 'business';
 
   useEffect(() => {
@@ -406,6 +406,21 @@ export default function PerfilScreen() {
                   <Text style={styles.accountText}>{activeUser?.rubro || 'Papelería'}</Text>
                 </View>
               </View>
+
+              {(() => {
+                const trial = getB2BTrialStatus();
+                return (
+                  <View style={styles.accountRow}>
+                    <Ionicons name="gift-outline" size={24} color="#6366f1" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, color: '#888' }}>Beneficio B2B (3 Meses Gratis)</Text>
+                      <Text style={[styles.accountText, { color: '#4f46e5', fontWeight: 'bold' }]}>
+                        {trial.active ? `Activo (${trial.daysLeft} días restantes)` : 'Prueba Finalizada (Pasar a Plan)'}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })()}
             </>
           ) : (
             <>
