@@ -48,13 +48,13 @@ export default function LeadsScreen() {
 
   const getPlanDetails = (pId: string | null) => {
     if (isB2BProvider) {
-      if (pId === 'business_2') return { name: 'Plan Empresa 2 - Pro', price: 'Bs. 300/mes', desc: 'Acceso Mixto e Ilimitado' };
-      if (pId === 'business_3') return { name: 'Plan Empresa 3 - Élite', price: 'Bs. 500/mes', desc: 'Acceso Nacional Realtime' };
-      return { name: 'Plan Empresa 1 - Básico', price: 'Bs. 150/mes', desc: 'Acceso Corporativo B2B' };
+      if (pId === 'business_2') return { name: 'Plan Empresa 2 - Pro', price: 'S/. 300/mes', desc: 'Acceso Mixto e Ilimitado' };
+      if (pId === 'business_3') return { name: 'Plan Empresa 3 - Élite', price: 'S/. 500/mes', desc: 'Acceso Nacional Realtime' };
+      return { name: 'Plan Empresa 1 - Básico', price: 'S/. 150/mes', desc: 'Acceso Corporativo B2B' };
     } else {
-      if (pId === 'provider_2') return { name: 'Plan 2 - Profesional', price: 'Bs. 120/mes', desc: 'Residenciales + 3 B2B/mes' };
-      if (pId === 'provider_3') return { name: 'Plan 3 - Élite', price: 'Bs. 200/mes', desc: 'Acceso Total Ilimitado' };
-      return { name: 'Plan 1 - Residencial', price: 'Bs. 50/mes', desc: 'Acceso Residencial Ilimitado' };
+      if (pId === 'provider_2') return { name: 'Plan 2 - Profesional', price: 'S/. 120/mes', desc: 'Residenciales + 3 B2B/mes' };
+      if (pId === 'provider_3') return { name: 'Plan 3 - Élite', price: 'S/. 200/mes', desc: 'Acceso Total Ilimitado' };
+      return { name: 'Plan 1 - Residencial', price: 'S/. 50/mes', desc: 'Acceso Residencial Ilimitado' };
     }
   };
 
@@ -316,11 +316,13 @@ export default function LeadsScreen() {
           <View style={[styles.avatar, isB2BProvider && { backgroundColor: '#6366f1' }]}>
             <Text style={[styles.avatarText, isB2BProvider && { color: '#fff' }]}>{providerInitials}</Text>
           </View>
-          <View>
-            <Text style={[styles.name, isB2BProvider && { color: '#818cf8' }]}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={[styles.name, isB2BProvider && { color: '#818cf8' }]} numberOfLines={1}>
               {providerName} <Text style={[styles.proBadge, isB2BProvider && { backgroundColor: '#6366f1', color: '#fff' }]}>PRO</Text>
             </Text>
-            <Text style={styles.status}>{professionText} · <Text style={{ color: '#4caf50' }}>Disponible</Text></Text>
+            <Text style={styles.status} numberOfLines={1} ellipsizeMode="tail">
+              {professionText} · <Text style={{ color: '#4caf50' }}>Disponible</Text>
+            </Text>
           </View>
         </View>
         <TouchableOpacity onPress={() => setIsTrayOpen(true)} style={styles.bellContainer} activeOpacity={0.7}>
