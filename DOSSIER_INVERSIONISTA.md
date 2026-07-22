@@ -25,7 +25,10 @@ En Latinoamérica, el sector de servicios técnicos independientes y compras cor
 
 ### 🏠 1. Flujo Residencial (Para el Hogar)
 * **Radar Inteligente de 90 Segundos:** El cliente describe lo que necesita (por voz o texto), y la aplicación activa un radar geolocalizado a la redonda.
-* **Cobertura y Tarifas Dinámicas:** A medida que pasan los segundos, la aplicación amplía el rango de búsqueda y sugiere una tarifa transparente (ej. $10, $15 o $20 en moneda local), garantizando que siempre haya un técnico disponible a un precio justo de mercado.
+* **Motor de Búsqueda Semántica IA de 2 Niveles:**
+  * **Filtro 1:** Categorización base de la especialidad.
+  * **Filtro 2:** Coincidencia semántica profunda en la biografía/descripción del técnico (ej. *"cambio de tuberías de gas"*), posicionando al especialista exacto en la posición #1 con la insignia `✨ IA Match`.
+* **Cobertura y Tarifas Dinámicas:** A medida que pasan los segundos, la aplicación amplía el rango de búsqueda y sugiere una tarifa transparente (en moneda `S/.` o equivalente local), garantizando que siempre haya un técnico disponible a un precio justo de mercado.
 
 ### 🏢 2. Flujo Corporativo (Para Empresas PyMEs)
 * **Subasta Invertida en Vivo:** La empresa compradora define lo que necesita y su presupuesto objetivo. De inmediato, los proveedores pre-verificados compiten enviando ofertas y contraofertas en tiempo real.
@@ -36,30 +39,33 @@ En Latinoamérica, el sector de servicios técnicos independientes y compras cor
 ## 💎 Ventajas Competitivas Únicas (Por qué ganaremos el mercado)
 
 * **Tecnología Multicultural Inclusiva:** Primera plataforma del mercado totalmente traducida a lenguas nativas (**Quechua, Aymara y Guaraní**), ganando la lealtad y el monopolio de un sector de la fuerza laboral históricamente ignorado.
+* **Carruseles de Onboarding Diferenciados:** Experiencia de bienvenida de 5 pasos personalizada por tipo de cuenta (Hogar vs Corporativo B2B), con botón directo de comunidad a Instagram (`@todoo__ya`).
 * **Fórmula de Voz y Corrección con Inteligencia Artificial:** Los usuarios pueden registrar su problema simplemente **hablando por el micrófono**. Nuestra IA integrada corrige la ortografía (ej. *"tengo un fga de gua"* ➡️ *"Tengo una fuga de agua"*), clasifica la categoría y calcula un precio sugerido de forma automática.
-* **Seguridad y Confianza Blindada (KYC & Baneo):** Todos los proveedores pasan por una verificación de identidad real mediante selfie y documento de identidad. Los clientes cuentan con un botón de denuncia y un panel de soporte administrativo para suspender infractores de inmediato, protegiendo la reputación de la marca.
+* **Seguridad y Confianza Blindada (KYC & Baneo):** Todos los proveedores pasan por una verificación de identidad real mediante selfie y documento de identidad (DNI/C.I.). Los clientes cuentan con un botón de denuncia y un panel de soporte administrativo para suspender infractores de inmediato.
 
 ---
 
 ## 📊 Modelo de Negocio: Altamente Escalable y Rentable
 
-Monetizamos a través de tres canales estratégicos de alta conversión y crecimiento masivo:
+Monetizamos a través de cuatro canales estratégicos de alta conversión y crecimiento masivo:
 
 1. **Estrategia de Adquisición B2B (Onboarding de 3 Meses Gratis):**
-   * **Incentivo de Entrada de Cero Fricción:** Todas las empresas compradoras (PyMEs y Corporativos) que se registren nuevas obtienen **3 meses completos de solicitudes B2B ilimitadas sin costo alguno**.
-   * **Generación de Hábito y Retención:** Durante 90 días, el departamento de compras comprueba el ahorro de costos y velocidad de cotización en vivo. Al finalizar la prueba, la empresa pasa al modelo de suscripción mensual fija o volumen Freemium.
+   * **Incentivo de Entrada de Cero Fricción:** Todas las empresas compradoras que se registren nuevas obtienen **3 meses completos de solicitudes B2B ilimitadas sin costo alguno**.
+   * **Generación de Hábito y Retención:** Durante 90 días, el departamento de compras comprueba el ahorro de costos y velocidad de cotización en vivo. Al finalizar la prueba, la empresa pasa al modelo de suscripción mensual fija.
 
-2. **Planes de Suscripción Mensual (SaaS):**
+2. **Sistema de Recomendaciones No Invasivas (Upsell Estilo Uber One):**
+   * Modal de conversión emergente no invasivo (frecuencia inteligente de 24 horas) que muestra los beneficios exclusivos de migrar al Plan Profesional (`S/. 120/mes`) o Plan Élite (`S/. 200/mes`), incrementando el ARPU de forma orgánica.
+
+3. **Planes de Suscripción Mensual (SaaS):**
    * **Técnicos (Personas):** Planes de 3 niveles que desbloquean leads residenciales e insignias premium.
-   * **Empresas (Proveedoras):** Planes corporativos para acceder a licitaciones B2B ilimitadas y a la Cartera Nacional de Clientes en tiempo real.
+   * **Empresas (Proveedoras):** Planes corporativos (`S/. 300` a `S/. 500/mes`) para acceder a licitaciones B2B ilimitadas y a la Cartera Nacional de Clientes en tiempo real.
 
-3. **Microtransacciones por Comisiones (Billetera Virtual - Monedas):**
+4. **Microtransacciones por Comisiones (Billetera Virtual - Monedas):**
    * Cada proveedor cuenta con un saldo de **monedas** en la aplicación.
    * Al concretarse un pedido residencial, la app debita de inmediato una comisión según la tarifa del servicio y el plan activo del proveedor:
      * **Plan Básico (Plan 1):** 20% de comisión.
      * **Plan Profesional (Plan 2):** 10% de comisión.
      * **Plan Élite (Plan 3):** 0% de comisión (SaaS puro).
-   * *Este sistema incentiva a los proveedores a pagar la suscripción mensual superior para reducir su comisión al mínimo.*
 
 ---
 
@@ -74,7 +80,7 @@ Monetizamos a través de tres canales estratégicos de alta conversión y crecim
 Buscamos socios inversores estratégicos para acelerar las siguientes etapas:
 
 * 📢 **Marketing y Tracción:** Campañas de posicionamiento regional en ciudades clave y onboarding masivo de gremios técnicos.
-* 🌎 **Expansión Geográfica:** Lanzamiento y localización de moneda en capitales de Bolivia, Perú, Colombia, Chile y México.
+* 🌎 **Expansión Geográfica:** Lanzamiento y localización de moneda en capitales de Perú, Bolivia, Colombia, Chile y México.
 * ⚙️ **Optimización Operativa:** Automatización del sistema de validación de identidad (KYC) y soporte al cliente.
 
 ---
