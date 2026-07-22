@@ -10,6 +10,7 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
 import KYCVerifierModal from '../components/kyc-verifier-modal';
+import OnboardingModal from '../components/onboarding-modal';
 
 
 /**
@@ -26,6 +27,7 @@ export default function PerfilScreen() {
     triggerLocationCheck().catch(() => {});
   }, []);
 
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [cargandoFoto, setCargandoFoto] = useState(false);
 
   const seleccionarImagen = () => {
@@ -438,6 +440,13 @@ export default function PerfilScreen() {
             </>
           )}
 
+          <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={() => setShowTutorialModal(true)}>
+            <Ionicons name="sparkles-outline" size={24} color={isBusiness ? "#6366f1" : "#FFB400"} />
+            <Text style={[styles.accountText, { color: isBusiness ? "#6366f1" : "#d97706", fontWeight: '600' }]}>
+              Ver Tutorial de Bienvenida (Onboarding)
+            </Text>
+          </TouchableOpacity>
+
           {/* Fila del selector de idiomas */}
           <View style={styles.accountRow}>
             <Ionicons name="globe-outline" size={24} color="#666" />
@@ -810,6 +819,12 @@ export default function PerfilScreen() {
           </View>
         </View>
       )}
+
+      {/* Modal de Tutorial de Bienvenida (Onboarding) */}
+      <OnboardingModal 
+        visible={showTutorialModal}
+        onClose={() => setShowTutorialModal(false)}
+      />
 
       {/* MODAL KYC — Verificación de Identidad obligatoria antes de Onboarding de Proveedor */}
       <KYCVerifierModal

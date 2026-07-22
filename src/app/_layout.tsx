@@ -8,6 +8,7 @@ import LoginScreen from '../components/login-screen';
 import RatingOverlayModal from '../components/rating-overlay-modal';
 import NotificationBanner from '../components/notification-banner';
 import LocationChangeModal from '../components/location-change-modal';
+import OnboardingModal from '../components/onboarding-modal';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 
@@ -293,6 +294,9 @@ function NavigationLayout() {
 
       {/* Modal flotante global de cambio de ubicación por GPS */}
       <LocationChangeModal />
+
+      {/* Modal de Tutorial de Bienvenida (Onboarding Carousel de 5 pasos) */}
+      <OnboardingModal />
 
       {/* Panel Controlador de la Simulación Guiada */}
       {simulationState && (
