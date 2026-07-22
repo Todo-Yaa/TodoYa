@@ -37,7 +37,7 @@ async function seed() {
         progreso: 65,
         hora: "Hoy 10:30",
         color: "#FFB400",
-        precio: "Bs. 80–150",
+        precio: "S/. 80–150",
         urgencia: "Normal",
         acceptedAt: new Date(),
       },
@@ -50,7 +50,7 @@ async function seed() {
         progreso: 25,
         hora: "Hace 45 min",
         color: "#FFB400",
-        precio: "Bs. 150–400",
+        precio: "S/. 150–400",
         urgencia: "Normal"
       },
       {
@@ -62,7 +62,7 @@ async function seed() {
         progreso: 100,
         hora: "12 Jun 2026",
         color: "#4caf50",
-        precio: "Bs. 120–300",
+        precio: "S/. 120–300",
         urgencia: "Normal",
         completedAt: new Date(),
         tiempoEjecucion: "2 horas",
@@ -79,7 +79,7 @@ async function seed() {
         progreso: 25,
         hora: "Hace 2 horas",
         color: "#6366F1",
-        precio: "Bs. 300–600",
+        precio: "S/. 300–600",
         urgencia: "Normal"
       }
     ]);

@@ -32,6 +32,8 @@ export interface UsuarioRegistrado {
   kycVerificado?: boolean;
   kycDetalles?: string;
   baneado?: boolean;
+  fotoPerfil?: string | null;
+  fechaUltimaModificacionFoto?: string | null;
 }
 
 // Interfaz para representar un pedido dentro de la aplicación
@@ -112,6 +114,7 @@ interface UserContextType {
   startProviderSimulation: () => Promise<void>;
   nextSimulationStep: () => Promise<void>;
   stopSimulation: () => void;
+  actualizarFotoPerfil: (foto: string | null) => Promise<boolean>;
 }
 
 // Creación del React Context
@@ -129,7 +132,7 @@ const initialSeedOrders: Order[] = [
     progreso: 65,
     hora: "Hoy 10:30",
     color: "#FFB400",
-    precio: "Bs. 80–150",
+    precio: "S/. 80–150",
     urgencia: "Normal"
   },
   {
@@ -142,7 +145,7 @@ const initialSeedOrders: Order[] = [
     progreso: 25,
     hora: "Hace 45 min",
     color: "#FFB400",
-    precio: "Bs. 150–400",
+    precio: "S/. 150–400",
     urgencia: "Normal"
   },
   {
@@ -155,7 +158,7 @@ const initialSeedOrders: Order[] = [
     progreso: 100,
     hora: "12 Jun 2026",
     color: "#4caf50",
-    precio: "Bs. 120–300",
+    precio: "S/. 120–300",
     urgencia: "Normal"
   },
   {
@@ -168,7 +171,7 @@ const initialSeedOrders: Order[] = [
     progreso: 25,
     hora: "Hace 2 horas",
     color: "#6366F1",
-    precio: "Bs. 300–600",
+    precio: "S/. 300–600",
     urgencia: "Normal"
   }
 ];
@@ -1989,6 +1992,56 @@ export function UserProvider({ children }: { children: ReactNode }) {
     logout();
   };
 
+  const actualizarFotoPerfil = async (foto: string | null): Promise<boolean> => {
+    if (!activeUser) return false;
+    
+    const nowTimestamp = new Date().toISOString();
+    const updatedUser = {
+      ...activeUser,
+      fotoPerfil: foto,
+      fechaUltimaModificacionFoto: nowTimestamp
+    };
+    
+    setUsuariosRegistrados(prev => prev.map(u => 
+      u.correoOTelefono.trim().toLowerCase() === activeUser.correoOTelefono.trim().toLowerCase() 
+        ? { ...u, fotoPerfil: foto, fechaUltimaModificacionFoto: nowTimestamp } 
+        : u
+    ));
+    
+    setActiveUser(updatedUser as any);
+    await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+    
+    const savedUsers = await Storage.getItem('todo_ya_registered_users');
+    if (savedUsers) {
+      const parsed = JSON.parse(savedUsers);
+      const updatedList = parsed.map((u: any) => 
+        u.correoOTelefono.trim().toLowerCase() === activeUser.correoOTelefono.trim().toLowerCase() 
+          ? { ...u, fotoPerfil: foto, fechaUltimaModificacionFoto: nowTimestamp } 
+          : u
+      );
+      await Storage.setItem('todo_ya_registered_users', JSON.stringify(updatedList));
+    }
+    
+    if (isDbOnline) {
+      try {
+        await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            correoOTelefono: activeUser.correoOTelefono,
+            fotoPerfil: foto,
+            fechaUltimaModificacionFoto: nowTimestamp
+          })
+        });
+      } catch (e) {
+        console.error('Error sincronizando foto con Neon:', e);
+      }
+    }
+    
+    showNotification('📸 Foto de Perfil', foto ? 'Foto actualizada con éxito.' : 'Foto de perfil eliminada.', 'success');
+    return true;
+  };
+
   return (
     <UserContext.Provider value={{ 
       userRole, 
@@ -2046,6 +2099,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       startProviderSimulation,
       nextSimulationStep,
       stopSimulation,
+      actualizarFotoPerfil,
     }}>
       {children}
     </UserContext.Provider>

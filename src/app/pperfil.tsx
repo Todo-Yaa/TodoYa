@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Image, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
@@ -17,11 +17,89 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
  */
 export default function PperfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser, deleteAccount, triggerLocationCheck } = useUser();
+  const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser, deleteAccount, triggerLocationCheck, actualizarFotoPerfil } = useUser();
 
   useEffect(() => {
     triggerLocationCheck().catch(() => {});
   }, []);
+
+  const [cargandoFoto, setCargandoFoto] = useState(false);
+
+  const seleccionarImagen = () => {
+    const ultimaFecha = activeUser?.fechaUltimaModificacionFoto;
+    if (ultimaFecha) {
+      const diffTime = Math.abs(Date.now() - new Date(ultimaFecha).getTime());
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      if (diffDays < 15) {
+        const diasRestantes = Math.ceil(15 - diffDays);
+        setConfirmConfig({
+          title: '⚠️ Límite de 15 días activo',
+          message: `Solo puedes cambiar o eliminar tu foto de perfil cada 15 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
+          onConfirm: () => {},
+          singleButton: true
+        });
+        setShowConfirmModal(true);
+        return;
+      }
+    }
+
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e: any) => {
+        const file = e.target.files[0];
+        if (file) {
+          setCargandoFoto(true);
+          const reader = new FileReader();
+          reader.onload = async (readerEvent: any) => {
+            const base64 = readerEvent.target.result;
+            await actualizarFotoPerfil(base64);
+            setCargandoFoto(false);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      setCargandoFoto(true);
+      setTimeout(async () => {
+        await actualizarFotoPerfil("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80");
+        setCargandoFoto(false);
+      }, 1000);
+    }
+  };
+
+  const eliminarImagen = () => {
+    const ultimaFecha = activeUser?.fechaUltimaModificacionFoto;
+    if (ultimaFecha) {
+      const diffTime = Math.abs(Date.now() - new Date(ultimaFecha).getTime());
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      if (diffDays < 15) {
+        const diasRestantes = Math.ceil(15 - diffDays);
+        setConfirmConfig({
+          title: '⚠️ Límite de 15 días activo',
+          message: `Solo puedes cambiar o eliminar tu foto de perfil cada 15 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
+          onConfirm: () => {},
+          singleButton: true
+        });
+        setShowConfirmModal(true);
+        return;
+      }
+    }
+
+    setConfirmConfig({
+      title: '🗑️ ¿Eliminar foto de perfil?',
+      message: '¿Estás seguro de que deseas eliminar tu foto de perfil? Esto contará como una modificación y no podrás volver a subir una foto por 15 días.',
+      onConfirm: async () => {
+        setCargandoFoto(true);
+        await actualizarFotoPerfil(null);
+        setCargandoFoto(false);
+      },
+      singleButton: false
+    });
+    setShowConfirmModal(true);
+  };
 
 
   // Controladores del modal de confirmación personalizado
@@ -118,16 +196,47 @@ export default function PperfilScreen() {
       <ScrollView style={styles.body}>
         {/* Tarjeta de Información General e Indicadores (Monedas, Calificación, Trabajos) */}
         <View style={styles.profileHeader}>
-          <View style={[
-            styles.avatarBig, 
-            isB2BProvider && { backgroundColor: '#6366f1' },
-            isPremium && { backgroundColor: '#FFD700' }
-          ]}>
-            <Text style={[
-              styles.avatarTextBig, 
-              isB2BProvider && { color: '#fff' },
-              isPremium && { color: '#000' }
-            ]}>{providerInitials}</Text>
+          <View style={{ position: 'relative', marginBottom: 12 }}>
+            <TouchableOpacity 
+              style={[
+                styles.avatarBig, 
+                isB2BProvider && { backgroundColor: '#6366f1' },
+                isPremium && { backgroundColor: '#FFD700' },
+                { overflow: 'hidden', marginBottom: 0 }
+              ]}
+              onPress={seleccionarImagen}
+              activeOpacity={0.8}
+            >
+              {cargandoFoto ? (
+                <ActivityIndicator size="small" color={isPremium ? '#000' : '#fff'} />
+              ) : activeUser?.fotoPerfil ? (
+                <Image source={{ uri: activeUser.fotoPerfil }} style={{ width: '100%', height: '100%' }} />
+              ) : (
+                <Text style={[
+                  styles.avatarTextBig, 
+                  isB2BProvider && { color: '#fff' },
+                  isPremium && { color: '#000' }
+                ]}>{providerInitials}</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.editPhotoOverlay, isB2BProvider ? { backgroundColor: '#6366f1' } : { backgroundColor: '#FFB400' }]}
+              onPress={seleccionarImagen}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="camera" size={14} color={isB2BProvider ? '#fff' : '#2F2F2F'} />
+            </TouchableOpacity>
+
+            {activeUser?.fotoPerfil && (
+              <TouchableOpacity 
+                style={styles.deletePhotoOverlay}
+                onPress={eliminarImagen}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash" size={12} color="#fff" />
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.name}>
             {providerName}
@@ -414,6 +523,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+  },
+  editPhotoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  deletePhotoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#dc2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   avatarTextBig: { color: '#2F2F2F', fontSize: 40, fontWeight: 'bold' },
   name: { fontSize: 20, fontWeight: '600', color: '#2F2F2F' },

@@ -75,7 +75,7 @@ export default function StatsScreen() {
             <Text style={styles.statLabel}>Trabajos completados</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>Bs. {totalEarnings.toLocaleString()}</Text>
+            <Text style={styles.statValue}>S/. {totalEarnings.toLocaleString()}</Text>
             <Text style={styles.statLabel}>Ingresos del mes</Text>
           </View>
           <View style={styles.statCard}>
@@ -90,7 +90,7 @@ export default function StatsScreen() {
         </View>
 
         {/* Gráfico de Ingresos Semanales */}
-        <Text style={styles.sectionTitle}>Ingresos Semanales (Bs.)</Text>
+        <Text style={styles.sectionTitle}>Ingresos Semanales (S/.)</Text>
         <View style={styles.chartCard}>
           <View style={styles.chartBarsContainer}>
             {baseWeekly.map((val, idx) => {

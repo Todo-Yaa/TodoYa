@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken, kycVerificado, kycDetalles, baneado } = body;
+    const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken, kycVerificado, kycDetalles, baneado, fotoPerfil, fechaUltimaModificacionFoto } = body;
 
     if (!correoOTelefono) {
       return Response.json({ error: 'El identificador de correo/teléfono es requerido' }, { status: 400 });
@@ -137,6 +137,12 @@ export async function PUT(request: Request) {
     }
     if (baneado !== undefined) {
       updateData.baneado = baneado;
+    }
+    if (fotoPerfil !== undefined) {
+      updateData.fotoPerfil = fotoPerfil;
+    }
+    if (fechaUltimaModificacionFoto !== undefined) {
+      updateData.fechaUltimaModificacionFoto = fechaUltimaModificacionFoto;
     }
 
     if (!isDbConnected() || !db) {

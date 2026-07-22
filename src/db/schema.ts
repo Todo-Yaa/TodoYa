@@ -40,6 +40,8 @@ export const users = pgTable('users', {
 
   // Estado de baneo/suspensión del usuario por denuncias
   baneado: boolean('baneado').default(false),
+  fotoPerfil: text('foto_perfil'),
+  fechaUltimaModificacionFoto: varchar('fecha_ultima_modificacion_foto', { length: 100 }),
 
   createdAt: timestamp('created_at').defaultNow(),
 });

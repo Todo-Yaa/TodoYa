@@ -144,18 +144,18 @@ export const matchProvidersOffline = async (descripcion: string, latCliente: num
   const ordenados = proveedoresConScore.sort((a, b) => b.score - a.score);
 
   // Sugerencia de precio base local
-  let precioSugerido = '100 Bs. - 150 Bs.';
-  if (categoria === 'Plomería') precioSugerido = urgencia === 'Alta' ? '180 Bs. - 250 Bs.' : '80 Bs. - 130 Bs.';
-  if (categoria === 'Electricidad') precioSugerido = urgencia === 'Alta' ? '200 Bs. - 300 Bs.' : '100 Bs. - 180 Bs.';
-  if (categoria === 'Pintura') precioSugerido = '250 Bs. - 450 Bs. (según m²)';
-  if (categoria === 'Climatización') precioSugerido = '150 Bs. - 280 Bs.';
-  if (categoria === 'Mecánico') precioSugerido = '150 Bs. - 400 Bs. (según diagnóstico)';
-  if (categoria === 'Cerrajero') precioSugerido = urgencia === 'Alta' ? '120 Bs. - 200 Bs.' : '70 Bs. - 120 Bs.';
-  if (categoria === 'Carpintero') precioSugerido = '100 Bs. - 300 Bs. (según trabajo)';
-  if (categoria === 'Técnico de laptop-celulares') precioSugerido = '80 Bs. - 250 Bs. (más repuestos)';
-  if (categoria === 'Sastrería') precioSugerido = '40 Bs. - 100 Bs. (según prenda)';
-  if (categoria === 'Viandas y Pensiones') precioSugerido = '20 Bs. - 35 Bs. (por vianda/plato)';
-  if (categoria === 'Albañilería & Construcción') precioSugerido = '150 Bs. - 500 Bs. (según trabajo/m²)';
+  let precioSugerido = 'S/. 100 - S/. 150';
+  if (categoria === 'Plomería') precioSugerido = urgencia === 'Alta' ? 'S/. 180 - S/. 250' : 'S/. 80 - S/. 130';
+  if (categoria === 'Electricidad') precioSugerido = urgencia === 'Alta' ? 'S/. 200 - S/. 300' : 'S/. 100 - S/. 180';
+  if (categoria === 'Pintura') precioSugerido = 'S/. 250 - S/. 450 (según m²)';
+  if (categoria === 'Climatización') precioSugerido = 'S/. 150 - S/. 280';
+  if (categoria === 'Mecánico') precioSugerido = 'S/. 150 - S/. 400 (según diagnóstico)';
+  if (categoria === 'Cerrajero') precioSugerido = urgencia === 'Alta' ? 'S/. 120 - S/. 200' : 'S/. 70 - S/. 120';
+  if (categoria === 'Carpintero') precioSugerido = 'S/. 100 - S/. 300 (según trabajo)';
+  if (categoria === 'Técnico de laptop-celulares') precioSugerido = 'S/. 80 - S/. 250 (más repuestos)';
+  if (categoria === 'Sastrería') precioSugerido = 'S/. 40 - S/. 100 (según prenda)';
+  if (categoria === 'Viandas y Pensiones') precioSugerido = 'S/. 20 - S/. 35 (por vianda/plato)';
+  if (categoria === 'Albañilería & Construcción') precioSugerido = 'S/. 150 - S/. 500 (según trabajo/m²)';
 
   return {
     success: true,

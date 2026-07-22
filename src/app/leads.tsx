@@ -639,15 +639,15 @@ export default function LeadsScreen() {
                         </View>
                       </View>
                       <View style={styles.packageCardRight}>
-                        <Text style={styles.packagePrice}>Bs. {plan.priceBs}</Text>
-                        <Text style={styles.packageNote}>{isActive ? 'Activo' : 'Pagar Bs. 1.00'}</Text>
+                        <Text style={styles.packagePrice}>S/. {plan.priceBs}</Text>
+                        <Text style={styles.packageNote}>{isActive ? 'Activo' : 'Pagar S/. 1.00'}</Text>
                       </View>
                     </TouchableOpacity>
                   );
                 })}
 
                 <Text style={styles.disclaimerText}>
-                  Nota: Durante la demostración del Hackatón, el QR cobrará únicamente <Text style={{ fontWeight: 'bold', color: isB2BProvider ? '#6366f1' : '#FFB400' }}>Bs. 1.00</Text> real para realizar pruebas bancarias completas de forma segura.
+                  Nota: Durante la demostración del Hackatón, el QR cobrará únicamente <Text style={{ fontWeight: 'bold', color: isB2BProvider ? '#6366f1' : '#FFB400' }}>S/. 1.00</Text> real para realizar pruebas bancarias completas de forma segura.
                 </Text>
               </View>
             )}
