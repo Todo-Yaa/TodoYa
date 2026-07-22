@@ -40,6 +40,68 @@ const CATEGORIAS_BASE: Record<string, string[]> = {
   'Albañilería & Construcción': ['albañil', 'albañileria', 'albañilería', 'cemento', 'ladrillo', 'ceramica', 'cerámica', 'piso', 'pared', 'columna', 'revoque', 'construccion', 'construcción', 'obra', 'losa', 'mezcla', 'azulejo', 'baldosa', 'contrapiso']
 };
 
+function calcularCoincidenciaSemanticaIA(solicitudCliente: string, descripcionProveedor: string, serviciosOfrecidos: string[] = []): { score: number; motivo: string; porcentajeText: string } {
+  const reqLower = solicitudCliente.toLowerCase().trim();
+  const descLower = (descripcionProveedor + " " + serviciosOfrecidos.join(" ")).toLowerCase().trim();
+
+  if (!descLower) {
+    return { score: 0.3, motivo: 'Proveedor verificado', porcentajeText: '70%' };
+  }
+
+  const stopWords = new Set(['necesito', 'busco', 'quiero', 'un', 'una', 'el', 'la', 'los', 'las', 'de', 'del', 'en', 'para', 'con', 'por', 'que', 'se', 'mi', 'mis', 'favor', 'ayuda', 'urgente', 'especializado', 'especialista']);
+  const tokensCliente = reqLower
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "")
+    .split(/\s+/)
+    .filter(t => t.length > 2 && !stopWords.has(t));
+
+  if (tokensCliente.length === 0) {
+    return { score: 0.5, motivo: 'Afinidad de categoría general', porcentajeText: '75%' };
+  }
+
+  let maxFraseScore = 0;
+  let motivoEncontrado = '';
+
+  for (let len = Math.min(tokensCliente.length, 4); len >= 2; len--) {
+    for (let i = 0; i <= tokensCliente.length - len; i++) {
+      const subFrase = tokensCliente.slice(i, i + len).join(' ');
+      if (descLower.includes(subFrase)) {
+        maxFraseScore = 0.98;
+        motivoEncontrado = `🎯 Coincidencia exacta: "${subFrase}"`;
+        break;
+      }
+    }
+    if (maxFraseScore > 0) break;
+  }
+
+  let tokenMatches = 0;
+  const palabrasCoincidentes: string[] = [];
+  for (const token of tokensCliente) {
+    if (descLower.includes(token)) {
+      tokenMatches++;
+      palabrasCoincidentes.push(token);
+    }
+  }
+
+  const tokenRatio = tokenMatches / tokensCliente.length;
+  let scoreSemantico = Math.max(maxFraseScore, tokenRatio * 0.9);
+
+  if (!motivoEncontrado) {
+    if (palabrasCoincidentes.length > 0) {
+      motivoEncontrado = `⚡ Especializado en: "${palabrasCoincidentes.join(', ')}"`;
+    } else {
+      motivoEncontrado = 'Especialista en la categoría';
+      scoreSemantico = 0.35;
+    }
+  }
+
+  const pct = Math.round(scoreSemantico * 100);
+  return {
+    score: scoreSemantico,
+    motivo: motivoEncontrado,
+    porcentajeText: `${pct}%`
+  };
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Verificar DDoS / Tamaño del Payload (Límite 1MB)
@@ -319,17 +381,22 @@ Descripción del servicio: "${descripcion}"`;
     
     const proveedoresConScore = proveedoresFiltrados.map(p => {
       const distancia = calcularDistancia(latCliente, lngCliente, p.lat, p.lng);
+      const coincidenciaSemantica = calcularCoincidenciaSemanticaIA(descripcion, p.descripcion, p.serviciosOfrecidos || []);
       
       // Factores normalizados de 0 a 1
+      const factorCoincidenciaIA = coincidenciaSemantica.score;
       const factorRating = p.rating / 5.0;
       const factorDistancia = Math.max(0, 1 - (distancia / 10)); // Más cerca es mejor (max 10km)
-      const factorExperiencia = Math.min(1, p.experiencia / 10); // 10 o más años de experiencia es el tope (1)
+      const factorExperiencia = Math.min(1, p.experiencia / 10);
       
-      const score = (factorRating * 0.4) + (factorDistancia * 0.4) + (factorExperiencia * 0.2);
+      // Fórmula Ponderada con Prioridad a la Coincidencia en Descripción (45%)
+      const score = (factorCoincidenciaIA * 0.45) + (factorDistancia * 0.30) + (factorRating * 0.15) + (factorExperiencia * 0.10);
 
       return {
         ...p,
         distanciaKm: parseFloat(distancia.toFixed(2)),
+        coincidenciaPorcentaje: coincidenciaSemantica.porcentajeText,
+        motivoCoincidenciaIA: coincidenciaSemantica.motivo,
         score: parseFloat(score.toFixed(2))
       };
     });

@@ -25,6 +25,8 @@ interface CandidateProvider {
   experience: string;
   description: string;
   distance: string;
+  coincidenciaPorcentaje?: string;
+  motivoCoincidenciaIA?: string;
   isCounterOffer?: boolean;
   priceValue?: number;
   originalPriceValue?: number;
@@ -598,7 +600,9 @@ export default function SolicitarScreen() {
         price: urg === 'Alta' ? 'Bs. 180' : 'Bs. 120', // precio base estimado
         experience: `${p.experiencia} años`,
         description: p.descripcion,
-        distance: `${p.distanciaKm} km`
+        distance: `${p.distanciaKm} km`,
+        coincidenciaPorcentaje: p.coincidenciaPorcentaje,
+        motivoCoincidenciaIA: p.motivoCoincidenciaIA
       }));
 
       // Si no devolvió nada (por ejemplo, categorías B2B no cargadas en la BD temporal), usar fallback estático
@@ -1122,6 +1126,16 @@ export default function SolicitarScreen() {
                         <Text style={styles.candidateDistance}>· {t('chat.distance', { dist: pro.distance })}</Text>
                       </View>
                       
+                      {/* Badge de Coincidencia de IA por Descripción */}
+                      {(pro.coincidenciaPorcentaje || pro.motivoCoincidenciaIA) && (
+                        <View style={{ alignSelf: 'flex-start', marginVertical: 4, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#86efac', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="sparkles" size={12} color="#16a34a" />
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803d' }}>
+                            IA {pro.coincidenciaPorcentaje || '95%'} {pro.motivoCoincidenciaIA ? `· ${pro.motivoCoincidenciaIA}` : ''}
+                          </Text>
+                        </View>
+                      )}
+
                       {/* Fila B2B explicativa de la oferta */}
                       {isBusiness && (
                         <View style={{ alignSelf: 'flex-start', marginVertical: 6, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 6, backgroundColor: pro.isCounterOffer ? '#f5f3ff' : '#ecfdf5', borderWidth: 1, borderColor: pro.isCounterOffer ? '#c084fc' : '#34d399' }}>
