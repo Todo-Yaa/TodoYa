@@ -2,9 +2,14 @@ import { db, isDbConnected } from '../../db';
 import { users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { localDb } from '../../db/localDb';
+import { checkApiRateLimit } from '../../utils/rate-limiter';
+import { sanitizeText, sanitizeEmail, sanitizePhone } from '../../utils/security';
 
 // GET: Obtener todos los registrados
 export async function GET(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 60, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     if (!isDbConnected() || !db) {
       const localUsers = localDb.getUsers();
@@ -21,9 +26,20 @@ export async function GET(request: Request) {
 
 // POST: Registrar un nuevo usuario (manual o social OAuth)
 export async function POST(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 15, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
-    const { nombre, correoOTelefono, rol, contrasena, tipoProveedor = 'normal', tipoEntidad = 'natural', nit, correoFacturacion, rubro, ofreceB2B = false, celular, codigoPais } = body;
+    const { nombre: rawNombre, correoOTelefono: rawCorreo, rol: rawRol, contrasena, tipoProveedor = 'normal', tipoEntidad = 'natural', nit: rawNit, correoFacturacion: rawCorreoFact, rubro: rawRubro, ofreceB2B = false, celular: rawCelular, codigoPais } = body;
+
+    const nombre = sanitizeText(rawNombre);
+    const correoOTelefono = rawCorreo ? sanitizeText(rawCorreo).toLowerCase() : '';
+    const rol = (rawRol && ['client', 'provider', 'business'].includes(rawRol) ? rawRol : 'client') as 'client' | 'provider' | 'business';
+    const nit = rawNit ? sanitizeText(rawNit) : null;
+    const correoFacturacion = rawCorreoFact ? sanitizeEmail(rawCorreoFact) : null;
+    const rubro = rawRubro ? sanitizeText(rawRubro) : null;
+    const celular = rawCelular ? sanitizePhone(rawCelular) : null;
 
     if (!isDbConnected() || !db) {
       const usuarioExistente = localDb.getUserByEmailOrPhone(correoOTelefono);
@@ -58,10 +74,9 @@ export async function POST(request: Request) {
     }
 
     // Verificar si ya existe el correo/teléfono
-    const usuarioExistente = await db.select().from(users).where(eq(users.correoOTelefono, correoOTelefono.trim().toLowerCase())).limit(1);
+    const usuarioExistente = await db.select().from(users).where(eq(users.correoOTelefono, correoOTelefono)).limit(1);
 
     if (usuarioExistente.length > 0) {
-      // Si ya existe (p. ej. en login social), actualizamos los datos y lo devolvemos
       const updated = await db.update(users)
         .set({
           nombre,
@@ -73,7 +88,7 @@ export async function POST(request: Request) {
           celular: celular || usuarioExistente[0].celular,
           codigoPais: codigoPais || usuarioExistente[0].codigoPais,
         })
-        .where(eq(users.correoOTelefono, correoOTelefono.trim().toLowerCase()))
+        .where(eq(users.correoOTelefono, correoOTelefono))
         .returning();
       return Response.json({ status: 'success', action: 'updated', user: updated[0] });
     }
@@ -81,7 +96,7 @@ export async function POST(request: Request) {
     // Registrar nuevo
     const nuevoUsuario = await db.insert(users).values({
       nombre,
-      correoOTelefono: correoOTelefono.trim().toLowerCase(),
+      correoOTelefono,
       rol,
       contrasena,
       tipoProveedor,
@@ -103,6 +118,9 @@ export async function POST(request: Request) {
 
 // PUT: Actualizar configuración del perfil del Proveedor (Onboarding) o Plan de Suscripción
 export async function PUT(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 30, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const { correoOTelefono, serviciosOfrecidos, anosExperiencia, descripcionProveedor, coberturaB2B, planId, pushToken, kycVerificado, kycDetalles, baneado, fotoPerfil, fechaUltimaModificacionFoto, nombre, nuevoCorreoOTelefono, celular, fechaUltimaModificacionDatos } = body;
@@ -111,46 +129,34 @@ export async function PUT(request: Request) {
       return Response.json({ error: 'El identificador de correo/teléfono es requerido' }, { status: 400 });
     }
 
+    const cleanIdentifier = sanitizeText(correoOTelefono).toLowerCase();
+
     const updateData: any = {};
-    if (nombre !== undefined) updateData.nombre = nombre;
-    if (nuevoCorreoOTelefono !== undefined) updateData.correoOTelefono = nuevoCorreoOTelefono;
-    if (celular !== undefined) updateData.celular = celular;
+    if (nombre !== undefined) updateData.nombre = sanitizeText(nombre);
+    if (nuevoCorreoOTelefono !== undefined) updateData.correoOTelefono = sanitizeText(nuevoCorreoOTelefono).toLowerCase();
+    if (celular !== undefined) updateData.celular = sanitizePhone(celular);
     if (fechaUltimaModificacionDatos !== undefined) updateData.fechaUltimaModificacionDatos = fechaUltimaModificacionDatos;
-    if (planId !== undefined) {
-      updateData.planId = planId;
-    }
-    if (pushToken !== undefined) {
-      updateData.pushToken = pushToken;
-    }
+    if (planId !== undefined) updateData.planId = sanitizeText(planId);
+    if (pushToken !== undefined) updateData.pushToken = sanitizeText(pushToken);
     if (serviciosOfrecidos !== undefined) {
       updateData.proveedorConfigurado = true;
       updateData.rol = 'provider';
-      updateData.serviciosOfrecidos = serviciosOfrecidos;
+      updateData.serviciosOfrecidos = Array.isArray(serviciosOfrecidos) ? serviciosOfrecidos.map((s: string) => sanitizeText(s)) : serviciosOfrecidos;
     }
-    if (anosExperiencia !== undefined) updateData.anosExperiencia = anosExperiencia;
-    if (descripcionProveedor !== undefined) updateData.descripcionProveedor = descripcionProveedor;
+    if (anosExperiencia !== undefined) updateData.anosExperiencia = sanitizeText(anosExperiencia);
+    if (descripcionProveedor !== undefined) updateData.descripcionProveedor = sanitizeText(descripcionProveedor);
     if (coberturaB2B !== undefined) {
-      updateData.coberturaB2B = coberturaB2B;
-      updateData.ofreceB2B = CoberturaB2BValida(coberturaB2B);
+      updateData.coberturaB2B = sanitizeText(coberturaB2B);
+      updateData.ofreceB2B = CoberturaB2BValida(updateData.coberturaB2B);
     }
-    if (kycVerificado !== undefined) {
-      updateData.kycVerificado = kycVerificado;
-    }
-    if (kycDetalles !== undefined) {
-      updateData.kycDetalles = kycDetalles;
-    }
-    if (baneado !== undefined) {
-      updateData.baneado = baneado;
-    }
-    if (fotoPerfil !== undefined) {
-      updateData.fotoPerfil = fotoPerfil;
-    }
-    if (fechaUltimaModificacionFoto !== undefined) {
-      updateData.fechaUltimaModificacionFoto = fechaUltimaModificacionFoto;
-    }
+    if (kycVerificado !== undefined) updateData.kycVerificado = kycVerificado;
+    if (kycDetalles !== undefined) updateData.kycDetalles = sanitizeText(kycDetalles);
+    if (baneado !== undefined) updateData.baneado = baneado;
+    if (fotoPerfil !== undefined) updateData.fotoPerfil = fotoPerfil;
+    if (fechaUltimaModificacionFoto !== undefined) updateData.fechaUltimaModificacionFoto = fechaUltimaModificacionFoto;
 
     if (!isDbConnected() || !db) {
-      const updated = localDb.updateUser(correoOTelefono, updateData);
+      const updated = localDb.updateUser(cleanIdentifier, updateData);
       if (!updated) {
         return Response.json({ error: 'Usuario no encontrado' }, { status: 404 });
       }
@@ -159,7 +165,7 @@ export async function PUT(request: Request) {
 
     const updated = await db.update(users)
       .set(updateData)
-      .where(eq(users.correoOTelefono, correoOTelefono.trim().toLowerCase()))
+      .where(eq(users.correoOTelefono, cleanIdentifier))
       .returning();
 
     if (updated.length === 0) {
@@ -179,6 +185,9 @@ function CoberturaB2BValida(cobertura: string | undefined): boolean {
 
 // DELETE: Eliminar una cuenta de usuario
 export async function DELETE(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 10, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const url = new URL(request.url);
     const correoOTelefono = url.searchParams.get('correoOTelefono');
@@ -187,12 +196,14 @@ export async function DELETE(request: Request) {
       return Response.json({ error: 'El correo/teléfono es requerido' }, { status: 400 });
     }
 
+    const cleanIdentifier = sanitizeText(correoOTelefono).toLowerCase();
+
     if (!isDbConnected() || !db) {
-      localDb.deleteUser(correoOTelefono);
+      localDb.deleteUser(cleanIdentifier);
       return Response.json({ status: 'success', message: 'Usuario eliminado de la base de datos local' });
     }
 
-    await db.delete(users).where(eq(users.correoOTelefono, correoOTelefono.trim().toLowerCase()));
+    await db.delete(users).where(eq(users.correoOTelefono, cleanIdentifier));
     
     return Response.json({ status: 'success', message: 'Usuario eliminado de Neon.db' });
   } catch (error: any) {

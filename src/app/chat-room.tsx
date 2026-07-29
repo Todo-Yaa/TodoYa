@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useUser } from '../context/user-context';
+import { sanitizeText } from '../utils/security';
 
 interface Message {
   id: number;
@@ -101,7 +102,7 @@ export default function ChatRoomScreen() {
   }, [orderId, simulationState]);
 
   const sendMessage = async () => {
-    const text = inputText.trim();
+    const text = sanitizeText(inputText.trim());
     if (!text || isSending) return;
 
     setIsSending(true);

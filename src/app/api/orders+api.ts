@@ -2,9 +2,13 @@ import { eq } from 'drizzle-orm';
 import { db, isDbConnected } from '../../db';
 import { localDb } from '../../db/localDb';
 import { orders, users } from '../../db/schema';
+import { checkApiRateLimit } from '../../utils/rate-limiter';
+import { sanitizeText } from '../../utils/security';
 
 // GET: Obtener todos los pedidos/solicitudes de la base de datos
 export async function GET(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 60, 60000);
+  if (rateLimitError) return rateLimitError;
   try {
     const url = new URL(request.url);
     const clienteId = url.searchParams.get('clienteId');
@@ -84,9 +88,19 @@ export async function GET(request: Request) {
 
 // POST: Crear un nuevo pedido
 export async function POST(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 30, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
-    const { titulo, servicio, description, precio, urgencia, proveedor = null, clienteId = null, proveedorId = null } = body;
+    const { titulo: rawTitulo, servicio: rawServicio, description: rawDesc, precio: rawPrecio, urgencia: rawUrg, proveedor: rawProv = null, clienteId = null, proveedorId = null } = body;
+
+    const titulo = rawTitulo ? sanitizeText(rawTitulo) : '';
+    const servicio = rawServicio ? sanitizeText(rawServicio) : '';
+    const description = rawDesc ? sanitizeText(rawDesc) : '';
+    const precio = rawPrecio ? sanitizeText(rawPrecio) : '';
+    const urgencia = (rawUrg && ['Normal', 'Alta'].includes(rawUrg) ? rawUrg : 'Normal') as 'Normal' | 'Alta';
+    const proveedor = rawProv ? sanitizeText(rawProv) : null;
 
     // Si viene un proveedor mockup (ej: Andrés Silva), asegurarse de que exista en la BD
     if (proveedor && !proveedorId) {
@@ -166,6 +180,9 @@ export async function POST(request: Request) {
 
 // PUT: Actualizar un pedido (Postulación, Finalización o Calificación)
 export async function PUT(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 30, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const { id, action, providerName, proveedorId, estrellas, etiquetas } = body;

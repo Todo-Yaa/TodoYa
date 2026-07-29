@@ -1,23 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useCallback, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, RefreshControl, Image, ActivityIndicator } from 'react-native';
-import { useUser } from '../context/user-context';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import NotificationTray from '../components/notification-tray';
+import { useUser } from '../context/user-context';
 
 export default function LeadsScreen() {
-  const { 
-    orders, 
-    coins, 
-    planId, 
-    subscribeToPlan, 
-    applyToLead, 
-    activeUser, 
-    syncOrders, 
-    addCoins, 
-    usuariosRegistrados, 
+  const {
+    orders,
+    coins,
+    planId,
+    subscribeToPlan,
+    applyToLead,
+    activeUser,
+    syncOrders,
+    addCoins,
+    usuariosRegistrados,
     showNotification,
-    notificationsList, 
-    markAllNotificationsRead, 
+    notificationsList,
+    markAllNotificationsRead,
     clearAllNotifications,
     triggerLocationCheck
   } = useUser();
@@ -39,7 +39,7 @@ export default function LeadsScreen() {
   const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
   const serviciosListLeads = activeUser?.serviciosOfrecidos || [];
   const serviciosCountLeads = serviciosListLeads.length;
-  const professionText = isB2BProvider 
+  const professionText = isB2BProvider
     ? (activeUser?.rubro ? `Empresa de ${activeUser.rubro}` : (serviciosCountLeads === 1 ? `Empresa de ${serviciosListLeads[0]}` : 'Empresa Proveedora Corporativa B2B'))
     : (serviciosCountLeads === 1 ? `Especialista en ${serviciosListLeads[0]}` : (serviciosCountLeads > 3 ? 'Técnico Especialista Multidisciplinario' : `Especialista en ${serviciosListLeads.join(', ')}`));
 
@@ -63,10 +63,10 @@ export default function LeadsScreen() {
   const now = new Date();
   const b2bCountThisMonth = orders.filter(o => {
     if (o.proveedor !== providerName) return false;
-    const isB2B = 
-      o.servicio === 'Decoración & Eventos' || 
-      o.servicio === 'Branding & Lettering' || 
-      o.servicio === 'Papelería & Oficina' || 
+    const isB2B =
+      o.servicio === 'Decoración & Eventos' ||
+      o.servicio === 'Branding & Lettering' ||
+      o.servicio === 'Papelería & Oficina' ||
       o.servicio === 'Servicios B2B';
     if (!isB2B) return false;
     if (!o.acceptedAt) return false;
@@ -77,14 +77,14 @@ export default function LeadsScreen() {
   // Filtramos las solicitudes de clientes de forma que correspondan a su tipo de cuenta (B2B vs Residencial) y plan de suscripción
   const activeLeads = orders.filter(o => {
     if (o.estado !== 'Buscando proveedor') return false;
-    
+
     // Identificar si la categoría solicitada por el cliente pertenece al segmento corporativo B2B
-    const isOrderB2B = 
-      o.servicio === 'Decoración & Eventos' || 
-      o.servicio === 'Branding & Lettering' || 
-      o.servicio === 'Papelería & Oficina' || 
+    const isOrderB2B =
+      o.servicio === 'Decoración & Eventos' ||
+      o.servicio === 'Branding & Lettering' ||
+      o.servicio === 'Papelería & Oficina' ||
       o.servicio === 'Servicios B2B';
-      
+
     // Los proveedores naturales con Plan 1 solo ven residencial. Plan 2 y Plan 3 ven residenciales y B2B.
     // Las empresas proveedoras con Plan Empresa 1 solo ven B2B. Plan Empresa 2 y Plan Empresa 3 ven B2B y residenciales.
     if (currentEntidad === 'natural') {
@@ -104,10 +104,10 @@ export default function LeadsScreen() {
 
   // Custom modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmConfig, setConfirmConfig] = useState({ 
-    title: '', 
-    message: '', 
-    onConfirm: () => {},
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: '',
+    message: '',
+    onConfirm: () => { },
     singleButton: false
   });
 
@@ -118,7 +118,7 @@ export default function LeadsScreen() {
         title: '⚠️ Exclusividad B2B',
         message: 'Esta es una solicitud corporativa. Las solicitudes B2B son exclusivas para proveedores registrados como Empresa.',
         singleButton: true,
-        onConfirm: () => {}
+        onConfirm: () => { }
       });
       setShowConfirmModal(true);
       return;
@@ -128,7 +128,7 @@ export default function LeadsScreen() {
         title: '⚠️ Exclusividad Residencial',
         message: 'Esta es una solicitud residencial. Las solicitudes residenciales son exclusivas para proveedores individuales (Natural).',
         singleButton: true,
-        onConfirm: () => {}
+        onConfirm: () => { }
       });
       setShowConfirmModal(true);
       return;
@@ -146,7 +146,7 @@ export default function LeadsScreen() {
             setConfirmConfig({
               title: '🎉 ¡Postulado con éxito!',
               message: 'Te has postulado al trabajo. El pedido ahora está en tu pestaña de "Trabajos" en estado "En progreso".',
-              onConfirm: () => {},
+              onConfirm: () => { },
               singleButton: true
             });
             setShowConfirmModal(true);
@@ -188,7 +188,7 @@ export default function LeadsScreen() {
   // Load history on load or user changes
   useEffect(() => {
     loadTransactionHistory();
-    triggerLocationCheck().catch(() => {});
+    triggerLocationCheck().catch(() => { });
   }, [activeUser, loadTransactionHistory]);
 
 
@@ -326,16 +326,16 @@ export default function LeadsScreen() {
           </View>
         </View>
         <TouchableOpacity onPress={() => setIsTrayOpen(true)} style={styles.bellContainer} activeOpacity={0.7}>
-          <Ionicons 
-            name="notifications-outline" 
-            size={28} 
-            color={isB2BProvider ? '#818cf8' : '#FFB400'} 
+          <Ionicons
+            name="notifications-outline"
+            size={28}
+            color={isB2BProvider ? '#818cf8' : '#FFB400'}
           />
           {unreadCount > 0 && <View style={[styles.bellBadge, isB2BProvider && styles.bellBadgeDark]} />}
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.body}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFB400" />
@@ -355,8 +355,8 @@ export default function LeadsScreen() {
               </Text>
             )}
           </View>
-          <TouchableOpacity 
-            style={[styles.comprarBtn, isB2BProvider && { backgroundColor: '#6366f1' }]} 
+          <TouchableOpacity
+            style={[styles.comprarBtn, isB2BProvider && { backgroundColor: '#6366f1' }]}
             onPress={() => {
               setPaymentStep('packages');
               setSelectedPlan(null);
@@ -373,10 +373,10 @@ export default function LeadsScreen() {
         <Text style={styles.sectionTitle}>Leads disponibles ({activeLeads.length})</Text>
 
         {activeLeads.map((lead) => {
-          const isB2B = 
-            lead.servicio === 'Decoración & Eventos' || 
-            lead.servicio === 'Branding & Lettering' || 
-            lead.servicio === 'Papelería & Oficina' || 
+          const isB2B =
+            lead.servicio === 'Decoración & Eventos' ||
+            lead.servicio === 'Branding & Lettering' ||
+            lead.servicio === 'Papelería & Oficina' ||
             lead.servicio === 'Servicios B2B';
 
           // Calculate cost in coins (higher for B2B leads)
@@ -387,7 +387,7 @@ export default function LeadsScreen() {
 
           return (
             <View key={lead.id} style={[
-              styles.leadCard, 
+              styles.leadCard,
               lead.urgencia === 'Alta' && styles.proCard,
               isB2B && styles.b2bLeadCard
             ]}>
@@ -405,8 +405,8 @@ export default function LeadsScreen() {
 
               <View style={styles.leadHeader}>
                 <Text style={styles.leadTitle}>
-                  {isUrgent && <Ionicons name="flash" size={18} color="#e53935" />} 
-                  {isB2B && <Ionicons name="business" size={16} color="#6366f1" style={{ marginRight: 6 }} />} 
+                  {isUrgent && <Ionicons name="flash" size={18} color="#e53935" />}
+                  {isB2B && <Ionicons name="business" size={16} color="#6366f1" style={{ marginRight: 6 }} />}
                   {lead.titulo}
                 </Text>
                 <Text style={[styles.precio, isB2B && { color: '#6366f1' }]}>{lead.precio}</Text>
@@ -421,7 +421,7 @@ export default function LeadsScreen() {
               </Text>
 
               <View style={styles.actions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.postularBtn, isB2B && { backgroundColor: '#6366f1' }]}
                   onPress={() => handleApply(lead.id, cost, lead.titulo, isB2B)}
                   activeOpacity={0.7}
@@ -430,14 +430,14 @@ export default function LeadsScreen() {
                   <Text style={[styles.postularText, isB2B && { color: '#fff' }]}>Postularse con mi Plan</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.skipBtn}
                   onPress={() => {
                     setConfirmConfig({
                       title: 'Omitir Lead',
                       message: 'El lead se ha archivado temporalmente de tu panel.',
                       singleButton: true,
-                      onConfirm: () => {}
+                      onConfirm: () => { }
                     });
                     setShowConfirmModal(true);
                   }}
@@ -467,13 +467,13 @@ export default function LeadsScreen() {
               <View key={t.id || idx} style={styles.historyItem}>
                 <View style={styles.historyItemLeft}>
                   <View style={[
-                    styles.historyItemIcon, 
+                    styles.historyItemIcon,
                     { backgroundColor: t.tipo === 'recarga' ? '#e8f5e9' : '#ffebee' }
                   ]}>
-                    <Ionicons 
-                      name={t.tipo === 'recarga' ? 'arrow-down-circle' : 'arrow-up-circle'} 
-                      size={20} 
-                      color={t.tipo === 'recarga' ? '#2e7d32' : '#c62828'} 
+                    <Ionicons
+                      name={t.tipo === 'recarga' ? 'arrow-down-circle' : 'arrow-up-circle'}
+                      size={20}
+                      color={t.tipo === 'recarga' ? '#2e7d32' : '#c62828'}
                     />
                   </View>
                   <View style={{ marginLeft: 12, flex: 1 }}>
@@ -518,7 +518,7 @@ export default function LeadsScreen() {
                       <Text style={styles.nationalLeadPrice}>{nl.precio}</Text>
                     </View>
                     <Text style={styles.nationalLeadTitle}>{nl.servicio}: {nl.desc}</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.nationalApplyBtn}
                       onPress={() => {
                         setConfirmConfig({
@@ -544,7 +544,7 @@ export default function LeadsScreen() {
                 <Text style={styles.nationalLockedDesc}>
                   Accede a una cartera nacional de clientes empresa y/o persona natural en todo Bolivia (La Paz, Cochabamba, Santa Cruz) en tiempo real.
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.nationalUpgradeBtn}
                   onPress={() => {
                     setPaymentStep('packages');
@@ -570,7 +570,7 @@ export default function LeadsScreen() {
             <Text style={styles.modalMessage}>{confirmConfig.message}</Text>
             <View style={styles.modalButtons}>
               {!confirmConfig.singleButton && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.modalCancelBtn}
                   onPress={() => setShowConfirmModal(false)}
                   activeOpacity={0.7}
@@ -578,7 +578,7 @@ export default function LeadsScreen() {
                   <Text style={styles.modalCancelText}>Cancelar</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalConfirmBtn}
                 onPress={() => {
                   setShowConfirmModal(false);
@@ -599,7 +599,7 @@ export default function LeadsScreen() {
       {showPaymentModal && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxWidth: 400 }]}>
-            
+
             {/* Header / Cerrar */}
             <View style={styles.paymentModalHeader}>
               <Text style={styles.modalTitle}>Planes de Suscripción</Text>
@@ -614,7 +614,7 @@ export default function LeadsScreen() {
             {paymentStep === 'packages' && (
               <View>
                 <Text style={styles.paymentModalSubtitle}>Elige tu plan de suscripción mensual:</Text>
-                
+
                 {(isB2BProvider ? [
                   { id: 'business_1', name: 'Plan Empresa 1 - Básico', priceBs: 150, desc: 'Acceso ilimitado a solicitudes de empresas (B2B).' },
                   { id: 'business_2', name: 'Plan Empresa 2 - Pro', priceBs: 300, desc: 'Acceso ilimitado a corporativos y residenciales.' },
@@ -626,10 +626,10 @@ export default function LeadsScreen() {
                 ]).map((plan, idx) => {
                   const isActive = plan.id === userPlan;
                   return (
-                    <TouchableOpacity 
-                      key={idx} 
+                    <TouchableOpacity
+                      key={idx}
                       style={[
-                        styles.packageCard, 
+                        styles.packageCard,
                         isActive && { borderColor: isB2BProvider ? '#6366f1' : '#FFB400', borderWidth: 2 }
                       ]}
                       disabled={isActive}
@@ -670,11 +670,11 @@ export default function LeadsScreen() {
               <View style={styles.centerContent}>
                 <Text style={styles.qrTitle}>Escanea para activar plan</Text>
                 <Text style={styles.qrSubtitle}>Monto: Bs. {selectedPlan.priceBs} | <Text style={{ fontWeight: 'bold', color: '#e53935' }}>Prueba real: Bs. 1.00</Text></Text>
-                
+
                 {/* Imagen del QR */}
-                <Image 
-                  source={{ uri: qrData.qr }} 
-                  style={styles.qrImage} 
+                <Image
+                  source={{ uri: qrData.qr }}
+                  style={styles.qrImage}
                   resizeMode="contain"
                 />
 
@@ -687,7 +687,7 @@ export default function LeadsScreen() {
                   Abre la aplicación de tu banco (BCP, BNB, etc.), selecciona "Pago Simple / QR" y escanea la imagen para activar tu plan: {selectedPlan.name}.
                 </Text>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.cancelPaymentBtn}
                   onPress={() => setShowPaymentModal(false)}
                 >
@@ -706,8 +706,8 @@ export default function LeadsScreen() {
                 <Text style={styles.successMessage}>
                   Hemos detectado tu transferencia de Bs. 1.00. Tu suscripción a "{selectedPlan.name}" ha sido activada con éxito en la nube.
                 </Text>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.successDoneBtn}
                   onPress={() => setShowPaymentModal(false)}
                 >
@@ -724,14 +724,14 @@ export default function LeadsScreen() {
                 <ScrollView style={{ maxHeight: 140, width: '100%', marginVertical: 8, backgroundColor: '#fff3f3', borderRadius: 8, padding: 8 }}>
                   <Text style={[styles.errorMessage, { fontSize: 11, color: '#b71c1c' }]}>{paymentError || 'No se pudo generar la transacción. Intenta nuevamente.'}</Text>
                 </ScrollView>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.errorRetryBtn}
                   onPress={() => setPaymentStep('packages')}
                 >
                   <Text style={styles.errorRetryText}>Volver a intentar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.errorRetryBtn, { backgroundColor: '#666', marginTop: 8 }]}
                   onPress={() => setShowPaymentModal(false)}
                 >

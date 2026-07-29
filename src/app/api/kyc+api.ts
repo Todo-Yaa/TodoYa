@@ -1,3 +1,6 @@
+import { checkApiRateLimit } from '../../utils/rate-limiter';
+import { sanitizeText } from '../../utils/security';
+
 // API Proxy para el Verificador de KYC de decouple-services (Walter Ibañez)
 // Endpoint base de AWS: https://cm981m6ag1.execute-api.us-east-1.amazonaws.com
 
@@ -9,14 +12,19 @@ const KYC_API_BASE = 'https://cm981m6ag1.execute-api.us-east-1.amazonaws.com';
 // POST: Verificar la imagen ya subida con Claude (Step 2)
 // Body: { action: 'verify', sessionId } → { approved, details, rejectedReasons }
 export async function POST(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 10, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const { action, sessionId } = body;
 
-    // ========= MODO SIMULADO (para proteger recursos de AWS de Walter) =========
+    const cleanAction = action ? sanitizeText(action) : '';
+    const cleanSessionId = sessionId ? sanitizeText(sessionId) : null;
+
+    // ========= MODO SIMULADO (para proteger recursos de AWS) =========
     if (KYC_SIMULATED) {
-      if (action === 'presign') {
-        // Devolver una sesión y URL ficticia de S3
+      if (cleanAction === 'presign') {
         const fakeSessionId = `sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         return Response.json({
           status: 'simulated',
@@ -25,11 +33,9 @@ export async function POST(request: Request) {
         });
       }
 
-      if (action === 'verify') {
-        // Simular una espera de análisis de IA (2.5s de delay)
+      if (cleanAction === 'verify') {
         await new Promise(resolve => setTimeout(resolve, 2500));
         
-        // Simular éxito: 90% aprobados, 10% rechazados (para demo)
         const approved = Math.random() > 0.1;
         return Response.json({
           status: 'simulated',
@@ -44,8 +50,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // ========= MODO REAL (conecta con AWS de Walter - solo para demo ante jurado) =========
-    if (action === 'presign') {
+    // ========= MODO REAL =========
+    if (cleanAction === 'presign') {
       const res = await fetch(`${KYC_API_BASE}/api/v1/identification/presign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,15 +66,15 @@ export async function POST(request: Request) {
       return Response.json({ status: 'success', ...data });
     }
 
-    if (action === 'verify') {
-      if (!sessionId) {
+    if (cleanAction === 'verify') {
+      if (!cleanSessionId) {
         return Response.json({ error: 'sessionId es requerido para verificar' }, { status: 400 });
       }
 
       const res = await fetch(`${KYC_API_BASE}/api/v1/identification/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({ sessionId: cleanSessionId }),
       });
 
       if (!res.ok) {

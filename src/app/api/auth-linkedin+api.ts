@@ -1,12 +1,17 @@
+import { checkApiRateLimit } from '../../utils/rate-limiter';
+
 export async function POST(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 10, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const { code, redirectUri } = await request.json();
     if (!code) {
       return Response.json({ status: 'error', message: 'Falta el código de autorización' }, { status: 400 });
     }
 
-    const clientId = process.env.EXPO_PUBLIC_LINKEDIN_CLIENT_ID;
-    const clientSecret = process.env.EXPO_PUBLIC_LINKEDIN_CLIENT_SECRET;
+    const clientId = process.env.LINKEDIN_CLIENT_ID || process.env.EXPO_PUBLIC_LINKEDIN_CLIENT_ID;
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET || process.env.EXPO_PUBLIC_LINKEDIN_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
       return Response.json({ status: 'error', message: 'Credenciales de LinkedIn no configuradas en el servidor' }, { status: 500 });

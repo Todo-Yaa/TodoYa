@@ -2,9 +2,14 @@ import { db, isDbConnected } from '../../db';
 import { applications, orders, users } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { localDb } from '../../db/localDb';
+import { checkApiRateLimit } from '../../utils/rate-limiter';
+import { sanitizeText } from '../../utils/security';
 
 // GET: Obtener postulaciones (por orderId o por proveedorId)
 export async function GET(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 60, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const url = new URL(request.url);
     const orderId = url.searchParams.get('orderId');
@@ -39,6 +44,9 @@ export async function GET(request: Request) {
 
 // POST: Registrar una nueva postulación de proveedor a un pedido
 export async function POST(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 30, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const { orderId, proveedorId, monedasGastadas, notaPersonal = null } = body;
@@ -46,6 +54,8 @@ export async function POST(request: Request) {
     if (!orderId || !proveedorId || monedasGastadas === undefined) {
       return Response.json({ error: 'orderId, proveedorId y monedasGastadas son requeridos' }, { status: 400 });
     }
+
+    const cleanNotaPersonal = notaPersonal ? sanitizeText(notaPersonal) : null;
 
     if (!isDbConnected() || !db) {
       // Verificar si ya existe una postulación del mismo proveedor al mismo pedido
@@ -58,7 +68,7 @@ export async function POST(request: Request) {
         orderId: Number(orderId),
         proveedorId: Number(proveedorId),
         monedasGastadas: Number(monedasGastadas),
-        notaPersonal,
+        notaPersonal: cleanNotaPersonal,
         estado: 'pendiente'
       });
       return Response.json({ status: 'success', application: newApp });
@@ -80,7 +90,7 @@ export async function POST(request: Request) {
       orderId: Number(orderId),
       proveedorId: Number(proveedorId),
       monedasGastadas: Number(monedasGastadas),
-      notaPersonal,
+      notaPersonal: cleanNotaPersonal,
       estado: 'pendiente'
     }).returning();
 
@@ -92,6 +102,9 @@ export async function POST(request: Request) {
 
 // PUT: Actualizar estado de una postulación (aceptar o rechazar)
 export async function PUT(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 30, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const { id, estado } = body;
@@ -100,18 +113,20 @@ export async function PUT(request: Request) {
       return Response.json({ error: 'id y estado son requeridos' }, { status: 400 });
     }
 
-    if (!['pendiente', 'aceptado', 'rechazado'].includes(estado)) {
+    const cleanEstado = sanitizeText(estado).toLowerCase() as 'pendiente' | 'aceptado' | 'rechazado';
+
+    if (!['pendiente', 'aceptado', 'rechazado'].includes(cleanEstado)) {
       return Response.json({ error: 'Estado inválido. Use: pendiente, aceptado, rechazado' }, { status: 400 });
     }
 
     if (!isDbConnected() || !db) {
-      const updated = localDb.updateApplication(Number(id), { estado });
+      const updated = localDb.updateApplication(Number(id), { estado: cleanEstado });
       if (!updated) return Response.json({ error: 'Postulación no encontrada' }, { status: 404 });
       return Response.json({ status: 'success', application: updated });
     }
 
     const updated = await db.update(applications)
-      .set({ estado })
+      .set({ estado: cleanEstado })
       .where(eq(applications.id, Number(id)))
       .returning();
 

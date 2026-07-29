@@ -1,5 +1,6 @@
 import { db, isDbConnected } from '../../db';
 import { users, orders } from '../../db/schema';
+import { checkApiRateLimit } from '../../utils/rate-limiter';
 
 /**
  * POST /api/seed
@@ -7,6 +8,9 @@ import { users, orders } from '../../db/schema';
  * Solo inserta si no existen registros para evitar duplicados.
  */
 export async function POST(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 5, 60000);
+  if (rateLimitError) return rateLimitError;
+
   if (!isDbConnected() || !db) {
     return Response.json({ error: 'Neon.db no disponible' }, { status: 503 });
   }
@@ -170,6 +174,9 @@ export async function POST(request: Request) {
 
 // GET: Verificar si Neon ya tiene datos o está vacío
 export async function GET(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 20, 60000);
+  if (rateLimitError) return rateLimitError;
+
   if (!isDbConnected() || !db) {
     return Response.json({ seeded: false, reason: 'Neon no disponible' });
   }

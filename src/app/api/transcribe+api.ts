@@ -1,4 +1,10 @@
+import { checkApiRateLimit } from '../../utils/rate-limiter';
+import { sanitizeText } from '../../utils/security';
+
 export async function POST(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 20, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const { audio, mimeType } = body;
@@ -44,7 +50,7 @@ export async function POST(request: Request) {
 
     const data = await response.json();
     let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    text = text.trim();
+    text = sanitizeText(text.trim());
 
     console.log(`[Transcribe API] Transcripción completada: "${text}"`);
     return Response.json({ text });

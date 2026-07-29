@@ -2,7 +2,12 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from './schema';
 
-const databaseUrl = "postgresql://neondb_owner:npg_d8vEk6DgbItC@ep-long-leaf-aiy3nnbm-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require";
+const databaseUrl = process.env.DATABASE_URL || process.env.EXPO_PUBLIC_DATABASE_URL;
+
+if (!databaseUrl) {
+  console.error('❌ Error: DATABASE_URL o EXPO_PUBLIC_DATABASE_URL no está configurada en .env');
+  process.exit(1);
+}
 
 const sql = neon(databaseUrl);
 const db = drizzle(sql, { schema });

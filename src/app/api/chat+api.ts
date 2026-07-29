@@ -3,6 +3,7 @@ import { messages } from '../../db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { localDb } from '../../db/localDb';
 import { getClientIp, isRateLimited, isPayloadTooLarge } from '../../utils/rate-limiter';
+import { sanitizeText } from '../../utils/security';
 
 // GET: Obtener todos los mensajes de una orden específica (o todos si all=true)
 export async function GET(request: Request) {
@@ -63,28 +64,30 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Límite de peticiones excedido (Anti-DDoS).' }, { status: 429 });
     }
     const body = await request.json();
-    // ✅ senderId es opcional pero se guarda si viene (FK real al usuario)
     const { orderId, senderName, messageText, senderId = null } = body;
 
     if (!orderId || !senderName || !messageText) {
       return Response.json({ error: 'orderId, senderName y messageText son requeridos' }, { status: 400 });
     }
 
+    const cleanSenderName = sanitizeText(senderName);
+    const cleanMessageText = sanitizeText(messageText);
+
     if (!isDbConnected() || !db) {
       const newMessage = localDb.insertMessage({
         orderId: Number(orderId),
-        senderId: senderId ? Number(senderId) : null,  // ✅ FK al usuario
-        senderName,
-        messageText,
+        senderId: senderId ? Number(senderId) : null,
+        senderName: cleanSenderName,
+        messageText: cleanMessageText,
       });
       return Response.json({ status: 'success', message: newMessage });
     }
 
     const newMessage = await db.insert(messages).values({
       orderId: Number(orderId),
-      senderId: senderId ? Number(senderId) : null,    // ✅ FK al usuario
-      senderName,
-      messageText,
+      senderId: senderId ? Number(senderId) : null,
+      senderName: cleanSenderName,
+      messageText: cleanMessageText,
     }).returning();
 
     return Response.json({ status: 'success', message: newMessage[0] });

@@ -1,8 +1,8 @@
-// Importar base de datos si estuviera activa
 import { db, isDbConnected } from '../../db';
 import { users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { getClientIp, isRateLimited, isPayloadTooLarge } from '../../utils/rate-limiter';
+import { sanitizePromptInput } from '../../utils/security';
 
 // Datos de prueba locales para la simulación del Matching si no hay base de datos real
 const PROVEEDORES_MOCK = [
@@ -116,11 +116,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { descripcion, latCliente = -17.784, lngCliente = -17.784 } = body;
+    const { descripcion: rawDescripcion, latCliente = -17.784, lngCliente = -17.784 } = body;
 
-    if (!descripcion || descripcion.trim() === '') {
+    if (!rawDescripcion || String(rawDescripcion).trim() === '') {
       return Response.json({ error: 'La descripción del servicio es requerida' }, { status: 400 });
     }
+
+    const descripcion = sanitizePromptInput(rawDescripcion);
 
     console.log(`[Matching API] Iniciando análisis para: "${descripcion}"`);
 

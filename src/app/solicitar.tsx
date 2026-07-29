@@ -8,6 +8,7 @@ import { useUser } from '../context/user-context';
 import MapView from '../components/map-view';
 import { matchProviders } from '../services/ai-matching';
 import * as Location from 'expo-location';
+import { sanitizeText, sanitizePromptInput } from '../utils/security';
 
 /**
  * Componente SolicitarScreen:
@@ -537,7 +538,8 @@ export default function SolicitarScreen() {
    * Procesa la entrada de texto mediante el algoritmo de matching (IA / local).
    */
   const processNLP = async (textToProcess?: string) => {
-    const targetText = typeof textToProcess === 'string' ? textToProcess : inputText;
+    const rawText = typeof textToProcess === 'string' ? textToProcess : inputText;
+    const targetText = sanitizePromptInput(rawText);
     if (!targetText.trim()) {
       setConfirmConfig({
         title: '⚠️ Entrada vacía',

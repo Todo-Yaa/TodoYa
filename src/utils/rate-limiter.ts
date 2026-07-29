@@ -18,6 +18,19 @@ export function getClientIp(request: Request): string {
 }
 
 /**
+ * Obtiene el estado actual del contador de rate limit para una IP.
+ */
+export function getRateLimitStatus(ip: string, limit = 60, windowMs = 60000) {
+  const now = Date.now();
+  const clientData = cacheRateLimit.get(ip);
+  if (!clientData || now > clientData.resetTime) {
+    return { count: 0, remaining: limit, resetTime: now + windowMs };
+  }
+  const remaining = Math.max(0, limit - clientData.count);
+  return { count: clientData.count, remaining, resetTime: clientData.resetTime };
+}
+
+/**
  * Verifica si una IP ha excedido el límite de solicitudes permitido en una ventana de tiempo.
  * @param ip Dirección IP del cliente.
  * @param limit Número máximo de solicitudes permitidas.
@@ -69,4 +82,42 @@ export function isPayloadTooLarge(request: Request, maxBytes = 1024 * 1024): boo
     }
   }
   return false;
+}
+
+/**
+ * Helper unificado para validar Rate Limit y Payload Size en API Routes.
+ * Devuelve un Response HTTP 429 o 413 si se viola la regla, o null si la petición es válida.
+ */
+export function checkApiRateLimit(
+  request: Request,
+  limit = 60,
+  windowMs = 60000,
+  maxPayloadBytes = 1024 * 1024
+): Response | null {
+  if (isPayloadTooLarge(request, maxPayloadBytes)) {
+    return Response.json(
+      { error: 'Payload excesivo. Petición rechazada por razones de seguridad anti-DDoS.' },
+      { status: 413 }
+    );
+  }
+
+  const clientIp = getClientIp(request);
+  if (isRateLimited(clientIp, limit, windowMs)) {
+    const retrySeconds = Math.ceil(windowMs / 1000);
+    return Response.json(
+      {
+        error: 'Límite de peticiones excedido (Anti-DDoS / Rate Limit). Intenta más tarde.',
+        retryAfterSeconds: retrySeconds
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(retrySeconds),
+          'X-RateLimit-Limit': String(limit)
+        }
+      }
+    );
+  }
+
+  return null;
 }

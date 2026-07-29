@@ -2,15 +2,14 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from './schema';
 
-// Cargar la URL de conexión desde las variables de entorno de Expo (.env)
-// NOTA: Para desarrollo local, crea un archivo `.env` en la raíz con:
-// EXPO_PUBLIC_DATABASE_URL=postgresql://tu_usuario:tu_contraseña@tu_host.neon.tech/neondb?sslmode=require
-const databaseUrl = process.env.EXPO_PUBLIC_DATABASE_URL;
+// Cargar la URL de conexión desde las variables de entorno (.env)
+// Soporta DATABASE_URL (servidor/producción Vercel) y EXPO_PUBLIC_DATABASE_URL (cliente)
+const databaseUrl = process.env.DATABASE_URL || process.env.EXPO_PUBLIC_DATABASE_URL;
 
 if (!databaseUrl) {
   console.warn(
-    '⚠️ ADVERTENCIA: La variable de entorno EXPO_PUBLIC_DATABASE_URL no está definida.\n' +
-    'El sistema utilizará simulación en memoria (AsyncStorage) hasta que configures tu base de datos Neon.db.'
+    '⚠️ ADVERTENCIA: La variable de entorno DATABASE_URL o EXPO_PUBLIC_DATABASE_URL no está definida.\n' +
+    'El sistema utilizará simulación en memoria (localDb/AsyncStorage) hasta que configures tu base de datos Neon.db.'
   );
 }
 

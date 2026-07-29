@@ -2,10 +2,11 @@ import { db, isDbConnected } from '../../db';
 import { users, transactions } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { localDb } from '../../db/localDb';
+import { checkApiRateLimit } from '../../utils/rate-limiter';
 
-const VERIPAGOS_SECRET_KEY = '12df605b-5dd3-4a35-84b0-b9ec07bfecae';
-const VERIPAGOS_PASSWORD = 's9Ee7!Cw67';
-const VERIPAGOS_USER = 'victorhugo';
+const VERIPAGOS_SECRET_KEY = process.env.VERIPAGOS_SECRET_KEY || '12df605b-5dd3-4a35-84b0-b9ec07bfecae';
+const VERIPAGOS_PASSWORD = process.env.VERIPAGOS_PASSWORD || 's9Ee7!Cw67';
+const VERIPAGOS_USER = process.env.VERIPAGOS_USER || 'victorhugo';
 
 // Auxiliar para codificar Basic Auth
 function getBasicAuthHeader() {
@@ -64,6 +65,9 @@ function isVeriPagosSuccess(result: any): boolean {
 
 // POST: Generar un código QR de VeriPagos
 export async function POST(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 15, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const body = await request.json();
     const { userId, monedas, planId, detalle } = body;
@@ -179,6 +183,9 @@ function getPlanName(planId: string | null) {
 
 // GET: Consultar el estado del QR y acreditar plan o monedas si está completado
 export async function GET(request: Request) {
+  const rateLimitError = checkApiRateLimit(request, 30, 60000);
+  if (rateLimitError) return rateLimitError;
+
   try {
     const url = new URL(request.url);
     const movimientoIdStr = url.searchParams.get('movimiento_id');

@@ -6,6 +6,7 @@ import { useUser, UserRole } from '../context/user-context';
 import { router } from 'expo-router'; // Importar enrutador para redireccionar tras login dinámico
 import KYCVerifierModal from './kyc-verifier-modal';
 import TermsPrivacyModal from './terms-privacy-modal';
+import { sanitizeText, sanitizeEmail, sanitizePhone } from '../utils/security';
 
 const PAISES_LATINOS = [
   { nombre: 'Bolivia', codigo: '591', bandera: '🇧🇴' },
@@ -301,9 +302,10 @@ export default function LoginScreen() {
     }
 
     setCargando(true);
-    // Retraso artificial de 1.2 segundos para simular una consulta a base de datos externa
+    const cleanUser = sanitizeText(correoOTelefono);
+    const cleanPass = contrasena.trim();
     setTimeout(async () => {
-      const exito = await login(correoOTelefono, contrasena);
+      const exito = await login(cleanUser, cleanPass);
       setCargando(false);
       if (!exito) {
         setConfiguracionModal({

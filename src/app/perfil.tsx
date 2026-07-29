@@ -12,6 +12,7 @@ import Storage from '../utils/storage';
 import KYCVerifierModal from '../components/kyc-verifier-modal';
 import OnboardingModal from '../components/onboarding-modal';
 import TermsPrivacyModal from '../components/terms-privacy-modal';
+import { sanitizeText } from '../utils/security';
 
 
 /**
