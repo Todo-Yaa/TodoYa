@@ -22,7 +22,9 @@
       "tipoProveedor": "normal",
       "tipoEntidad": "natural",
       "proveedorConfigurado": true,
-      "serviciosOfrecidos": ["Plomería"],
+      "serviciosOfrecidos": [
+        "Plomería"
+      ],
       "anosExperiencia": "Más de 3 años",
       "descripcionProveedor": "Plomero certificado con 5 años de experiencia residencial.",
       "monedas": 24,
@@ -59,13 +61,28 @@
       "rubro": "Branding & Lettering",
       "ofreceB2B": true,
       "proveedorConfigurado": true,
-      "serviciosOfrecidos": ["Branding & Lettering"],
+      "serviciosOfrecidos": [
+        "Branding & Lettering"
+      ],
       "anosExperiencia": "Más de 3 años",
       "descripcionProveedor": "Ofrecemos soluciones gráficas y branding corporativo de alta calidad.",
       "monedas": 24,
       "kycVerificado": true,
       "kycDetalles": "NIT e identidad B2B verificados",
       "createdAt": "2026-06-25T00:00:00.000Z"
+    },
+    {
+      "nombre": "Luis M",
+      "correoOTelefono": "luis.m@gmail.com",
+      "rol": "client",
+      "contrasena": "demo1234",
+      "tipoProveedor": "google",
+      "tipoEntidad": "natural",
+      "ofreceB2B": false,
+      "id": 5,
+      "monedas": 24,
+      "kycVerificado": false,
+      "createdAt": "2026-07-21T18:30:15.271Z"
     }
   ],
   "orders": [
@@ -129,7 +146,10 @@
       "urgencia": "Normal",
       "calificado": true,
       "calificacionEstrellas": 5,
-      "calificacionEtiquetas": ["Puntual", "Limpio"],
+      "calificacionEtiquetas": [
+        "Puntual",
+        "Limpio"
+      ],
       "acceptedAt": "2026-06-24T20:00:00.000Z",
       "completedAt": "2026-06-24T22:00:00.000Z",
       "tiempoEjecucion": "2 horas",
@@ -167,7 +187,10 @@
       "calificadorId": 1,
       "calificadoId": null,
       "estrellas": 5,
-      "etiquetas": ["Puntual", "Limpio"],
+      "etiquetas": [
+        "Puntual",
+        "Limpio"
+      ],
       "comentario": "Excelente trabajo, muy profesional.",
       "createdAt": "2026-06-24T22:05:00.000Z"
     }
@@ -182,5 +205,6 @@
       "notaPersonal": "Tengo experiencia con fugas similares, puedo ir hoy mismo.",
       "createdAt": "2026-06-25T00:00:00.000Z"
     }
-  ]
+  ],
+  "reports": []
 }

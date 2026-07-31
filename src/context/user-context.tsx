@@ -386,7 +386,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           : 0;
         if (total > 0) {
           showNotification(
-            '☁️ Sincronización completada',
+            'Sincronización completada',
             `${total} registros locales subidos a Neon.db exitosamente.`,
             'success'
           );
@@ -424,10 +424,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           if (data.status === 'ok' && data.database === 'connected') {
-            console.log('[UserContext] 🌐 Internet restaurado — reconectando con Neon...');
+            console.log('[UserContext] Internet restaurado — reconectando con Neon...');
             setIsDbOnline(true);
             showNotification(
-              '🌐 Conexión restaurada',
+              'Conexión restaurada',
               'Sincronizando datos locales con Neon.db...',
               'info'
             );
@@ -645,7 +645,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 const email = profile.email;
                 const name = profile.name || email.split('@')[0];
                 
-                showNotification('🔑 Conexión Google', `Autenticado con éxito como ${name}.`, 'success');
+                showNotification('Conexión Google', `Autenticado con éxito como ${name}.`, 'success');
                 await registrarEIniciarSesion(name, email, 'client', 'google');
                 router.replace('/');
               }
@@ -671,7 +671,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
               if (res.ok) {
                 const data = await res.json();
                 if (data.status === 'success') {
-                  showNotification('🔑 Conexión LinkedIn', `Autenticado con éxito como ${data.name}.`, 'success');
+                  showNotification('Conexión LinkedIn', `Autenticado con éxito como ${data.name}.`, 'success');
                   await registrarEIniciarSesion(data.name, data.email, 'client', 'linkedin');
                   router.replace('/');
                 } else {
@@ -724,7 +724,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
               const matchesService = providerServices.length === 0 || providerServices.includes(order.servicio);
               if (matchesService) {
                 showNotification(
-                  "💼 ¡Nuevo Lead Disponible!",
+                  "¡Nuevo Lead Disponible!",
                   `${order.titulo} en la categoría ${order.servicio}. Presupuesto: ${order.precio}`,
                   "info"
                 );
@@ -742,7 +742,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
               const remoteMatch = remoteOrders.find(ro => ro.id === localOrder.id);
               if (remoteMatch && remoteMatch.estado === 'En progreso' && remoteMatch.proveedor) {
                 showNotification(
-                  "✅ ¡Proveedor Asignado!",
+                  "¡Proveedor Asignado!",
                   `Tu solicitud "${localOrder.titulo}" fue aceptada por ${remoteMatch.proveedor}. Va en camino.`,
                   "success"
                 );
@@ -775,7 +775,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                       
                       if (isParticipant && msg.senderName !== userName && msg.senderName !== 'Tú') {
                         showNotification(
-                          `💬 ${msg.senderName}:`,
+                          `${msg.senderName}:`,
                           msg.messageText,
                           'info'
                         );
@@ -955,7 +955,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           precio, 
           urgencia, 
           proveedor,
-          clienteId: activeUser?.id || null, // ✅ FK real al cliente que crea el pedido
+          clienteId: activeUser?.id || null, //  FK real al cliente que crea el pedido
         })
       });
       if (res.ok) {
@@ -1066,11 +1066,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
         id: orderId, 
         action: 'apply', 
         providerName,
-        proveedorId: finalUserId || null, // ✅ FK real del proveedor
+        proveedorId: finalUserId || null, //  FK real del proveedor
       })
     }).catch(err => console.warn('[applyToLead] Error al sincronizar postulación en backend:', err));
 
-    // ✅ Registrar la postulación en la tabla applications (historial relacional)
+    //  Registrar la postulación en la tabla applications (historial relacional)
     if (finalUserId) {
       fetch('/api/applications', {
         method: 'POST',
@@ -1163,7 +1163,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           
           if (usuarioEncontrado) {
             if (usuarioEncontrado.baneado) {
-              showNotification('⚠️ Cuenta Suspendida', 'Tu acceso ha sido bloqueado debido a reportes de comportamiento. Escríbenos a soporte@todoya.com', 'warning');
+              showNotification('Cuenta Suspendida', 'Tu acceso ha sido bloqueado debido a reportes de comportamiento. Escríbenos a soporte@todoya.com', 'warning');
               return false;
             }
             if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
@@ -1197,7 +1197,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     if (usuarioEncontrado) {
       if (usuarioEncontrado.baneado) {
-        showNotification('⚠️ Cuenta Suspendida', 'Tu acceso ha sido bloqueado debido a reportes de comportamiento. Escríbenos a soporte@todoya.com', 'warning');
+        showNotification('Cuenta Suspendida', 'Tu acceso ha sido bloqueado debido a reportes de comportamiento. Escríbenos a soporte@todoya.com', 'warning');
         return false;
       }
       if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
@@ -2043,7 +2043,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    showNotification('📸 Foto de Perfil', foto ? 'Foto actualizada con éxito.' : 'Foto de perfil eliminada.', 'success');
+    showNotification('Foto de Perfil', foto ? 'Foto actualizada con éxito.' : 'Foto de perfil eliminada.', 'success');
     return true;
   };
 
@@ -2116,7 +2116,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    showNotification('👤 Perfil Actualizado', 'Tus datos personales fueron modificados correctamente.', 'success');
+    showNotification('Perfil Actualizado', 'Tus datos personales fueron modificados correctamente.', 'success');
     return { success: true };
   };
 
@@ -2172,9 +2172,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       notification,
       showNotification,
       clearNotification,
-      isDbOnline,        // ✅ Estado de conexión a Neon
-      isSyncing,         // ✅ Indicador de sync en progreso
-      triggerSync,       // ✅ Sincronización manual forzada
+      isDbOnline,        //  Estado de conexión a Neon
+      isSyncing,         //  Indicador de sync en progreso
+      triggerSync,       //  Sincronización manual forzada
       notificationsList,
       activeToast,
       addTrayNotification,

@@ -179,7 +179,7 @@ export async function PUT(request: Request) {
       if (action === 'apply') {
         updated = localDb.updateOrder(id, {
           proveedor: providerName,
-          proveedorId: proveedorId || null,  // ✅ Guardar FK del proveedor
+          proveedorId: proveedorId || null,  //  Guardar FK del proveedor
           estado: 'En progreso',
           progreso: 65,
           hora: 'Hace un momento',
@@ -222,7 +222,7 @@ export async function PUT(request: Request) {
       updated = await db.update(orders)
         .set({
           proveedor: providerName,
-          proveedorId: proveedorId || null,  // ✅ FK del proveedor
+          proveedorId: proveedorId || null,  //  FK del proveedor
           estado: 'En progreso',
           progreso: 65,
           hora: 'Hace un momento',
@@ -303,7 +303,7 @@ async function enviarNotificacionesPush(servicio: string, titulo: string, precio
       const messages = providersToNotify.map(p => ({
         to: p.pushToken,
         sound: 'default',
-        title: '💼 ¡Nuevo Lead Disponible!',
+        title: '¡Nuevo Lead Disponible!',
         body: `${titulo} en la categoría ${servicio}. Presupuesto: ${precio}`,
         data: { service: servicio },
       }));

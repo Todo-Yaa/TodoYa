@@ -8,7 +8,7 @@ const sql = neon(databaseUrl);
 const db = drizzle(sql, { schema });
 
 async function seed() {
-  console.log('🌱 Iniciando seeder para Neon.db...');
+  console.log('Iniciando seeder para Neon.db...');
 
   try {
     // 1. Limpiar datos existentes
@@ -84,9 +84,9 @@ async function seed() {
       }
     ]);
 
-    console.log('✅ Base de datos Neon poblada correctamente con datos de prueba.');
+    console.log('Base de datos Neon poblada correctamente con datos de prueba.');
   } catch (error) {
-    console.error('❌ Error ejecutando el seeder:', error);
+    console.error('Error ejecutando el seeder:', error);
   } finally {
     process.exit(0);
   }

@@ -168,7 +168,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
           {/* Content per step */}
           {step === 'intro' && (
             <View style={styles.stepContainer}>
-              <Text style={styles.stepTitle}>Hola, {userName || 'nuevo usuario'} 👋</Text>
+              <Text style={styles.stepTitle}>Hola, {userName || 'nuevo usuario'}</Text>
               <Text style={styles.stepDesc}>
                 Para poder ofrecer servicios como Proveedor independiente, requerimos validar tu identidad con DNI/CE y Selfie.
               </Text>
@@ -213,7 +213,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
                       {tipoDocumento === 'ce' ? 'Foto de Carnet de Extranjería' : 'Foto de DNI / C.I.'}
                     </Text>
                     <Text style={styles.stepItemDesc}>
-                      {documentoSubido ? '✅ Documento cargado: documento_frente.jpg' : 'Sube una foto legible del frente'}
+                      {documentoSubido ? 'Documento cargado: documento_frente.jpg' : 'Sube una foto legible del frente'}
                     </Text>
                   </View>
 
@@ -226,7 +226,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.scanBtnText, documentoSubido && styles.scanBtnTextActive]}>
-                        {documentoSubido ? 'Cambiar' : '📸 Escanear'}
+                        {documentoSubido ? 'Cambiar' : 'Escanear'}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -244,7 +244,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
                   <View style={{ flex: 1 }}>
                     <Text style={styles.stepItemTitle}>Foto de tu Rostro (Selfie)</Text>
                     <Text style={styles.stepItemDesc}>
-                      {selfieSubida ? '✅ Foto cargada: selfie_rostro.jpg' : 'Tómate una selfie con buena luz'}
+                      {selfieSubida ? 'Foto cargada: selfie_rostro.jpg' : 'Tómate una selfie con buena luz'}
                     </Text>
                   </View>
 
@@ -257,7 +257,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.scanBtnText, selfieSubida && styles.scanBtnTextActive]}>
-                        {selfieSubida ? 'Cambiar' : '🤳 Selfie'}
+                        {selfieSubida ? 'Cambiar' : 'Selfie'}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -295,9 +295,9 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
               />
 
               <Text style={styles.processingTitle}>
-                {step === 'simulating_capture' && '📸 Capturando documento...'}
-                {step === 'uploading' && '☁️ Enviando de forma segura...'}
-                {step === 'analyzing' && '🤖 Analizando con IA...'}
+                {step === 'simulating_capture' && 'Capturando documento...'}
+                {step === 'uploading' && 'Enviando de forma segura...'}
+                {step === 'analyzing' && 'Analizando con IA...'}
               </Text>
               <Text style={styles.processingDesc}>
                 {step === 'simulating_capture' && 'Preparando imagen para análisis'}
@@ -321,7 +321,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
               <View style={styles.resultIconSuccess}>
                 <Ionicons name="checkmark-circle" size={56} color="#10b981" />
               </View>
-              <Text style={styles.resultTitle}>¡Verificación Exitosa! 🎉</Text>
+              <Text style={styles.resultTitle}>¡Verificación Exitosa!</Text>
               <Text style={styles.resultDesc}>
                 Tu identidad fue validada correctamente por nuestra IA.
               </Text>

@@ -318,7 +318,7 @@ export async function POST(request: Request) {
 
     const total = syncResults.users + syncResults.orders + syncResults.messages + syncResults.ratings + syncResults.applications;
 
-    console.log(`[Sync] ✅ Sincronización completada: ${total} registros subidos a Neon.`, syncResults);
+    console.log(`[Sync]  Sincronización completada: ${total} registros subidos a Neon.`, syncResults);
 
     return Response.json({ 
       status: 'success', 

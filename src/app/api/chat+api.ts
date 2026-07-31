@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Límite de peticiones excedido (Anti-DDoS).' }, { status: 429 });
     }
     const body = await request.json();
-    // ✅ senderId es opcional pero se guarda si viene (FK real al usuario)
+    //  senderId es opcional pero se guarda si viene (FK real al usuario)
     const { orderId, senderName, messageText, senderId = null } = body;
 
     if (!orderId || !senderName || !messageText) {
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     if (!isDbConnected() || !db) {
       const newMessage = localDb.insertMessage({
         orderId: Number(orderId),
-        senderId: senderId ? Number(senderId) : null,  // ✅ FK al usuario
+        senderId: senderId ? Number(senderId) : null,  //  FK al usuario
         senderName,
         messageText,
       });
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
     const newMessage = await db.insert(messages).values({
       orderId: Number(orderId),
-      senderId: senderId ? Number(senderId) : null,    // ✅ FK al usuario
+      senderId: senderId ? Number(senderId) : null,    //  FK al usuario
       senderName,
       messageText,
     }).returning();

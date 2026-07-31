@@ -390,7 +390,7 @@ export default function SolicitarScreen() {
   const iniciarGrabacionVoz = () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn('[Speech] API de grabación de audio no soportada en este entorno.');
-      setVoiceErrorMsg('⚠️ Grabación de audio no soportada en este dispositivo.');
+      setVoiceErrorMsg(' Grabación de audio no soportada en este dispositivo.');
       setShowVoiceModal(true);
       setTimeout(() => setShowVoiceModal(false), 3000);
       return;
@@ -457,14 +457,14 @@ export default function SolicitarScreen() {
                   setVoiceErrorMsg('');
                   processNLP(data.text);
                 } else {
-                  setVoiceErrorMsg('⚠️ No se detectó ninguna voz en el audio.');
+                  setVoiceErrorMsg(' No se detectó ninguna voz en el audio.');
                   setTimeout(() => {
                     setShowVoiceModal(false);
                   }, 2500);
                 }
               } catch (err) {
                 console.error('[Speech] Error transcribiendo:', err);
-                setVoiceErrorMsg('⚠️ Error al transcribir el audio.');
+                setVoiceErrorMsg(' Error al transcribir el audio.');
                 setTimeout(() => {
                   setShowVoiceModal(false);
                 }, 2500);
@@ -493,7 +493,7 @@ export default function SolicitarScreen() {
       .catch((err) => {
         console.error('[Speech] Error al acceder al micrófono o permisos denegados:', err);
         setShowVoiceModal(true);
-        setVoiceErrorMsg('⚠️ Permiso de micrófono denegado. Habilita el acceso en el navegador.');
+        setVoiceErrorMsg(' Permiso de micrófono denegado. Habilita el acceso en el navegador.');
         setTimeout(() => {
           setShowVoiceModal(false);
         }, 3000);
@@ -540,7 +540,7 @@ export default function SolicitarScreen() {
     const targetText = typeof textToProcess === 'string' ? textToProcess : inputText;
     if (!targetText.trim()) {
       setConfirmConfig({
-        title: '⚠️ Entrada vacía',
+        title: 'Entrada vacía',
         message: 'Por favor describe qué necesitas antes de analizar.',
         onConfirm: () => {}
       });
@@ -569,7 +569,7 @@ export default function SolicitarScreen() {
       if (res.noSense === true) {
         setLoading(false);
         setConfirmConfig({
-          title: '⚠️ No se entiende',
+          title: 'No se entiende',
           message: 'Vuelve a escribirlo',
           onConfirm: () => {}
         });
@@ -628,7 +628,7 @@ export default function SolicitarScreen() {
       console.error('Error al clasificar solicitud:', err);
       setLoading(false);
       setConfirmConfig({
-        title: '⚠️ Error de análisis',
+        title: 'Error de análisis',
         message: 'No pudimos completar el análisis de IA. Inténtalo de nuevo.',
         onConfirm: () => {}
       });
@@ -737,7 +737,7 @@ export default function SolicitarScreen() {
       addOrder(title, servicio, descToUse, isBusiness ? pro.price : `Consulta: ${currentFeeText}`, urgencia, pro.name);
 
       setConfirmConfig({
-        title: '🎉 ¡Oferta Aceptada!',
+        title: '¡Oferta Aceptada!',
         message: `Has seleccionado a ${pro.name}. El proveedor ha aceptado y el trabajo está en curso.`,
         onConfirm: () => {
           resetForm();
@@ -812,7 +812,7 @@ export default function SolicitarScreen() {
     addOrder(title, servicio, descToUse, precio, urgencia, null);
 
     setConfirmConfig({
-      title: '✅ Publicado en Lista General',
+      title: 'Publicado en Lista General',
       message: 'Tu solicitud ha sido enviada. Los proveedores cercanos ya pueden verla y postularse.',
       onConfirm: () => {
         resetForm();
@@ -863,7 +863,7 @@ export default function SolicitarScreen() {
                   <Ionicons name="gift-outline" size={22} color="#4f46e5" style={{ marginRight: 10 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontWeight: '700', color: '#3730a3' }}>
-                      {trial.active ? `🎁 Beneficio B2B: 3 Meses Gratis Activo` : `💼 Modo Empresa B2B`}
+                      {trial.active ? `Beneficio B2B: 3 Meses Gratis Activo` : `Modo Empresa B2B`}
                     </Text>
                     <Text style={{ fontSize: 11, color: '#4338ca', marginTop: 2 }}>
                       {trial.active ? `Publica solicitudes corporativas ilimitadas sin costo (Quedan ${trial.daysLeft} días de prueba).` : `Publicación de licitaciones y compras para tu empresa.`}

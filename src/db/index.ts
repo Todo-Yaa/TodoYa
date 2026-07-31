@@ -9,7 +9,7 @@ const databaseUrl = process.env.EXPO_PUBLIC_DATABASE_URL;
 
 if (!databaseUrl) {
   console.warn(
-    '⚠️ ADVERTENCIA: La variable de entorno EXPO_PUBLIC_DATABASE_URL no está definida.\n' +
+    'ADVERTENCIA: La variable de entorno EXPO_PUBLIC_DATABASE_URL no está definida.\n' +
     'El sistema utilizará simulación en memoria (AsyncStorage) hasta que configures tu base de datos Neon.db.'
   );
 }
