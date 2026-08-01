@@ -31,7 +31,7 @@ export default function TrabajosScreen() {
         completeJob(id);
         setTimeout(() => {
           setConfirmConfig({
-            title: '✅ ¡Trabajo Completado!',
+            title: '¡Trabajo Completado!',
             message: 'Se ha enviado la notificación al cliente y registrado en tus estadísticas.',
             onConfirm: () => {},
             singleButton: true

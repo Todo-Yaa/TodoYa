@@ -132,9 +132,31 @@ export default function PlanUpsellModal({ visible: externalVisible, onClose: ext
     ? (planId === 'business_2' ? "Plan Empresa 3 — Élite" : "Plan Empresa 2 — Pro") 
     : (planId === 'provider_2' ? "Plan 3 — Élite" : "Plan 2 — Profesional");
 
+  const CURRENCY_BY_PREFIX: Record<string, string> = {
+    '51': 'S/.', '591': 'Bs.', '57': 'COP$', '56': 'CLP$', '52': 'MXN$',
+    '54': 'ARS$', '593': 'USD$', '598': 'UYU$', '595': 'PYG'
+  };
+  const CURRENCIES_BY_COUNTRY: Record<string, string> = {
+    'Peru': 'S/.', 'Perú': 'S/.', 'Bolivia': 'Bs.', 'Colombia': 'COP$',
+    'Chile': 'CLP$', 'Mexico': 'MXN$', 'México': 'MXN$', 'Argentina': 'ARS$',
+    'Ecuador': 'USD$'
+  };
+  const getCurrencySymbol = () => {
+    if (activeUser?.codigoPais && CURRENCY_BY_PREFIX[activeUser.codigoPais]) {
+      return CURRENCY_BY_PREFIX[activeUser.codigoPais];
+    }
+    if (activeUser?.celular) {
+      for (const [prefix, symbol] of Object.entries(CURRENCY_BY_PREFIX)) {
+        if (activeUser.celular.startsWith(`+${prefix}`)) return symbol;
+      }
+    }
+    return 'Bs.';
+  };
+  const symbol = getCurrencySymbol();
+
   const planPrice = isB2B
-    ? (planId === 'business_2' ? "S/. 500 / mes" : "S/. 300 / mes")
-    : (planId === 'provider_2' ? "S/. 200 / mes" : "S/. 120 / mes");
+    ? (planId === 'business_2' ? `${symbol} 500 / mes` : `${symbol} 300 / mes`)
+    : (planId === 'provider_2' ? `${symbol} 200 / mes` : `${symbol} 120 / mes`);
 
   const promoBannerText = isB2B 
     ? "Aumenta la eficiencia en compras corporativas de tu empresa" 

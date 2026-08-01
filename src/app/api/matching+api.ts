@@ -66,7 +66,7 @@ function calcularCoincidenciaSemanticaIA(solicitudCliente: string, descripcionPr
       const subFrase = tokensCliente.slice(i, i + len).join(' ');
       if (descLower.includes(subFrase)) {
         maxFraseScore = 0.98;
-        motivoEncontrado = `🎯 Coincidencia exacta: "${subFrase}"`;
+        motivoEncontrado = ` Coincidencia exacta: "${subFrase}"`;
         break;
       }
     }
@@ -87,7 +87,7 @@ function calcularCoincidenciaSemanticaIA(solicitudCliente: string, descripcionPr
 
   if (!motivoEncontrado) {
     if (palabrasCoincidentes.length > 0) {
-      motivoEncontrado = `⚡ Especializado en: "${palabrasCoincidentes.join(', ')}"`;
+      motivoEncontrado = ` Especializado en: "${palabrasCoincidentes.join(', ')}"`;
     } else {
       motivoEncontrado = 'Especialista en la categoría';
       scoreSemantico = 0.35;
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
     let descripcionCorregida = descripcion;
 
     // =========================================================================
-    // 🧠 INTEGRACIÓN CON GOOGLE GEMINI API (CON CORRECCIÓN GRAMATICAL)
+    //  INTEGRACIÓN CON GOOGLE GEMINI API (CON CORRECCIÓN GRAMATICAL)
     // =========================================================================
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
     let tieneSentidoDetectadoPorIA = true;
@@ -278,7 +278,7 @@ Descripción del servicio: "${descripcion}"`;
     }
 
     // =========================================================================
-    // ⚙️ ALGORITMO DE MATCHING SIMULADO / FALLBACK (PROCESAMIENTO NLP BÁSICO)
+    //  ALGORITMO DE MATCHING SIMULADO / FALLBACK (PROCESAMIENTO NLP BÁSICO)
     // =========================================================================
     if (!iaMatchSuccessful) {
       if (!tieneSentidoLocal) {

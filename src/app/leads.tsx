@@ -115,7 +115,7 @@ export default function LeadsScreen() {
     // Validar exclusividad de entidad para la postulación
     if (currentEntidad === 'natural' && isB2BOrder) {
       setConfirmConfig({
-        title: '⚠️ Exclusividad B2B',
+        title: 'Exclusividad B2B',
         message: 'Esta es una solicitud corporativa. Las solicitudes B2B son exclusivas para proveedores registrados como Empresa.',
         singleButton: true,
         onConfirm: () => { }
@@ -125,7 +125,7 @@ export default function LeadsScreen() {
     }
     if (currentEntidad === 'empresa' && !isB2BOrder) {
       setConfirmConfig({
-        title: '⚠️ Exclusividad Residencial',
+        title: 'Exclusividad Residencial',
         message: 'Esta es una solicitud residencial. Las solicitudes residenciales son exclusivas para proveedores individuales (Natural).',
         singleButton: true,
         onConfirm: () => { }
@@ -144,7 +144,7 @@ export default function LeadsScreen() {
           setTimeout(() => {
             loadTransactionHistory(); // Actualizar historial de transacciones en la UI
             setConfirmConfig({
-              title: '🎉 ¡Postulado con éxito!',
+              title: '¡Postulado con éxito!',
               message: 'Te has postulado al trabajo. El pedido ahora está en tu pestaña de "Trabajos" en estado "En progreso".',
               onConfirm: () => { },
               singleButton: true
@@ -417,7 +417,7 @@ export default function LeadsScreen() {
               </Text>
 
               <Text style={styles.meta}>
-                📍 {distance} · {lead.hora}
+               {distance} · {lead.hora}
               </Text>
 
               <View style={styles.actions}>
@@ -497,7 +497,7 @@ export default function LeadsScreen() {
         {/* Sección de Cartera Nacional de Clientes en Tiempo Real (Solo para modo Empresa) */}
         {isB2BProvider && (
           <View style={styles.nacionalContainer}>
-            <Text style={styles.sectionTitle}>💼 Cartera Nacional de Clientes (Tiempo Real)</Text>
+            <Text style={styles.sectionTitle}>Cartera Nacional de Clientes (Tiempo Real)</Text>
             {userPlan === 'business_3' ? (
               <View style={styles.nationalActiveCard}>
                 <View style={styles.nationalHeader}>
@@ -514,7 +514,7 @@ export default function LeadsScreen() {
                 ].map((nl) => (
                   <View key={nl.id} style={styles.nationalLeadItem}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={styles.nationalLeadCity}>📍 {nl.ciudad} · {nl.cliente}</Text>
+                      <Text style={styles.nationalLeadCity}>{nl.ciudad} · {nl.cliente}</Text>
                       <Text style={styles.nationalLeadPrice}>{nl.precio}</Text>
                     </View>
                     <Text style={styles.nationalLeadTitle}>{nl.servicio}: {nl.desc}</Text>
@@ -522,7 +522,7 @@ export default function LeadsScreen() {
                       style={styles.nationalApplyBtn}
                       onPress={() => {
                         setConfirmConfig({
-                          title: '🎉 ¡Postulación Nacional!',
+                          title: '¡Postulación Nacional!',
                           message: `¿Deseas enviar una propuesta comercial inmediata a "${nl.cliente}" en ${nl.ciudad} por un valor de ${nl.precio}?`,
                           singleButton: false,
                           onConfirm: () => {

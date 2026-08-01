@@ -62,7 +62,7 @@ export const calcularCoincidenciaSemanticaIA = (solicitudCliente: string, descri
       const subFrase = tokensCliente.slice(i, i + len).join(' ');
       if (descLower.includes(subFrase)) {
         maxFraseScore = 0.98;
-        motivoEncontrado = `🎯 Coincidencia exacta: "${subFrase}"`;
+        motivoEncontrado = `Coincidencia exacta: "${subFrase}"`;
         break;
       }
     }
@@ -84,7 +84,7 @@ export const calcularCoincidenciaSemanticaIA = (solicitudCliente: string, descri
 
   if (!motivoEncontrado) {
     if (palabrasCoincidentes.length > 0) {
-      motivoEncontrado = `⚡ Especializado en: "${palabrasCoincidentes.join(', ')}"`;
+      motivoEncontrado = `Especializado en: "${palabrasCoincidentes.join(', ')}"`;
     } else {
       motivoEncontrado = 'Especialista en la categoría';
       scoreSemantico = 0.35;

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       } catch (dbErr: any) {
         connected = false;
         errorMessage = dbErr.message;
-        console.error('❌ Error de conexión real a Neon DB:', dbErr);
+        console.error(' Error de conexión real a Neon DB:', dbErr);
       }
     }
     
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('❌ Error general en /api/db-status:', error);
+    console.error(' Error general en /api/db-status:', error);
     return Response.json(
       { error: 'Error al verificar la base de datos', details: error.message },
       { status: 500 }

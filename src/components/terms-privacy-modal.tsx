@@ -20,7 +20,7 @@ export default function TermsPrivacyModal({ visible, onClose, initialTab = 'term
           {/* Header del Modal */}
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle}>📄 Marco Legal & Cumplimiento</Text>
+              <Text style={styles.headerTitle}> Marco Legal & Cumplimiento</Text>
               <Text style={styles.headerSubtitle}>Términos de Servicio y Protección de Datos Personales</Text>
             </View>
 
@@ -143,7 +143,7 @@ export default function TermsPrivacyModal({ visible, onClose, initialTab = 'term
                 <Text style={styles.sectionHeading}>2. Delegado de Protección de Datos (DPO)</Text>
                 <Text style={styles.paragraph}>
                   Para cualquier consulta legal, sugerencias o ejercicios de derechos de privacidad:
-                  {"\n"}📧 Correo de soporte oficial: <Text style={{ fontWeight: 'bold', color: '#e1306c' }}>todoo.yap@gmail.com</Text>
+                  {"\n"}Correo de soporte oficial: <Text style={{ fontWeight: 'bold', color: '#e1306c' }}>todoo.yap@gmail.com</Text>
                 </Text>
               </View>
             )}

@@ -52,7 +52,7 @@ function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
               style={[styles.webLogo, { borderColor: colorMarca }]}
             />
             <Text style={styles.webTitle}>Todo Ya</Text>
-            <Text style={styles.webSlogan}>Servicios locales en minutos 🚀</Text>
+            <Text style={styles.webSlogan}>Servicios locales en minutos</Text>
             
             <View style={styles.webFeatureList}>
               <View style={styles.webFeatureItem}>
@@ -73,7 +73,7 @@ function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
               </View>
             </View>
 
-            <Text style={styles.webFooter}>Todo Ya © 2026 · Experiencia Web Optimizada</Text>
+            <Text style={styles.webFooter}>Todo Ya  2026 · Experiencia Web Optimizada</Text>
           </View>
 
           {/* Columna Derecha: El Emulador / Teléfono Mockup */}
@@ -174,7 +174,7 @@ function NavigationLayout() {
     <ResponsiveWrapper>
       <View style={{ flex: 1 }}>
 
-      {/* ✅ Badge de estado: Offline / Sincronizando */}
+      {/*  Badge de estado: Offline / Sincronizando */}
       {(!isDbOnline || isSyncing) && (
         <View style={[styles.statusBadge, isSyncing ? styles.badgeSyncing : styles.badgeOffline]}>
           {isSyncing 
@@ -182,7 +182,7 @@ function NavigationLayout() {
             : <Ionicons name="cloud-offline-outline" size={12} color="#fff" style={{ marginRight: 4 }} />
           }
           <Text style={styles.statusBadgeText}>
-            {isSyncing ? 'Sincronizando...' : '📡 Modo offline — Datos locales'}
+            {isSyncing ? 'Sincronizando...' : 'Modo offline — Datos locales'}
           </Text>
         </View>
       )}
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   toastClose: {
     padding: 4,
   },
-  // ✅ Badge de estado de conexión
+  //  Badge de estado de conexión
   statusBadge: {
     position: 'absolute',
     top: 0,

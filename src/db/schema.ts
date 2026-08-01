@@ -53,7 +53,7 @@ export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   titulo: varchar('titulo', { length: 256 }).notNull(),
   
-  // ✅ RELACIONAL: FKs al cliente y proveedor por ID
+  //  RELACIONAL: FKs al cliente y proveedor por ID
   clienteId: integer('cliente_id').references(() => users.id, { onDelete: 'set null' }), // Quién solicita el servicio
   proveedorId: integer('proveedor_id').references(() => users.id, { onDelete: 'set null' }), // Quién ejecuta el servicio
 
@@ -86,8 +86,8 @@ export const orders = pgTable('orders', {
 // Tabla de Mensajes de Chat en Tiempo Real (por orden)
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),
-  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(), // ✅ FK al pedido
-  senderId: integer('sender_id').references(() => users.id, { onDelete: 'cascade' }),          // ✅ FK al usuario remitente
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(), //  FK al pedido
+  senderId: integer('sender_id').references(() => users.id, { onDelete: 'cascade' }),          //  FK al usuario remitente
   senderName: varchar('sender_name', { length: 256 }).notNull(),      // Display rápido
   messageText: text('message_text').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
@@ -99,7 +99,7 @@ export const messages = pgTable('messages', {
 // Tabla de Historial de Transacciones (Billetera)
 export const transactions = pgTable('transactions', {
   id: serial('id').primaryKey(),
-  usuario_id: integer('usuario_id').references(() => users.id, { onDelete: 'cascade' }).notNull(), // ✅ FK al usuario
+  usuario_id: integer('usuario_id').references(() => users.id, { onDelete: 'cascade' }).notNull(), //  FK al usuario
   tipo: varchar('tipo', { length: 50 }).$type<'recarga' | 'gasto'>().notNull(),
   monto_monedas: integer('monto_monedas').notNull(),
   detalle: varchar('detalle', { length: 256 }).notNull(), // Ej: "Recarga de monedas (Prueba)" o "Postulación a lead #23"
@@ -108,12 +108,12 @@ export const transactions = pgTable('transactions', {
   usuarioIdx: index('transactions_usuario_idx').on(table.usuario_id),
 }));
 
-// ✅ NUEVA TABLA: Calificaciones (Separadas del pedido para mayor flexibilidad)
+//  NUEVA TABLA: Calificaciones (Separadas del pedido para mayor flexibilidad)
 export const ratings = pgTable('ratings', {
   id: serial('id').primaryKey(),
-  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),       // ✅ FK al pedido calificado
-  calificadorId: integer('calificador_id').references(() => users.id, { onDelete: 'cascade' }),      // ✅ Quién califica
-  calificadoId: integer('calificado_id').references(() => users.id, { onDelete: 'cascade' }),        // ✅ A quién se califica
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),       //  FK al pedido calificado
+  calificadorId: integer('calificador_id').references(() => users.id, { onDelete: 'cascade' }),      //  Quién califica
+  calificadoId: integer('calificado_id').references(() => users.id, { onDelete: 'cascade' }),        //  A quién se califica
   estrellas: integer('estrellas').notNull(),                                 // 1 a 5 estrellas
   etiquetas: jsonb('etiquetas').$type<string[]>(),                           // ["Puntual", "Limpio", "Profesional"]
   comentario: text('comentario'),                                            // Comentario libre (opcional)
@@ -124,11 +124,11 @@ export const ratings = pgTable('ratings', {
   calificadoIdx: index('ratings_calificado_idx').on(table.calificadoId),
 }));
 
-// ✅ NUEVA TABLA: Postulaciones de Proveedores a Pedidos (Historial completo)
+//  NUEVA TABLA: Postulaciones de Proveedores a Pedidos (Historial completo)
 export const applications = pgTable('applications', {
   id: serial('id').primaryKey(),
-  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),       // ✅ FK al pedido
-  proveedorId: integer('proveedor_id').references(() => users.id, { onDelete: 'cascade' }).notNull(), // ✅ FK al proveedor
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),       //  FK al pedido
+  proveedorId: integer('proveedor_id').references(() => users.id, { onDelete: 'cascade' }).notNull(), //  FK al proveedor
   estado: varchar('estado', { length: 50 })
     .$type<'pendiente' | 'aceptado' | 'rechazado'>()
     .default('pendiente')

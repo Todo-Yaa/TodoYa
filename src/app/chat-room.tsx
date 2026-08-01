@@ -127,7 +127,7 @@ export default function ChatRoomScreen() {
           orderId: Number(orderId),
           senderName: senderName,
           messageText: text,
-          senderId: activeUser?.id || null, // ✅ FK real al usuario remitente
+          senderId: activeUser?.id || null, //  FK real al usuario remitente
         }),
       });
     } catch (e) {

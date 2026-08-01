@@ -78,7 +78,7 @@ export default function HomeScreen() {
               <Text style={styles.b2bAvatarText}>{getInitials(userName)}</Text>
             </View>
             <View>
-              <Text style={styles.b2bGreeting}>{userName} 🏢</Text>
+              <Text style={styles.b2bGreeting}>{userName}</Text>
               <TouchableOpacity onPress={() => triggerLocationCheck(true)} activeOpacity={0.7}>
                 <Text style={styles.b2bLocation}>Cuenta Empresa · {lastKnownCity || 'Santa Cruz'}</Text>
               </TouchableOpacity>
@@ -162,7 +162,7 @@ export default function HomeScreen() {
             <Text style={styles.avatarText}>{getInitials(userName)}</Text>
           </View>
           <View>
-            <Text style={styles.greeting}>Hola, {userName || 'Usuario'} 👋</Text>
+            <Text style={styles.greeting}>Hola, {userName || 'Usuario'}</Text>
             <TouchableOpacity onPress={() => triggerLocationCheck(true)} activeOpacity={0.7}>
               <Text style={styles.location}>{lastKnownCity || 'Santa Cruz de la Sierra'}</Text>
             </TouchableOpacity>
@@ -186,7 +186,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Buscador */}
-        <TouchableOpacity style={styles.searchBox} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.searchBox} activeOpacity={0.7} onPress={() => router.push('/solicitar')}>
           <Ionicons name="search" size={24} color="#aaa" />
           <Text style={styles.searchText}>Ej: "tengo una fuga en el lavabo..."</Text>
         </TouchableOpacity>

@@ -287,7 +287,7 @@ class LocalDb {
     const newMsg = {
       ...msg,
       id: newId,
-      senderId: msg.senderId || null,    // ✅ FK al usuario
+      senderId: msg.senderId || null,    //  FK al usuario
       createdAt: new Date().toISOString()
     };
     dbData.messages.push(newMsg);

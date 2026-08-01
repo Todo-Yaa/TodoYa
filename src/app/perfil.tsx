@@ -10,7 +10,6 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
 import KYCVerifierModal from '../components/kyc-verifier-modal';
-import OnboardingModal from '../components/onboarding-modal';
 import TermsPrivacyModal from '../components/terms-privacy-modal';
 import { sanitizeText } from '../utils/security';
 
@@ -22,14 +21,13 @@ import { sanitizeText } from '../utils/security';
  */
 export default function PerfilScreen() {
   const { t, i18n } = useTranslation();
-  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados, lastKnownCity, triggerLocationCheck, actualizarFotoPerfil, actualizarDatosPersonales, getB2BTrialStatus } = useUser();
+  const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados, lastKnownCity, triggerLocationCheck, actualizarFotoPerfil, actualizarDatosPersonales, getB2BTrialStatus, orders } = useUser();
   const isBusiness = userRole === 'business';
 
   useEffect(() => {
     triggerLocationCheck().catch(() => {});
   }, []);
 
-  const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [cargandoFoto, setCargandoFoto] = useState(false);
 
@@ -54,7 +52,7 @@ export default function PerfilScreen() {
       if (diffDias < 30) {
         const diasRestantes = 30 - diffDias;
         setConfirmConfig({
-          title: '⚠️ Límite de 30 días activo',
+          title: 'Límite de 30 días activo',
           message: `Solo puedes modificar tu información personal (Nombre, Correo o Celular) una vez cada 30 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
           onConfirm: () => {},
           singleButton: true
@@ -78,7 +76,7 @@ export default function PerfilScreen() {
       if (diffDays < 15) {
         const diasRestantes = Math.ceil(15 - diffDays);
         setConfirmConfig({
-          title: '⚠️ Límite de 15 días activo',
+          title: 'Límite de 15 días activo',
           message: `Solo puedes cambiar o eliminar tu foto de perfil cada 15 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
           onConfirm: () => {}
         });
@@ -122,7 +120,7 @@ export default function PerfilScreen() {
       if (diffDays < 15) {
         const diasRestantes = Math.ceil(15 - diffDays);
         setConfirmConfig({
-          title: '⚠️ Límite de 15 días activo',
+          title: 'Límite de 15 días activo',
           message: `Solo puedes cambiar o eliminar tu foto de perfil cada 15 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
           onConfirm: () => {}
         });
@@ -132,7 +130,7 @@ export default function PerfilScreen() {
     }
 
     setConfirmConfig({
-      title: '🗑️ ¿Eliminar foto de perfil?',
+      title: '¿Eliminar foto de perfil?',
       message: '¿Estás seguro de que deseas eliminar tu foto de perfil? Esto contará como una modificación y no podrás volver a subir una foto por 15 días.',
       onConfirm: async () => {
         setCargandoFoto(true);
@@ -160,6 +158,10 @@ export default function PerfilScreen() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [reportsList, setReportsList] = useState<any[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
+
+  // Estado para modal de alerta general
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ titulo: string; mensaje: string }>({ titulo: '', mensaje: '' });
 
   const cargarReportes = async () => {
     setLoadingReports(true);
@@ -251,7 +253,7 @@ export default function PerfilScreen() {
 
   const handleDeleteAccount = () => {
     setConfirmConfig({
-      title: '⚠️ ¿Eliminar tu Cuenta?',
+      title: '¿Eliminar tu Cuenta?',
       message: '¿Estás completamente seguro? Esta acción es definitiva y borrará permanentemente todos tus datos, historial de pedidos y saldo acumulado de forma irreversible.',
       onConfirm: async () => {
         await deleteAccount();
@@ -319,11 +321,11 @@ export default function PerfilScreen() {
           
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{isBusiness ? '5' : '12'}</Text>
+              <Text style={styles.statNumber}>{isBusiness ? orders.filter(o => o.estado === 'Completado' && o.servicio.includes('B2B')).length : orders.filter(o => o.estado === 'Completado').length}</Text>
               <Text style={styles.statLabel}>{isBusiness ? 'Pedidos B2B' : 'Servicios'}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>4.9 ★</Text>
+              <Text style={styles.statNumber}>{(() => { const rated = orders.filter(o => o.calificacionEstrellas); return rated.length > 0 ? `${(rated.reduce((s, o) => s + (o.calificacionEstrellas || 0), 0) / rated.length).toFixed(1)} ★` : '—'; })()}</Text>
               <Text style={styles.statLabel}>Calificación</Text>
             </View>
           </View>
@@ -489,7 +491,10 @@ export default function PerfilScreen() {
             </>
           )}
 
-          <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={() => setShowTutorialModal(true)}>
+          <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={async () => {
+            await Storage.removeItem('todo_ya_has_seen_onboarding');
+            router.replace('/');
+          }}>
             <Ionicons name="sparkles-outline" size={24} color={isBusiness ? "#6366f1" : "#FFB400"} />
             <Text style={[styles.accountText, { color: isBusiness ? "#6366f1" : "#d97706", fontWeight: '600' }]}>
               Ver Tutorial de Bienvenida (Onboarding)
@@ -513,7 +518,7 @@ export default function PerfilScreen() {
             <Ionicons name="globe-outline" size={24} color="#666" />
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <Text style={styles.accountText}>{t('profile.language')}</Text>
-              <View style={{ flexDirection: 'row', gap: 4 }}>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
                 {[
                   { code: 'es', name: 'ES' },
                   { code: 'en', name: 'EN' },
@@ -527,8 +532,8 @@ export default function PerfilScreen() {
                     <TouchableOpacity
                       key={lang.code}
                       style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 5,
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
                         borderRadius: 8,
                         backgroundColor: isActive ? (isBusiness ? '#6366f1' : '#FFB400') : '#e2e8f0',
                       }}
@@ -539,7 +544,7 @@ export default function PerfilScreen() {
                       activeOpacity={0.7}
                     >
                       <Text style={{ 
-                        fontSize: 10, 
+                        fontSize: 11, 
                         fontWeight: 'bold', 
                         color: isActive ? (isBusiness ? '#fff' : '#2F2F2F') : '#475569' 
                       }}>
@@ -602,7 +607,7 @@ export default function PerfilScreen() {
         </View>
 
         <Text style={{ textAlign: 'center', color: '#aaa', marginTop: 40, fontSize: 12 }}>
-          Todo Ya © 2026
+          Todo Ya  2026
         </Text>
       </ScrollView>
 
@@ -895,12 +900,6 @@ export default function PerfilScreen() {
         </View>
       )}
 
-      {/* Modal de Tutorial de Bienvenida (Onboarding) */}
-      <OnboardingModal 
-        visible={showTutorialModal}
-        onClose={() => setShowTutorialModal(false)}
-      />
-
       {/* Modal de Términos, Privacidad & Cumplimiento Legal */}
       <TermsPrivacyModal
         visible={showTermsModal}
@@ -911,7 +910,7 @@ export default function PerfilScreen() {
       {showEditPersonalModal && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>👤 Modificar Datos Personales</Text>
+            <Text style={styles.modalTitle}>Modificar Datos Personales</Text>
             <Text style={{ fontSize: 13, color: '#666', marginBottom: 14, lineHeight: 18 }}>
               Nota importante: Solo puedes modificar tu Nombre, Correo o Celular una vez cada 30 días.
             </Text>
@@ -1041,9 +1040,10 @@ export default function PerfilScreen() {
                                 style={[styles.adminActionBtn, { backgroundColor: '#10b981' }]}
                                 onPress={async () => {
                                   const ok = await banearProveedor(providerEmailOrPhone, false);
-                                  if (ok) {
-                                    alert(`Se ha levantado la suspensión a ${rep.reportadoNombre}.`);
-                                    cargarReportes();
+                                   if (ok) {
+                                     setAlertConfig({ titulo: 'Éxito', mensaje: `Se ha levantado la suspensión a ${rep.reportadoNombre}.` });
+                                     setShowAlertModal(true);
+                                     cargarReportes();
                                   }
                                 }}
                                 activeOpacity={0.7}
@@ -1056,9 +1056,10 @@ export default function PerfilScreen() {
                                 style={[styles.adminActionBtn, { backgroundColor: '#ef4444' }]}
                                 onPress={async () => {
                                   const ok = await banearProveedor(providerEmailOrPhone, true);
-                                  if (ok) {
-                                    alert(`Se ha baneado y suspendido permanentemente la cuenta de ${rep.reportadoNombre}.`);
-                                    cargarReportes();
+                                   if (ok) {
+                                     setAlertConfig({ titulo: 'Suspendido', mensaje: `Se ha baneado y suspendido permanentemente la cuenta de ${rep.reportadoNombre}.` });
+                                     setShowAlertModal(true);
+                                     cargarReportes();
                                   }
                                 }}
                                 activeOpacity={0.7}

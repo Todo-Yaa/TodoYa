@@ -190,6 +190,8 @@ export default function PedidosScreen() {
   const [reportDescription, setReportDescription] = useState('');
   const [sendingReport, setSendingReport] = useState(false);
   const [showReportSuccessModal, setShowReportSuccessModal] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ titulo: string; mensaje: string }>({ titulo: '', mensaje: '' });
 
   const abrirModalReporte = (orderId: number, providerName: string) => {
     setReportOrderId(orderId);
@@ -201,7 +203,8 @@ export default function PedidosScreen() {
 
   const enviarReporte = async () => {
     if (!reportDescription.trim()) {
-      alert('Por favor describe brevemente el problema.');
+      setAlertConfig({ titulo: 'Campo vacío', mensaje: 'Por favor describe brevemente el problema.' });
+      setShowAlertModal(true);
       return;
     }
     setSendingReport(true);
@@ -216,7 +219,8 @@ export default function PedidosScreen() {
     if (exito) {
       setShowReportSuccessModal(true);
     } else {
-      alert('Hubo un problema al registrar la denuncia. Reintenta por favor.');
+      setAlertConfig({ titulo: 'Error', mensaje: 'Hubo un problema al registrar la denuncia. Reintenta por favor.' });
+      setShowAlertModal(true);
     }
   };
   const [etaSeconds, setEtaSeconds] = useState(300);
@@ -413,9 +417,18 @@ export default function PedidosScreen() {
         })}
 
         {pedidos.length === 0 && (
-          <View style={{ alignItems: 'center', marginTop: 100 }}>
+          <View style={{ alignItems: 'center', marginTop: 100, paddingHorizontal: 20 }}>
             <Ionicons name="document-outline" size={60} color="#ccc" />
-            <Text style={{ color: '#888', marginTop: 16 }}>Aún no tienes pedidos</Text>
+            <Text style={{ color: '#888', marginTop: 16, fontSize: 15 }}>Aún no tienes pedidos</Text>
+            <Text style={{ color: '#aaa', marginTop: 6, fontSize: 13, textAlign: 'center' }}>Describe tu problema y te conectamos con el mejor proveedor</Text>
+            <TouchableOpacity
+              style={{ marginTop: 20, backgroundColor: '#FFB400', paddingVertical: 12, paddingHorizontal: 32, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              onPress={() => router.push('/solicitar')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Solicitar servicio</Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -625,7 +638,7 @@ export default function PedidosScreen() {
             <View style={{ flexDirection: 'row', gap: 10, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 16 }}>
               <TouchableOpacity
                 style={[styles.invoicePrintBtn, { flex: 1 }]}
-                onPress={() => alert('Factura descargada en formato PDF de manera exitosa.')}
+                onPress={() => { setAlertConfig({ titulo: 'Descarga', mensaje: 'Factura descargada en formato PDF de manera exitosa.' }); setShowAlertModal(true); }}
                 activeOpacity={0.7}
               >
                 <Ionicons name="download-outline" size={18} color="#fff" />
@@ -730,6 +743,23 @@ export default function PedidosScreen() {
               activeOpacity={0.7}
             >
               <Text style={{ color: '#fff', fontWeight: '700' }}>Entendido</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de alerta general */}
+      <Modal visible={showAlertModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 30, width: '100%', maxWidth: 360, alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginBottom: 12, textAlign: 'center' }}>{alertConfig.titulo}</Text>
+            <Text style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 24 }}>{alertConfig.mensaje}</Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#6366f1', paddingVertical: 12, paddingHorizontal: 32, borderRadius: 12, width: '100%' }}
+              onPress={() => setShowAlertModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700', textAlign: 'center' }}>Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>

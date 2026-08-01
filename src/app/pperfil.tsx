@@ -35,7 +35,7 @@ export default function ProviderPerfilScreen() {
       if (diffDays < 15) {
         const diasRestantes = Math.ceil(15 - diffDays);
         setConfirmConfig({
-          title: '⚠️ Límite de 15 días activo',
+          title: 'Límite de 15 días activo',
           message: `Solo puedes cambiar o eliminar tu foto de perfil cada 15 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
           onConfirm: () => {},
           singleButton: true
@@ -80,7 +80,7 @@ export default function ProviderPerfilScreen() {
       if (diffDays < 15) {
         const diasRestantes = Math.ceil(15 - diffDays);
         setConfirmConfig({
-          title: '⚠️ Límite de 15 días activo',
+          title: 'Límite de 15 días activo',
           message: `Solo puedes cambiar o eliminar tu foto de perfil cada 15 días. Podrás realizar cambios nuevamente en ${diasRestantes} días.`,
           onConfirm: () => {},
           singleButton: true
@@ -91,7 +91,7 @@ export default function ProviderPerfilScreen() {
     }
 
     setConfirmConfig({
-      title: '🗑️ ¿Eliminar foto de perfil?',
+      title: '¿Eliminar foto de perfil?',
       message: '¿Estás seguro de que deseas eliminar tu foto de perfil? Esto contará como una modificación y no podrás volver a subir una foto por 15 días.',
       onConfirm: async () => {
         setCargandoFoto(true);
@@ -140,7 +140,7 @@ export default function ProviderPerfilScreen() {
 
   const handleDeleteAccount = () => {
     setConfirmConfig({
-      title: '⚠️ ¿Eliminar tu Cuenta?',
+      title: '¿Eliminar tu Cuenta?',
       message: '¿Estás completamente seguro? Esta acción es definitiva y borrará permanentemente todos tus datos, historial de trabajos y saldo acumulado de forma irreversible.',
       singleButton: false,
       onConfirm: async () => {
