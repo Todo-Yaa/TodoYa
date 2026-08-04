@@ -46,10 +46,13 @@
 ### 6. Sistema de Calificación Forzada con Bloqueo (Estilo Jango)
 * **Bloqueo a Nivel Raíz**: La aplicación detecta servicios completados sin calificar y bloquea el uso hasta recibir la evaluación con estrellas y etiquetas de retroalimentación.
 
-### 7. Verificación KYC de Proveedores
-* **Modulo KYC Obligatorio**: Escaneo de DNI/C.I. y biometría facial mediante selfie para autorizar el perfil de proveedor de servicios.
+### 7. Verificación KYC de Proveedores (Jumio & Onfido Biométrico)
+* **Modulo KYC Obligatorio**: Escaneo de DNI/C.I. y biometría facial mediante selfie (*Facematch Liveness*) conectado con **Onfido API** y **Jumio Netverify API** en `/api/kyc`.
 
-### 8. Sistema de Denuncias y Control de Baneo (Administrador)
+### 8. Sistema de Almacenamiento CDN en Nube (Cloudinary & Firebase)
+* **Gestión de Imágenes en la Nube**: Subida automática de fotos de perfil y documentos a **Cloudinary CDN** y **Firebase Storage** a través de `/api/upload` y `image-uploader.ts`.
+
+### 9. Sistema de Denuncias y Control de Baneo (Administrador)
 * **Reportes y Baneo en Tiempo Real**: Botón de denuncia en tarjetas de pedido y panel administrativo para suspender/reactivar cuentas infractoras.
 
 ---
@@ -61,8 +64,9 @@ La arquitectura de **Todo Ya** ha sido sometida a análisis y pruebas de concurr
 1. **APIs Legales RENIEC / SUNAT (`/api/peru-legal`)**: Sistema de tolerancia a fallos (*fallback automático*) que procesa consultas de DNI de 8 dígitos y RUC de 11 dígitos sin congelar la aplicación ante alta demanda.
 2. **Geocodificación GPS (`/api/peru-geo`)**: Uso de GPS nativo en móviles (`expo-location`) con consumo 0 de servidor, y respaldo OpenStreetMap Nominatim en Web.
 3. **Facturación y Comprobantes SUNAT (`/api/peru-invoice`)**: Funciones Serverless en Vercel de auto-escalado dinámico con capacidad para procesar miles de Boletas/Facturas con IGV (18%) por segundo.
-4. **Verificación de Teléfono por WhatsApp (`/api/send-sms`)**: Transmisión nativa ilimitada por protocolo `wa.me/+51` con costo cero de infraestructura.
-5. **Base de Datos Neon DB (PostgreSQL)**: Conexión mediante *Connection Pooling Serverless* optimizada para gestionar más de **10,000 conexiones concurrentes**.
+4. **Verificación KYC Biométrico (`/api/kyc`)**: Conexión con Jumio API y Onfido API para validación facial y de documentos.
+5. **Almacenamiento CDN en Nube (`/api/upload`)**: Hospedaje distribuido en Cloudinary y Firebase Storage.
+6. **Base de Datos Neon DB (PostgreSQL)**: Conexión mediante *Connection Pooling Serverless* optimizada para gestionar más de **10,000 conexiones concurrentes**.
 
 ---
 
@@ -79,4 +83,4 @@ El proyecto cuenta con su documentación ejecutiva estructurada en:
 2. **Estilos**: Vanilla CSS / React Native StyleSheet con tokens de diseño adaptativos.
 3. **IA & NLP**: Google Gemini API integration para reconocimiento gramatical, multilingüismo y emparejamiento semántico de 2 niveles.
 4. **Base de Datos & Backend**: Neon DB (PostgreSQL) con Drizzle ORM y Expo API Routes Serverless.
-5. **APIs Locales Perú**: `/api/peru-legal` (RENIEC/SUNAT), `/api/peru-geo` (OpenStreetMap) y `/api/peru-invoice` (Comprobantes IGV 18%).
+5. **APIs Locales & CDN**: `/api/peru-legal` (RENIEC/SUNAT), `/api/peru-geo` (OpenStreetMap), `/api/peru-invoice` (Comprobantes IGV 18%), `/api/kyc` (Jumio/Onfido) y `/api/upload` (Cloudinary/Firebase).
