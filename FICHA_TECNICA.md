@@ -291,14 +291,16 @@ erDiagram
 
 ## 🔄 5. Diagramas de Procesos y Casos de Uso
 
-### A. Registro, Selección y Separación de Roles
+### A. Registro, Selección, Términos Legales y Separación de Roles
 ```mermaid
 graph TD
     A[Inicio Registro] --> B{¿Tipo de Entidad?}
     B -->|Persona Natural| C[Registro como Natural]
     B -->|Empresa B2B| D[Registro como Empresa]
     
-    C & D --> PIN[SMS PIN Doble Verificación]
+    C & D --> TERMS{¿Acepta Términos y Privacidad?}
+    TERMS -->|No| ALERT[Modal Alerta Bloqueante]
+    TERMS -->|Sí| PIN[Verificación Real PIN vía WhatsApp / SMS]
     PIN -->|PIN Correcto| B2{¿Tipo de Entidad?}
     
     B2 -->|Persona Natural| E[Rol por Defecto: Cliente Natural]

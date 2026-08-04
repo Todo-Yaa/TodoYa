@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView, Platform, Modal } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView, Platform, Modal, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useUser, UserRole } from '../context/user-context';
@@ -66,6 +66,7 @@ export default function LoginScreen() {
   const [celular, setCelular] = useState("");
   const [correoRegistro, setCorreoRegistro] = useState("");
   const [mostrarPaises, setMostrarPaises] = useState(false);
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
 
   // Estados de verificación doble por PIN SMS
   const [mostrarModalPIN, setMostrarModalPIN] = useState(false);
@@ -123,22 +124,57 @@ export default function LoginScreen() {
   const [mostrarContrasenaRegistro, setMostrarContrasenaRegistro] = useState(false);
 
   /**
-   * Registra manualmente un nuevo usuario en la app.
+   * Envia el mensaje directo de verificación por WhatsApp usando enlace profundo (wa.me)
    */
-  const enviarSmsPin = () => {
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+  const abrirWhatsAppConPin = (code: string) => {
+    const celLimpio = celular.replace(/\D/g, "");
+    const codPaisLimpio = codigoPais.replace(/\D/g, "");
+    const numCompleto = `${codPaisLimpio}${celLimpio}`;
+    const mensaje = `🔑 *Todo Ya (BETA)* - Tu código de verificación de seguridad de 4 dígitos es: *${code}*`;
+    const url = `https://wa.me/${numCompleto}?text=${encodeURIComponent(mensaje)}`;
+    Linking.openURL(url).catch((err) => {
+      console.warn("No se pudo abrir WhatsApp directamente:", err);
+    });
+  };
+
+  /**
+   * Envia el mensaje directo de verificación por SMS nativo
+   */
+  const abrirSmsConPin = (code: string) => {
+    const celLimpio = celular.replace(/\D/g, "");
+    const codPaisLimpio = codigoPais.replace(/\D/g, "");
+    const numCompleto = `+${codPaisLimpio}${celLimpio}`;
+    const mensaje = `SMS Todo Ya (BETA): Tu código de verificación es ${code}`;
+    const separator = Platform.OS === "ios" ? "&" : "?";
+    const url = `sms:${numCompleto}${separator}body=${encodeURIComponent(mensaje)}`;
+    Linking.openURL(url).catch((err) => {
+      console.warn("No se pudo abrir la app de SMS:", err);
+    });
+  };
+
+  /**
+   * Genera el PIN de verificación y ofrece canal directo (WhatsApp, SMS o automático)
+   */
+  const enviarSmsPin = (canal: "auto" | "whatsapp" | "sms" = "auto") => {
+    const code = pinGenerado || Math.floor(1000 + Math.random() * 9000).toString();
     setPinGenerado(code);
     setPinIngresado("");
     setSmsCountdown(60);
     setPinError("");
     setSmsToastText(
-      `SMS de Todo Ya: Tu código de verificación de doble factor es ${code}.`,
+      `SMS de Todo Ya (BETA): Tu código de verificación de doble factor es ${code}.`,
     );
 
-    // Auto-ocultar toast de SMS después de 12 segundos
+    if (canal === "whatsapp") {
+      abrirWhatsAppConPin(code);
+    } else if (canal === "sms") {
+      abrirSmsConPin(code);
+    }
+
+    // Auto-ocultar toast emergente después de 14 segundos
     setTimeout(() => {
       setSmsToastText((prev) => (prev && prev.includes(code) ? null : prev));
-    }, 12000);
+    }, 14000);
   };
 
   const confirmarPinYRegistrar = async () => {
@@ -239,6 +275,15 @@ export default function LoginScreen() {
       setConfiguracionModal({
         titulo: "Contraseña inválida",
         mensaje: "La contraseña debe tener al menos 4 caracteres.",
+      });
+      setMostrarModal(true);
+      return;
+    }
+
+    if (!aceptaTerminos) {
+      setConfiguracionModal({
+        titulo: "Términos no aceptados",
+        mensaje: "Debes aceptar los Términos de Servicio y la Política de Privacidad para registrarte.",
       });
       setMostrarModal(true);
       return;
@@ -693,7 +738,12 @@ export default function LoginScreen() {
             style={styles.logoImage}
             contentFit="contain"
           />
-          <Text style={styles.tagline}>¿Tienes problemas? Ten ¡Todo Ya!</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+            <Text style={styles.tagline}>¿Tienes problemas? Ten ¡Todo Ya!</Text>
+            <View style={{ backgroundColor: "#FFB400", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+              <Text style={{ color: "#2F2F2F", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>BETA</Text>
+            </View>
+          </View>
         </View>
 
         {/* Tarjeta de Formulario de Entrada */}
@@ -1062,6 +1112,51 @@ export default function LoginScreen() {
                   </View>
                 </View>
               )}
+
+              {/* Casilla Obligatoria de Aceptación de Términos (Únicamente al registrar nuevo usuario) */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: 14,
+                  marginBottom: 10,
+                  paddingHorizontal: 4,
+                }}
+                onPress={() => setAceptaTerminos(!aceptaTerminos)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={aceptaTerminos ? "checkbox" : "square-outline"}
+                  size={22}
+                  color={aceptaTerminos ? "#FFB400" : "#888"}
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={{ fontSize: 12, color: "#475569", flex: 1, lineHeight: 18 }}>
+                  Acepto los{" "}
+                  <Text
+                    style={{ color: "#3b82f6", textDecorationLine: "underline", fontWeight: "600" }}
+                    onPress={(e: any) => {
+                      if (e && e.stopPropagation) e.stopPropagation();
+                      setTermsTab("terms");
+                      setMostrarLegalModal(true);
+                    }}
+                  >
+                    Términos de Servicio
+                  </Text>{" "}
+                  y la{" "}
+                  <Text
+                    style={{ color: "#3b82f6", textDecorationLine: "underline", fontWeight: "600" }}
+                    onPress={(e: any) => {
+                      if (e && e.stopPropagation) e.stopPropagation();
+                      setTermsTab("privacy");
+                      setMostrarLegalModal(true);
+                    }}
+                  >
+                    Política de Privacidad
+                  </Text>
+                  .
+                </Text>
+              </TouchableOpacity>
             </ScrollView>
           ) : (
             // FORMULARIO DE INICIO DE SESIÓN MANUAL
@@ -1167,39 +1262,6 @@ export default function LoginScreen() {
                 : "¿No tienes cuenta? Regístrate aquí"}
             </Text>
           </TouchableOpacity>
-
-          {/* Leyenda Legal y Términos para Cumplimiento de App Store / Google Play */}
-          <View style={styles.legalNoticeContainer}>
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={14}
-              color="#71717a"
-              style={{ marginRight: 4 }}
-            />
-            <Text style={styles.legalNoticeText}>
-              Al continuar, aceptas nuestros{" "}
-              <Text
-                style={styles.legalNoticeLink}
-                onPress={() => {
-                  setTermsTab("terms");
-                  setMostrarLegalModal(true);
-                }}
-              >
-                Términos de Servicio
-              </Text>{" "}
-              y nuestra{" "}
-              <Text
-                style={styles.legalNoticeLink}
-                onPress={() => {
-                  setTermsTab("privacy");
-                  setMostrarLegalModal(true);
-                }}
-              >
-                Política de Privacidad
-              </Text>
-              .
-            </Text>
-          </View>
         </View>
 
         {/* Accesos Rápidos de Prueba (Con inicio de sesión automático y disabled al cargar) */}
@@ -1536,20 +1598,37 @@ export default function LoginScreen() {
                 <Text style={styles.modalConfirmText}>Verificar y Activar</Text>
               </TouchableOpacity>
 
+              {/* Botón de Enviar Código a WhatsApp */}
               <TouchableOpacity
-                style={[styles.resendBtn, smsCountdown > 0 && { opacity: 0.5 }]}
-                disabled={smsCountdown > 0}
-                onPress={enviarSmsPin}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "#25D366",
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  gap: 8,
+                }}
+                onPress={() => enviarSmsPin("whatsapp")}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                  Enviar a mi WhatsApp
+                </Text>
+              </TouchableOpacity>
+
+              {/* Botón de Enviar por SMS Nativo */}
+              <TouchableOpacity
+                style={[
+                  styles.resendBtn,
+                  { flexDirection: "row", justifyContent: "center", gap: 6 },
+                ]}
+                onPress={() => enviarSmsPin("sms")}
                 activeOpacity={0.7}
               >
-                <Text
-                  style={[
-                    styles.resendText,
-                    smsCountdown > 0 && styles.resendTextDisabled,
-                  ]}
-                >
-                  Reenviar código por SMS
-                </Text>
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color="#475569" />
+                <Text style={styles.resendText}>Enviar por SMS</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

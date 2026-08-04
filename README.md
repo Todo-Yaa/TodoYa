@@ -6,15 +6,18 @@
 
 ## 🎨 Imagen de Marca y Diseño Premium
 
-* **Logotipo Oficial**: Integrado de manera consistente en la pantalla de inicio de sesión (`login-screen`), pantallas de carga (`splash screen`), iconos de la aplicación (iOS/Android/Web) e iconos adaptables de sistemas operativos.
+* **Logotipo Oficial e Insignia BETA**: Integrado de manera consistente en la pantalla de inicio de sesión (`login-screen`), pantallas de carga (`splash screen`), iconos de la aplicación (iOS/Android/Web) e interfaz general con la insignia estilizada **`BETA`** para indicar la fase activa de demostración y pruebas.
 * **Color de Marca**: **`#FFB400`** (un tono oro/amarillo cálido extraído del logotipo oficial) combinado con acabados premium en gris oscuro (`#2F2F2F`) y gradientes modernos en la interfaz de usuario.
 * **Estilos B2B y Proveedor**: Acabados en tonalidades índigo (`#6366f1` / `#1e293b`) para denotar un entorno corporativo y profesional premium.
+* **Diseño Fijo de Selección Multilingüe**: El selector de idiomas (`ES`, `EN`, `PT-BR`, `QU`, `AY`, `GN`) implementa un contenedor con posición y alineación fija e inamovible, impidiendo desplazamientos o desalineaciones visuales al alternar entre idiomas.
 
 ---
 
 ## 🛠️ Características Principales Implementadas
 
-### 1. Registro Validado e Inicio de Sesión Multimodal (Flexibilidad y Seguridad)
+### 1. Registro Validado, Términos Exclusivos y Verificación Real por WhatsApp / SMS
+* **Términos y Condiciones en Registro de Nuevos Usuarios**: La aceptación explícita y obligatoria de los Términos de Servicio y Política de Privacidad mediante casilla de verificación se exige **exclusivamente al crear una cuenta nueva**, eliminando fricciones en el inicio de sesión habitual.
+* **Verificación de Teléfono Real (WhatsApp & SMS)**: Proceso de validación mediante código PIN de 4 dígitos con integración directa para transmisión por **WhatsApp** (`https://wa.me/...`) y **SMS nativo** (`sms:`), además de notificación flotante emergente de respaldo.
 * **Registro de Usuarios con Correo Real**: Se captura y valida la dirección de correo real (con control de formato `@` y no vacío) para el registro de cuentas de personas y empresas.
 * **Registro por Defecto**: Los usuarios nuevos se registran automáticamente con rol de comprador (`client` para personas naturales y `business` para empresas B2B).
 * **Login Flexible**: El sistema de autenticación admite el inicio de sesión indicando indistintamente el correo (`correoOTelefono`), el número celular (`celular`) o con el código de país (`+${codigoPais} ${celular}`).

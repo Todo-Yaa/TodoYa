@@ -513,47 +513,50 @@ export default function PerfilScreen() {
             <Ionicons name="chevron-forward" size={18} color="#aaa" />
           </TouchableOpacity>
 
-          {/* Fila del selector de idiomas */}
-          <View style={styles.accountRow}>
-            <Ionicons name="globe-outline" size={24} color="#666" />
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <Text style={styles.accountText}>{t('profile.language')}</Text>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                {[
-                  { code: 'es', name: 'ES' },
-                  { code: 'en', name: 'EN' },
-                  { code: 'pt', name: 'PT-BR' },
-                  { code: 'qu', name: 'QU' },
-                  { code: 'ay', name: 'AY' },
-                  { code: 'gn', name: 'GN' }
-                ].map((lang) => {
-                  const isActive = i18n.language === lang.code;
-                  return (
-                    <TouchableOpacity
-                      key={lang.code}
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        borderRadius: 8,
-                        backgroundColor: isActive ? (isBusiness ? '#6366f1' : '#FFB400') : '#e2e8f0',
-                      }}
-                      onPress={async () => {
-                        await i18n.changeLanguage(lang.code);
-                        await Storage.setItem('user-language', lang.code);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={{ 
-                        fontSize: 11, 
-                        fontWeight: 'bold', 
-                        color: isActive ? (isBusiness ? '#fff' : '#2F2F2F') : '#475569' 
-                      }}>
-                        {lang.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+          {/* Fila del selector de idiomas (diseño fijo independiente del idioma seleccionado) */}
+          <View style={[styles.accountRow, { flexDirection: 'column', alignItems: 'flex-start', gap: 10, paddingVertical: 14 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="globe-outline" size={22} color="#666" />
+              <Text style={[styles.accountText, { fontWeight: '600' }]}>{t('profile.language')}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'nowrap', gap: 6, width: '100%', justifyContent: 'flex-start' }}>
+              {[
+                { code: 'es', name: 'ES' },
+                { code: 'en', name: 'EN' },
+                { code: 'pt', name: 'PT-BR' },
+                { code: 'qu', name: 'QU' },
+                { code: 'ay', name: 'AY' },
+                { code: 'gn', name: 'GN' }
+              ].map((lang) => {
+                const isActive = i18n.language === lang.code;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    style={{
+                      minWidth: 42,
+                      paddingHorizontal: 8,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isActive ? (isBusiness ? '#6366f1' : '#FFB400') : '#e2e8f0',
+                    }}
+                    onPress={async () => {
+                      await i18n.changeLanguage(lang.code);
+                      await Storage.setItem('user-language', lang.code);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ 
+                      fontSize: 11, 
+                      fontWeight: 'bold', 
+                      color: isActive ? (isBusiness ? '#fff' : '#2F2F2F') : '#475569' 
+                    }}>
+                      {lang.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 

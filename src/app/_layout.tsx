@@ -51,7 +51,12 @@ function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
               source={require('../../assets/icon.png')}
               style={[styles.webLogo, { borderColor: colorMarca }]}
             />
-            <Text style={styles.webTitle}>Todo Ya</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <Text style={styles.webTitle}>Todo Ya</Text>
+              <View style={styles.webBetaBadge}>
+                <Text style={styles.webBetaBadgeText}>BETA</Text>
+              </View>
+            </View>
             <Text style={styles.webSlogan}>Servicios locales en minutos</Text>
             
             <View style={styles.webFeatureList}>
@@ -73,7 +78,7 @@ function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
               </View>
             </View>
 
-            <Text style={styles.webFooter}>Todo Ya  2026 · Experiencia Web Optimizada</Text>
+            <Text style={styles.webFooter}>Todo Ya (BETA)  2026 · Experiencia Web Optimizada</Text>
           </View>
 
           {/* Columna Derecha: El Emulador / Teléfono Mockup */}
@@ -456,18 +461,29 @@ function CustomSplashScreen() {
         entering={FadeIn.duration(800).delay(500)}
         style={{ alignItems: 'center', marginTop: -10 }}
       >
-        <Text style={{
-          color: '#FFB400',
-          fontSize: 32,
-          fontWeight: '900',
-          letterSpacing: 6,
-          textTransform: 'uppercase',
-          textShadowColor: 'rgba(255, 180, 0, 0.4)',
-          textShadowOffset: { width: 0, height: 4 },
-          textShadowRadius: 15,
-        }}>
-          Todo Ya
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{
+            color: '#FFB400',
+            fontSize: 32,
+            fontWeight: '900',
+            letterSpacing: 6,
+            textTransform: 'uppercase',
+            textShadowColor: 'rgba(255, 180, 0, 0.4)',
+            textShadowOffset: { width: 0, height: 4 },
+            textShadowRadius: 15,
+          }}>
+            Todo Ya
+          </Text>
+          <View style={{
+            backgroundColor: '#FFB400',
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 6,
+            alignSelf: 'center',
+          }}>
+            <Text style={{ color: '#1E1E1E', fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>BETA</Text>
+          </View>
+        </View>
         <Text style={{
           color: '#aaaaaa',
           fontSize: 11,
@@ -618,6 +634,18 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
     letterSpacing: -1,
     marginBottom: 8,
+  },
+  webBetaBadge: {
+    backgroundColor: '#FFB400',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  webBetaBadgeText: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
   webSlogan: {
     fontSize: 18,
