@@ -153,28 +153,42 @@ export default function LoginScreen() {
   };
 
   /**
-   * Genera el PIN de verificación y ofrece canal directo (WhatsApp, SMS o automático)
+   * Genera el PIN de verificación y envía mensaje real a celular por API, WhatsApp o SMS
    */
-  const enviarSmsPin = (canal: "auto" | "whatsapp" | "sms" = "auto") => {
-    const code = pinGenerado || Math.floor(1000 + Math.random() * 9000).toString();
+  const enviarSmsPin = async (canal: "auto" | "whatsapp" | "sms" = "auto") => {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
     setPinGenerado(code);
     setPinIngresado("");
     setSmsCountdown(60);
     setPinError("");
-    setSmsToastText(
-      `SMS de Todo Ya (BETA): Tu código de verificación de doble factor es ${code}.`,
-    );
+    setSmsToastText(null); // No utilizar toasts simulados en pantalla
 
+    const celLimpio = celular.replace(/\D/g, "");
+    const codPaisLimpio = codigoPais.replace(/\D/g, "");
+    const fullPhone = `+${codPaisLimpio}${celLimpio}`;
+
+    // Disparar endpoint serverless para envío real
+    try {
+      fetch("/api/send-sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone, code, channel: canal }),
+      }).catch((err) => console.warn("[SMS API Error]:", err));
+    } catch (e) {}
+
+    // Transmisión inmediata mediante aplicación nativa o web
     if (canal === "whatsapp") {
       abrirWhatsAppConPin(code);
     } else if (canal === "sms") {
       abrirSmsConPin(code);
+    } else {
+      // Por defecto en auto, abrir el canal de mensajes directamente al teléfono del usuario
+      if (Platform.OS === "web") {
+        abrirWhatsAppConPin(code);
+      } else {
+        abrirSmsConPin(code);
+      }
     }
-
-    // Auto-ocultar toast emergente después de 14 segundos
-    setTimeout(() => {
-      setSmsToastText((prev) => (prev && prev.includes(code) ? null : prev));
-    }, 14000);
   };
 
   const confirmarPinYRegistrar = async () => {
@@ -738,12 +752,13 @@ export default function LoginScreen() {
             style={styles.logoImage}
             contentFit="contain"
           />
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
-            <Text style={styles.tagline}>¿Tienes problemas? Ten ¡Todo Ya!</Text>
-            <View style={{ backgroundColor: "#FFB400", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-              <Text style={{ color: "#2F2F2F", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>BETA</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8, marginBottom: 4 }}>
+            <Text style={{ fontSize: 30, fontWeight: "900", color: "#FFB400", letterSpacing: 1 }}>Todo Ya</Text>
+            <View style={{ backgroundColor: "#e11d48", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 }}>
+              <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "900", letterSpacing: 1.5 }}>BETA</Text>
             </View>
           </View>
+          <Text style={styles.tagline}>¿Tienes problemas? Ten ¡Todo Ya!</Text>
         </View>
 
         {/* Tarjeta de Formulario de Entrada */}

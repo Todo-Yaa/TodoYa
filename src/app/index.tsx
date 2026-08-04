@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator, Image } from 'react-native';
 import { router } from 'expo-router';
 import MapView from '../components/map-view';
 import { useUser } from '../context/user-context';
@@ -8,7 +8,7 @@ import { matchProviders } from '../services/ai-matching';
 import NotificationTray from '../components/notification-tray';
 
 export default function HomeScreen() {
-  const { userRole, userName, orders, addOrder, notificationsList, markAllNotificationsRead, clearAllNotifications, lastKnownCity, triggerLocationCheck } = useUser();
+  const { userRole, userName, activeUser, orders, addOrder, notificationsList, markAllNotificationsRead, clearAllNotifications, lastKnownCity, triggerLocationCheck } = useUser();
 
   useEffect(() => {
     triggerLocationCheck().catch(() => {});
@@ -47,15 +47,8 @@ export default function HomeScreen() {
       const price = res.precioSugerido || 'Bs. 150';
       const correctedDesc = res.nlpAnalysis.correctedDescription || descToUse;
       
-      // Enviar alerta general (sin asignar aún) a Leads
-      let providerName = null;
-      // Ya no auto-asignamos, para que aparezca en Leads
-      // if (res.proveedoresEmparejados && res.proveedoresEmparejados.length > 0) {
-      //   providerName = res.proveedoresEmparejados[0].nombre;
-      // }
-      
       const title = correctedDesc.length > 25 ? correctedDesc.substring(0, 25) + '...' : correctedDesc;
-      addOrder(title, category, correctedDesc, price, 'Alta', providerName);
+      addOrder(title, category, correctedDesc, price, 'Alta', null);
       
       setIsPanicLoading(false);
       setShowModal(false);
@@ -75,10 +68,19 @@ export default function HomeScreen() {
         <View style={styles.b2bHeader}>
           <View style={styles.headerContent}>
             <View style={styles.b2bAvatar}>
-              <Text style={styles.b2bAvatarText}>{getInitials(userName)}</Text>
+              {activeUser?.fotoPerfil ? (
+                <Image source={{ uri: activeUser.fotoPerfil }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.b2bAvatarText}>{getInitials(userName)}</Text>
+              )}
             </View>
-            <View>
-              <Text style={styles.b2bGreeting}>{userName}</Text>
+            <View style={{ flexShrink: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={styles.b2bGreeting}>{userName}</Text>
+                <View style={styles.betaBadge}>
+                  <Text style={styles.betaBadgeText}>BETA</Text>
+                </View>
+              </View>
               <TouchableOpacity onPress={() => triggerLocationCheck(true)} activeOpacity={0.7}>
                 <Text style={styles.b2bLocation}>Cuenta Empresa · {lastKnownCity || 'Santa Cruz'}</Text>
               </TouchableOpacity>
@@ -159,10 +161,19 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(userName)}</Text>
+            {activeUser?.fotoPerfil ? (
+              <Image source={{ uri: activeUser.fotoPerfil }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{getInitials(userName)}</Text>
+            )}
           </View>
-          <View>
-            <Text style={styles.greeting}>Hola, {userName || 'Usuario'}</Text>
+          <View style={{ flexShrink: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Text style={styles.greeting}>Hola, {userName || 'Usuario'}</Text>
+              <View style={styles.betaBadgeDark}>
+                <Text style={styles.betaBadgeDarkText}>BETA</Text>
+              </View>
+            </View>
             <TouchableOpacity onPress={() => triggerLocationCheck(true)} activeOpacity={0.7}>
               <Text style={styles.location}>{lastKnownCity || 'Santa Cruz de la Sierra'}</Text>
             </TouchableOpacity>
@@ -312,8 +323,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { color: '#FFB400', fontSize: 20, fontWeight: 'bold' },
+  avatarImage: { width: 48, height: 48, borderRadius: 999 },
   greeting: { fontSize: 18, fontWeight: '600', color: '#2F2F2F' },
   location: { fontSize: 13, color: '#5a4800' },
+  betaBadge: {
+    backgroundColor: '#FFB400',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  betaBadgeText: {
+    color: '#0f172a',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  betaBadgeDark: {
+    backgroundColor: '#2F2F2F',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  betaBadgeDarkText: {
+    color: '#FFB400',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
 
   body: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
 
