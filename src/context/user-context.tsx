@@ -3,6 +3,7 @@ import Storage from '../utils/storage';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
+import { uploadImage } from '../utils/image-uploader';
 
 // Definición de roles de usuario disponibles: cliente, proveedor o empresa (B2B)
 export type UserRole = 'client' | 'provider' | 'business';
@@ -2000,16 +2001,28 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const actualizarFotoPerfil = async (foto: string | null): Promise<boolean> => {
     if (!activeUser) return false;
     
+    let finalPhotoUrl = foto;
+    if (foto && (foto.startsWith('data:') || foto.startsWith('file:'))) {
+      try {
+        const uploadRes = await uploadImage(foto, `avatar_${activeUser.id || Date.now()}.jpg`);
+        if (uploadRes.success && uploadRes.url) {
+          finalPhotoUrl = uploadRes.url;
+        }
+      } catch (e) {
+        console.warn('[uploadImage Exception]:', e);
+      }
+    }
+
     const nowTimestamp = new Date().toISOString();
     const updatedUser = {
       ...activeUser,
-      fotoPerfil: foto,
+      fotoPerfil: finalPhotoUrl,
       fechaUltimaModificacionFoto: nowTimestamp
     };
     
     setUsuariosRegistrados(prev => prev.map(u => 
       u.correoOTelefono.trim().toLowerCase() === activeUser.correoOTelefono.trim().toLowerCase() 
-        ? { ...u, fotoPerfil: foto, fechaUltimaModificacionFoto: nowTimestamp } 
+        ? { ...u, fotoPerfil: finalPhotoUrl, fechaUltimaModificacionFoto: nowTimestamp } 
         : u
     ));
     
@@ -2021,7 +2034,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const parsed = JSON.parse(savedUsers);
       const updatedList = parsed.map((u: any) => 
         u.correoOTelefono.trim().toLowerCase() === activeUser.correoOTelefono.trim().toLowerCase() 
-          ? { ...u, fotoPerfil: foto, fechaUltimaModificacionFoto: nowTimestamp } 
+          ? { ...u, fotoPerfil: finalPhotoUrl, fechaUltimaModificacionFoto: nowTimestamp } 
           : u
       );
       await Storage.setItem('todo_ya_registered_users', JSON.stringify(updatedList));
@@ -2034,7 +2047,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             correoOTelefono: activeUser.correoOTelefono,
-            fotoPerfil: foto,
+            fotoPerfil: finalPhotoUrl,
             fechaUltimaModificacionFoto: nowTimestamp
           })
         });
@@ -2043,7 +2056,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    showNotification('Foto de Perfil', foto ? 'Foto actualizada con éxito.' : 'Foto de perfil eliminada.', 'success');
+    showNotification('Foto de Perfil', finalPhotoUrl ? 'Foto subida a CDN con éxito.' : 'Foto de perfil eliminada.', 'success');
     return true;
   };
 
