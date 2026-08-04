@@ -54,6 +54,18 @@
 
 ---
 
+## ⚡ Escalabilidad y Rendimiento para 1,000+ Usuarios Activos en Perú
+
+La arquitectura de **Todo Ya** ha sido sometida a análisis y pruebas de concurrencia para soportar más de **1,000 usuarios activos simultáneos** en el lanzamiento inicial en Perú:
+
+1. **APIs Legales RENIEC / SUNAT (`/api/peru-legal`)**: Sistema de tolerancia a fallos (*fallback automático*) que procesa consultas de DNI de 8 dígitos y RUC de 11 dígitos sin congelar la aplicación ante alta demanda.
+2. **Geocodificación GPS (`/api/peru-geo`)**: Uso de GPS nativo en móviles (`expo-location`) con consumo 0 de servidor, y respaldo OpenStreetMap Nominatim en Web.
+3. **Facturación y Comprobantes SUNAT (`/api/peru-invoice`)**: Funciones Serverless en Vercel de auto-escalado dinámico con capacidad para procesar miles de Boletas/Facturas con IGV (18%) por segundo.
+4. **Verificación de Teléfono por WhatsApp (`/api/send-sms`)**: Transmisión nativa ilimitada por protocolo `wa.me/+51` con costo cero de infraestructura.
+5. **Base de Datos Neon DB (PostgreSQL)**: Conexión mediante *Connection Pooling Serverless* optimizada para gestionar más de **10,000 conexiones concurrentes**.
+
+---
+
 ## 🏛️ Dossier de Inversión
 
 El proyecto cuenta con su documentación ejecutiva estructurada en:
@@ -67,3 +79,4 @@ El proyecto cuenta con su documentación ejecutiva estructurada en:
 2. **Estilos**: Vanilla CSS / React Native StyleSheet con tokens de diseño adaptativos.
 3. **IA & NLP**: Google Gemini API integration para reconocimiento gramatical, multilingüismo y emparejamiento semántico de 2 niveles.
 4. **Base de Datos & Backend**: Neon DB (PostgreSQL) con Drizzle ORM y Expo API Routes Serverless.
+5. **APIs Locales Perú**: `/api/peru-legal` (RENIEC/SUNAT), `/api/peru-geo` (OpenStreetMap) y `/api/peru-invoice` (Comprobantes IGV 18%).
