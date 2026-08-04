@@ -440,60 +440,90 @@ function CustomSplashScreen() {
       exiting={FadeOut.duration(400)}
       style={{
         flex: 1,
-        backgroundColor: '#1E1E1E', // Fondo oscuro sofisticado
+        backgroundColor: '#FFB400', // Fondo amarillo oro de la marca
         justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: 20,
       }}
     >
-      {/* Resplandor del logo de Todo Ya */}
-      <Animated.Image 
-        entering={ZoomIn.duration(800).delay(100)}
-        source={require('../../assets/images/logo-glow.png')}
-        style={{
-          width: 250,
-          height: 250,
-          resizeMode: 'contain',
-        }}
-      />
-      
-      {/* Título de Marca */}
+      {/* Tarjeta Flotante Elevada del Logotipo */}
       <Animated.View
-        entering={FadeIn.duration(800).delay(500)}
-        style={{ alignItems: 'center', marginTop: -10 }}
+        entering={ZoomIn.duration(700).delay(100)}
+        style={{
+          width: 120,
+          height: 120,
+          borderRadius: 30,
+          backgroundColor: '#ffffff',
+          justifyContent: 'center',
+          alignItems: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 12 },
+          shadowOpacity: 0.18,
+          shadowRadius: 24,
+          elevation: 10,
+          marginBottom: 24,
+        }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Image 
+          source={require('../../assets/icon.png')}
+          style={{
+            width: 100,
+            height: 100,
+            borderRadius: 22,
+            resizeMode: 'contain',
+          }}
+        />
+      </Animated.View>
+      
+      {/* Título de Marca e Insignia BETA */}
+      <Animated.View
+        entering={FadeIn.duration(700).delay(400)}
+        style={{ alignItems: 'center' }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <Text style={{
-            color: '#FFB400',
-            fontSize: 32,
+            color: '#2F2F2F',
+            fontSize: 34,
             fontWeight: '900',
-            letterSpacing: 6,
+            letterSpacing: 3,
             textTransform: 'uppercase',
-            textShadowColor: 'rgba(255, 180, 0, 0.4)',
-            textShadowOffset: { width: 0, height: 4 },
-            textShadowRadius: 15,
           }}>
             Todo Ya
           </Text>
           <View style={{
-            backgroundColor: '#FFB400',
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            borderRadius: 6,
-            alignSelf: 'center',
+            backgroundColor: '#e11d48', // Carmesí para máximo contraste
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 3,
           }}>
-            <Text style={{ color: '#1E1E1E', fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>BETA</Text>
+            <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '900', letterSpacing: 1.5 }}>
+              BETA
+            </Text>
           </View>
         </View>
+
         <Text style={{
-          color: '#aaaaaa',
-          fontSize: 11,
+          color: '#473a00',
+          fontSize: 13,
           fontWeight: '600',
-          marginTop: 8,
-          letterSpacing: 1,
+          letterSpacing: 0.5,
           textAlign: 'center',
+          marginTop: 4,
         }}>
           Y si pudieras resolverlo todo... YA?
         </Text>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 40 }}>
+          <ActivityIndicator size="small" color="#2F2F2F" />
+          <Text style={{ color: '#594900', fontSize: 12, fontWeight: '600', letterSpacing: 0.5 }}>
+            Cargando experiencia...
+          </Text>
+        </View>
       </Animated.View>
     </Animated.View>
   );
