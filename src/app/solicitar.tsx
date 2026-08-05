@@ -1023,7 +1023,7 @@ export default function SolicitarScreen() {
               }}
             >
               <Image 
-                source={require('../../assets/images/icon.png')} 
+                source={require('../../assets/images/logo-inicio.png')} 
                 style={{
                   width: 120,
                   height: 120,

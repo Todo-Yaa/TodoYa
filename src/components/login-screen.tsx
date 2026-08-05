@@ -748,7 +748,7 @@ export default function LoginScreen() {
         {/* Sección de Encabezado y Logo */}
         <View style={styles.logoContainer}>
           <Image
-            source={require("@/assets/images/icon.png")}
+            source={require("@/assets/images/logo-inicio.png")}
             style={styles.logoImage}
             contentFit="contain"
           />

@@ -48,7 +48,7 @@ function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
           {/* Columna Izquierda: Branding e Información */}
           <View style={styles.webHeroColumn}>
             <Image
-              source={require('../../assets/icon.png')}
+              source={require('../../assets/images/logo-inicio.png')}
               style={[styles.webLogo, { borderColor: colorMarca }]}
             />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -465,7 +465,7 @@ function CustomSplashScreen() {
         }}
       >
         <Image 
-          source={require('../../assets/icon.png')}
+          source={require('../../assets/images/logo-inicio.png')}
           style={{
             width: 100,
             height: 100,
