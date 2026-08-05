@@ -43,13 +43,8 @@ def process_icons(source_path):
     adaptive_bg = Image.new('RGBA', (1024, 1024), bg_color)
     adaptive_bg.save(os.path.join(assets_img_dir, 'android-icon-background.png'), 'PNG', quality=100)
 
-    # 4. Splash Screen (2048x2048 with #FFB400 background and centered logo)
-    splash_bg = Image.new('RGBA', (2048, 2048), bg_color)
-    splash_logo = img.resize((750, 750), Image.Resampling.LANCZOS)
-    splash_bg.paste(splash_logo, (649, 649), splash_logo)
-    splash_bg.save(os.path.join(assets_dir, 'splash.png'), 'PNG', quality=100)
-    splash_bg.save(os.path.join(assets_img_dir, 'splash-icon.png'), 'PNG', quality=100)
-    print("Saved assets/splash.png (2048x2048)")
+    # 4. Splash Screen (Mantener imagen original de pantalla de inicio)
+    print("Skipping splash.png (keeping original splash image)")
 
     # 5. Favicons & Web Icons
     favicon_64 = img.resize((64, 64), Image.Resampling.LANCZOS)
