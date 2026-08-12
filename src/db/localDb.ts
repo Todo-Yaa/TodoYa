@@ -5,6 +5,7 @@ import path from 'path';
 const DB_FILE_PATH = path.resolve(process.cwd(), 'local_db.json');
 
 export interface LocalDbSchema {
+  tenants: any[];
   users: any[];
   orders: any[];
   messages: any[];
@@ -14,16 +15,23 @@ export interface LocalDbSchema {
   reports: any[];
 }
 
+const DEFAULT_TENANT_ID = 1;
+
+const initialSeedTenants = [
+  { id: 1, nombre: 'Todo Ya', slug: 'todoya', createdAt: new Date().toISOString() }
+];
+
 const initialSeedUsers = [
-  { id: 1, nombre: 'Luis Alberto M.', correoOTelefono: 'luis@todoya.com', rol: 'client', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural', monedas: 24, kycVerificado: false, kycDetalles: '', createdAt: new Date().toISOString() },
-  { id: 2, nombre: 'Juan Ríos', correoOTelefono: 'juan.rios@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural', proveedorConfigurado: true, serviciosOfrecidos: ['Plomería'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Plomero certificado con 5 años de experiencia residencial.', monedas: 24, kycVerificado: true, kycDetalles: 'Documento verificado', createdAt: new Date().toISOString() },
-  { id: 3, nombre: 'Corporación Alfa S.A.', correoOTelefono: 'empresa@todoya.com', rol: 'business', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '481920028', correoFacturacion: 'facturas@alfa.corp.bo', rubro: 'Papelería', monedas: 24, kycVerificado: true, kycDetalles: 'NIT e identidad B2B verificados', createdAt: new Date().toISOString() },
-  { id: 4, nombre: 'Imprenta y Gráfica Beta', correoOTelefono: 'proveedor_empresa@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '839201992', correoFacturacion: 'facturas@beta.bo', rubro: 'Branding & Lettering', ofreceB2B: true, proveedorConfigurado: true, serviciosOfrecidos: ['Branding & Lettering'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.', monedas: 24, kycVerificado: true, kycDetalles: 'NIT e identidad B2B verificados', createdAt: new Date().toISOString() }
+  { id: 1, tenantId: DEFAULT_TENANT_ID, nombre: 'Luis Alberto M.', correoOTelefono: 'luis@todoya.com', rol: 'client', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural', monedas: 24, kycVerificado: false, kycDetalles: '', createdAt: new Date().toISOString() },
+  { id: 2, tenantId: DEFAULT_TENANT_ID, nombre: 'Juan Ríos', correoOTelefono: 'juan.rios@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural', proveedorConfigurado: true, serviciosOfrecidos: ['Plomería'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Plomero certificado con 5 años de experiencia residencial.', monedas: 24, kycVerificado: true, kycDetalles: 'Documento verificado', createdAt: new Date().toISOString() },
+  { id: 3, tenantId: DEFAULT_TENANT_ID, nombre: 'Corporación Alfa S.A.', correoOTelefono: 'empresa@todoya.com', rol: 'business', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '481920028', correoFacturacion: 'facturas@alfa.corp.bo', rubro: 'Papelería', monedas: 24, kycVerificado: true, kycDetalles: 'NIT e identidad B2B verificados', createdAt: new Date().toISOString() },
+  { id: 4, tenantId: DEFAULT_TENANT_ID, nombre: 'Imprenta y Gráfica Beta', correoOTelefono: 'proveedor_empresa@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '839201992', correoFacturacion: 'facturas@beta.bo', rubro: 'Branding & Lettering', ofreceB2B: true, proveedorConfigurado: true, serviciosOfrecidos: ['Branding & Lettering'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.', monedas: 24, kycVerificado: true, kycDetalles: 'NIT e identidad B2B verificados', createdAt: new Date().toISOString() }
 ];
 
 const initialSeedOrders = [
   {
     id: 1,
+    tenantId: DEFAULT_TENANT_ID,
     titulo: "Fuga en lavabo",
     clienteId: 1,      // Luis Alberto M.
     proveedorId: 2,    // Juan Ríos
@@ -46,6 +54,7 @@ const initialSeedOrders = [
   },
   {
     id: 2,
+    tenantId: DEFAULT_TENANT_ID,
     titulo: "Instalación de AC",
     clienteId: 1,
     proveedorId: null,
@@ -68,6 +77,7 @@ const initialSeedOrders = [
   },
   {
     id: 3,
+    tenantId: DEFAULT_TENANT_ID,
     titulo: "Pintura sala",
     clienteId: 1,
     proveedorId: null,
@@ -90,6 +100,7 @@ const initialSeedOrders = [
   },
   {
     id: 4,
+    tenantId: DEFAULT_TENANT_ID,
     titulo: "Papelería e Insumos",
     clienteId: 3,    // Corporación Alfa S.A.
     proveedorId: null,
@@ -130,6 +141,7 @@ class LocalDb {
     try {
       if (!fs.existsSync(DB_FILE_PATH)) {
         this.write({
+          tenants: initialSeedTenants,
           users: initialSeedUsers,
           orders: initialSeedOrders,
           messages: [],
@@ -142,13 +154,18 @@ class LocalDb {
       const data = fs.readFileSync(DB_FILE_PATH, 'utf-8');
       const parsed = JSON.parse(data);
       // Migración automática: asegurar que las tablas nuevas existan en DB viejas
+      if (!Array.isArray(parsed.tenants) || parsed.tenants.length === 0) parsed.tenants = initialSeedTenants;
       if (!parsed.ratings) parsed.ratings = initialSeedRatings;
       if (!parsed.applications) parsed.applications = [];
       if (!parsed.reports) parsed.reports = [];
+      // Migración automática: rellenar tenantId faltante en registros antiguos
+      (parsed.users || []).forEach((u: any) => { if (!u.tenantId) u.tenantId = DEFAULT_TENANT_ID; });
+      (parsed.orders || []).forEach((o: any) => { if (!o.tenantId) o.tenantId = DEFAULT_TENANT_ID; });
+      (parsed.messages || []).forEach((m: any) => { if (!m.tenantId) m.tenantId = DEFAULT_TENANT_ID; });
       return parsed;
     } catch (e) {
       console.error('Error reading local JSON database:', e);
-      return { users: [], orders: [], messages: [], transactions: [], ratings: [], applications: [], reports: [] };
+      return { tenants: initialSeedTenants, users: [], orders: [], messages: [], transactions: [], ratings: [], applications: [], reports: [] };
     }
   }
 
@@ -160,9 +177,36 @@ class LocalDb {
     }
   }
 
+  // --- TENANTS ---
+  getTenants() {
+    return this.read().tenants;
+  }
+
+  getTenantById(id: number) {
+    return this.read().tenants.find(t => t.id === id);
+  }
+
+  insertTenant(tenant: any) {
+    const dbData = this.read();
+    const newId = dbData.tenants.reduce((max, t) => Math.max(max, t.id || 0), 0) + 1;
+    const newTenant = {
+      ...tenant,
+      id: newId,
+      slug: tenant.slug || `tenant-${newId}`,
+      createdAt: new Date().toISOString()
+    };
+    dbData.tenants.push(newTenant);
+    this.write(dbData);
+    return newTenant;
+  }
+
   // --- USERS ---
   getUsers() {
     return this.read().users;
+  }
+
+  getUsersByTenant(tenantId: number) {
+    return this.read().users.filter(u => (u.tenantId ?? DEFAULT_TENANT_ID) === tenantId);
   }
 
   getUserById(id: number) {
@@ -180,6 +224,7 @@ class LocalDb {
     const newUser = {
       ...user,
       id: newId,
+      tenantId: user.tenantId || DEFAULT_TENANT_ID,
       monedas: user.monedas !== undefined ? user.monedas : 24,
       kycVerificado: user.kycVerificado || false,
       createdAt: new Date().toISOString()
@@ -226,6 +271,10 @@ class LocalDb {
     return this.read().orders;
   }
 
+  getOrdersByTenant(tenantId: number) {
+    return this.read().orders.filter(o => (o.tenantId ?? DEFAULT_TENANT_ID) === tenantId);
+  }
+
   getOrdersByClienteId(clienteId: number) {
     return this.read().orders.filter(o => o.clienteId === clienteId);
   }
@@ -244,6 +293,7 @@ class LocalDb {
     const newOrder = {
       ...order,
       id: newId,
+      tenantId: order.tenantId || DEFAULT_TENANT_ID,
       estado: order.estado || 'Buscando proveedor',
       progreso: order.progreso !== undefined ? order.progreso : 25,
       color: order.color || '#FFB400',
@@ -287,6 +337,7 @@ class LocalDb {
     const newMsg = {
       ...msg,
       id: newId,
+      tenantId: msg.tenantId || DEFAULT_TENANT_ID,
       senderId: msg.senderId || null,    //  FK al usuario
       createdAt: new Date().toISOString()
     };

@@ -1,30 +1,31 @@
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db, isDbConnected } from '../../db';
 import { localDb } from '../../db/localDb';
 import { orders, users } from '../../db/schema';
-import { checkApiRateLimit } from '../../utils/rate-limiter';
-import { sanitizeText } from '../../utils/security';
+import { resolveTenantId } from '../../utils/auth';
 
-// GET: Obtener todos los pedidos/solicitudes de la base de datos
+const DEFAULT_TENANT_ID = 1;
+
+// GET: Obtener todos los pedidos/solicitudes de la base de datos (solo del tenant de la sesión/petición)
 export async function GET(request: Request) {
-  const rateLimitError = checkApiRateLimit(request, 60, 60000);
-  if (rateLimitError) return rateLimitError;
   try {
     const url = new URL(request.url);
     const clienteId = url.searchParams.get('clienteId');
     const proveedorId = url.searchParams.get('proveedorId');
+    const tenantId = await resolveTenantId(request);
 
     if (!isDbConnected() || !db) {
       let allOrders: any[];
       if (clienteId) {
-        allOrders = localDb.getOrdersByClienteId(Number(clienteId));
+        allOrders = localDb.getOrders().filter(o => (o.tenantId ?? DEFAULT_TENANT_ID) === tenantId && o.clienteId === Number(clienteId));
       } else if (proveedorId) {
-        allOrders = localDb.getOrdersByProveedorId(Number(proveedorId));
+        allOrders = localDb.getOrders().filter(o => (o.tenantId ?? DEFAULT_TENANT_ID) === tenantId && o.proveedorId === Number(proveedorId));
       } else {
-        allOrders = localDb.getOrders();
+        allOrders = localDb.getOrdersByTenant(tenantId);
       }
       const formatOrders = allOrders.map(o => ({
         id: o.id,
+        tenantId: o.tenantId ?? DEFAULT_TENANT_ID,
         titulo: o.titulo,
         clienteId: o.clienteId || null,
         proveedorId: o.proveedorId || null,
@@ -44,22 +45,22 @@ export async function GET(request: Request) {
         completedAt: o.completedAt,
         tiempoEjecucion: o.tiempoEjecucion,
       }));
-      return Response.json({ status: 'success', data: formatOrders });
+      return Response.json({ status: 'success', tenantId, data: formatOrders });
     }
 
-    let query = db.select().from(orders);
     let allOrders: any[];
 
     if (clienteId) {
-      allOrders = await db.select().from(orders).where(eq(orders.clienteId, Number(clienteId)));
+      allOrders = await db.select().from(orders).where(and(eq(orders.tenantId, tenantId), eq(orders.clienteId, Number(clienteId))));
     } else if (proveedorId) {
-      allOrders = await db.select().from(orders).where(eq(orders.proveedorId, Number(proveedorId)));
+      allOrders = await db.select().from(orders).where(and(eq(orders.tenantId, tenantId), eq(orders.proveedorId, Number(proveedorId))));
     } else {
-      allOrders = await db.select().from(orders);
+      allOrders = await db.select().from(orders).where(eq(orders.tenantId, tenantId));
     }
 
     const formatOrders = allOrders.map(o => ({
       id: o.id,
+      tenantId: o.tenantId ?? DEFAULT_TENANT_ID,
       titulo: o.titulo,
       clienteId: o.clienteId,
       proveedorId: o.proveedorId,
@@ -80,7 +81,7 @@ export async function GET(request: Request) {
       tiempoEjecucion: o.tiempoEjecucion,
     }));
 
-    return Response.json({ status: 'success', data: formatOrders });
+    return Response.json({ status: 'success', tenantId, data: formatOrders });
   } catch (error: any) {
     return Response.json({ error: 'Error al obtener pedidos', details: error.message }, { status: 500 });
   }
@@ -88,19 +89,10 @@ export async function GET(request: Request) {
 
 // POST: Crear un nuevo pedido
 export async function POST(request: Request) {
-  const rateLimitError = checkApiRateLimit(request, 30, 60000);
-  if (rateLimitError) return rateLimitError;
-
   try {
     const body = await request.json();
-    const { titulo: rawTitulo, servicio: rawServicio, description: rawDesc, precio: rawPrecio, urgencia: rawUrg, proveedor: rawProv = null, clienteId = null, proveedorId = null } = body;
-
-    const titulo = rawTitulo ? sanitizeText(rawTitulo) : '';
-    const servicio = rawServicio ? sanitizeText(rawServicio) : '';
-    const description = rawDesc ? sanitizeText(rawDesc) : '';
-    const precio = rawPrecio ? sanitizeText(rawPrecio) : '';
-    const urgencia = (rawUrg && ['Normal', 'Alta'].includes(rawUrg) ? rawUrg : 'Normal') as 'Normal' | 'Alta';
-    const proveedor = rawProv ? sanitizeText(rawProv) : null;
+    const { titulo, servicio, description, precio, urgencia, proveedor = null, clienteId = null, proveedorId = null, tenantId: tenantIdBody } = body;
+    const tenantId = tenantIdBody || await resolveTenantId(request);
 
     // Si viene un proveedor mockup (ej: Andrés Silva), asegurarse de que exista en la BD
     if (proveedor && !proveedorId) {
@@ -116,7 +108,8 @@ export async function POST(request: Request) {
             contrasena: 'demo1234',
             proveedorConfigurado: true,
             serviciosOfrecidos: [servicio],
-            tipoEntidad: 'natural'
+            tipoEntidad: 'natural',
+            tenantId,
           });
         }
       } else {
@@ -129,7 +122,8 @@ export async function POST(request: Request) {
             contrasena: 'demo1234',
             proveedorConfigurado: true,
             serviciosOfrecidos: [servicio],
-            tipoEntidad: 'natural'
+            tipoEntidad: 'natural',
+            tenantId,
           });
         }
       }
@@ -145,14 +139,15 @@ export async function POST(request: Request) {
         proveedor,
         clienteId: clienteId ? Number(clienteId) : null,
         proveedorId: proveedorId ? Number(proveedorId) : null,
+        tenantId,
         estado: proveedor ? 'En progreso' : 'Buscando proveedor',
         progreso: proveedor ? 65 : 25,
         color: '#FFB400',
         hora: 'Ahora mismo',
         acceptedAt: proveedor ? new Date().toISOString() : null,
       });
-      enviarNotificacionesPush(servicio, titulo, precio).catch(() => {});
-      return Response.json({ status: 'success', order: nuevoPedido });
+      enviarNotificacionesPush(servicio, titulo, precio, tenantId).catch(() => {});
+      return Response.json({ status: 'success', tenantId, order: nuevoPedido });
     }
 
     const nuevoPedido = await db.insert(orders).values({
@@ -164,6 +159,7 @@ export async function POST(request: Request) {
       proveedor,
       clienteId: clienteId ? Number(clienteId) : null,
       proveedorId: proveedorId ? Number(proveedorId) : null,
+      tenantId,
       estado: proveedor ? 'En progreso' : 'Buscando proveedor',
       progreso: proveedor ? 65 : 25,
       color: '#FFB400',
@@ -171,8 +167,8 @@ export async function POST(request: Request) {
       acceptedAt: proveedor ? new Date() : null,
     }).returning();
 
-    enviarNotificacionesPush(servicio, titulo, precio).catch(() => {});
-    return Response.json({ status: 'success', order: nuevoPedido[0] });
+    enviarNotificacionesPush(servicio, titulo, precio, tenantId).catch(() => {});
+    return Response.json({ status: 'success', tenantId, order: nuevoPedido[0] });
   } catch (error: any) {
     return Response.json({ error: 'Error al crear pedido', details: error.message }, { status: 500 });
   }
@@ -180,9 +176,6 @@ export async function POST(request: Request) {
 
 // PUT: Actualizar un pedido (Postulación, Finalización o Calificación)
 export async function PUT(request: Request) {
-  const rateLimitError = checkApiRateLimit(request, 30, 60000);
-  if (rateLimitError) return rateLimitError;
-
   try {
     const body = await request.json();
     const { id, action, providerName, proveedorId, estrellas, etiquetas } = body;
@@ -191,7 +184,15 @@ export async function PUT(request: Request) {
       return Response.json({ error: 'El ID del pedido es requerido' }, { status: 400 });
     }
 
+    const tenantId = await resolveTenantId(request);
+
     if (!isDbConnected() || !db) {
+      const orderToCheck = localDb.getOrderById(Number(id));
+      if (!orderToCheck) return Response.json({ error: 'Pedido no encontrado' }, { status: 404 });
+      if ((orderToCheck.tenantId ?? DEFAULT_TENANT_ID) !== tenantId) {
+        return Response.json({ error: 'No autorizado para este tenant' }, { status: 403 });
+      }
+
       let updated;
       if (action === 'apply') {
         updated = localDb.updateOrder(id, {
@@ -230,7 +231,7 @@ export async function PUT(request: Request) {
         return Response.json({ error: 'Acción no válida' }, { status: 400 });
       }
       if (!updated) return Response.json({ error: 'Pedido no encontrado' }, { status: 404 });
-      return Response.json({ status: 'success', order: updated });
+      return Response.json({ status: 'success', tenantId, order: updated });
     }
 
     let updated;
@@ -245,10 +246,10 @@ export async function PUT(request: Request) {
           hora: 'Hace un momento',
           acceptedAt: new Date()
         })
-        .where(eq(orders.id, id))
+        .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)))
         .returning();
     } else if (action === 'complete') {
-      const [orderToComplete] = await db.select().from(orders).where(eq(orders.id, id));
+      const [orderToComplete] = await db.select().from(orders).where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)));
       if (!orderToComplete) return Response.json({ error: 'Pedido no encontrado' }, { status: 404 });
 
       const now = new Date();
@@ -268,7 +269,7 @@ export async function PUT(request: Request) {
           completedAt: now,
           tiempoEjecucion: tiempoEjecucionText
         })
-        .where(eq(orders.id, id))
+        .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)))
         .returning();
     } else if (action === 'rate') {
       updated = await db.update(orders)
@@ -277,7 +278,7 @@ export async function PUT(request: Request) {
           calificacionEstrellas: estrellas,
           calificacionEtiquetas: etiquetas
         })
-        .where(eq(orders.id, id))
+        .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)))
         .returning();
     } else {
       return Response.json({ error: 'Acción no válida' }, { status: 400 });
@@ -287,26 +288,27 @@ export async function PUT(request: Request) {
       return Response.json({ error: 'Pedido no encontrado' }, { status: 404 });
     }
 
-    return Response.json({ status: 'success', order: updated[0] });
+    return Response.json({ status: 'success', tenantId, order: updated[0] });
   } catch (error: any) {
     return Response.json({ error: 'Error al actualizar pedido', details: error.message }, { status: 500 });
   }
 }
 
-// Función auxiliar para enviar notificaciones push a los proveedores que coinciden con la categoría
-async function enviarNotificacionesPush(servicio: string, titulo: string, precio: string) {
+// Función auxiliar para enviar notificaciones push a los proveedores que coinciden con la categoría (del mismo tenant)
+async function enviarNotificacionesPush(servicio: string, titulo: string, precio: string, tenantId: number) {
   try {
     let providersToNotify: any[] = [];
     if (isDbConnected() && db) {
       const matchingProviders = await db.select().from(users).where(eq(users.rol, 'provider'));
       providersToNotify = matchingProviders.filter(p => 
+        (p.tenantId ?? DEFAULT_TENANT_ID) === tenantId &&
         p.pushToken && 
         p.serviciosOfrecidos && 
         Array.isArray(p.serviciosOfrecidos) && 
         (p.serviciosOfrecidos as string[]).includes(servicio)
       );
     } else {
-      const localUsers = localDb.getUsers();
+      const localUsers = localDb.getUsersByTenant(tenantId);
       providersToNotify = localUsers.filter(u => 
         u.rol === 'provider' && 
         u.pushToken && 
@@ -320,7 +322,7 @@ async function enviarNotificacionesPush(servicio: string, titulo: string, precio
       const messages = providersToNotify.map(p => ({
         to: p.pushToken,
         sound: 'default',
-        title: '¡Nuevo Lead Disponible!',
+        title: '💼 ¡Nuevo Lead Disponible!',
         body: `${titulo} en la categoría ${servicio}. Presupuesto: ${precio}`,
         data: { service: servicio },
       }));
