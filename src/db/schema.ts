@@ -1,8 +1,17 @@
 import { pgTable, serial, text, varchar, integer, boolean, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 
+// Tabla de Tenants (organizaciones/empresas que consumen la plataforma)
+export const tenants = pgTable('tenants', {
+  id: serial('id').primaryKey(),
+  nombre: varchar('nombre', { length: 256 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // Tabla de Usuarios (Clientes residenciales, Empresas B2B y Proveedores)
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }).default(1).notNull(),
   nombre: varchar('nombre', { length: 256 }).notNull(),
   correoOTelefono: varchar('correo_o_telefono', { length: 256 }).notNull().unique(),
   rol: varchar('rol', { length: 50 }).$type<'client' | 'provider' | 'business'>().notNull().default('client'),
@@ -46,11 +55,14 @@ export const users = pgTable('users', {
   b2bTrialStartDate: timestamp('b2b_trial_start_date'),
 
   createdAt: timestamp('created_at').defaultNow(),
-});
+}, (table) => ({
+  tenantIdx: index('users_tenant_idx').on(table.tenantId),
+}));
 
 // Tabla de Pedidos / Solicitudes de servicio
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }).default(1).notNull(),
   titulo: varchar('titulo', { length: 256 }).notNull(),
   
   //  RELACIONAL: FKs al cliente y proveedor por ID
@@ -79,6 +91,7 @@ export const orders = pgTable('orders', {
   completedAt: timestamp('completed_at'),
   tiempoEjecucion: varchar('tiempo_ejecucion', { length: 100 }), // Ej: "45 minutos"
 }, (table) => ({
+  tenantIdx: index('orders_tenant_idx').on(table.tenantId),
   clienteIdx: index('orders_cliente_idx').on(table.clienteId),
   proveedorIdx: index('orders_proveedor_idx').on(table.proveedorId),
 }));
@@ -86,12 +99,14 @@ export const orders = pgTable('orders', {
 // Tabla de Mensajes de Chat en Tiempo Real (por orden)
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }).default(1).notNull(),
   orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(), //  FK al pedido
   senderId: integer('sender_id').references(() => users.id, { onDelete: 'cascade' }),          //  FK al usuario remitente
   senderName: varchar('sender_name', { length: 256 }).notNull(),      // Display rápido
   messageText: text('message_text').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => ({
+  tenantIdx: index('messages_tenant_idx').on(table.tenantId),
   orderIdx: index('messages_order_idx').on(table.orderId),
   senderIdx: index('messages_sender_idx').on(table.senderId),
 }));

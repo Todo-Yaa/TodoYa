@@ -15,12 +15,12 @@ interface NotificationBannerProps {
 }
 
 export default function NotificationBanner({ toast, onDismiss }: NotificationBannerProps) {
-  const slideAnim = useRef(new Animated.Value(-150)).current;
+  const slideAnim = useRef(new Animated.Value(-150));
 
   useEffect(() => {
     if (toast) {
       // Deslizar hacia abajo
-      Animated.spring(slideAnim, {
+      Animated.spring(slideAnim.current, {
         toValue: 20,
         useNativeDriver: true,
         tension: 50,
@@ -37,7 +37,7 @@ export default function NotificationBanner({ toast, onDismiss }: NotificationBan
   }, [toast]);
 
   const dismiss = () => {
-    Animated.timing(slideAnim, {
+    Animated.timing(slideAnim.current, {
       toValue: -150,
       duration: 350,
       useNativeDriver: true,
@@ -64,7 +64,7 @@ export default function NotificationBanner({ toast, onDismiss }: NotificationBan
   const iconInfo = getIcon();
 
   return (
-    <Animated.View style={[styles.toastContainer, { transform: [{ translateY: slideAnim }] }]}>
+    <Animated.View style={[styles.toastContainer, { transform: [{ translateY: slideAnim.current }] }]}>
       <TouchableOpacity style={styles.toastContent} onPress={dismiss} activeOpacity={0.9}>
         <View style={styles.iconContainer}>
           <Ionicons name={iconInfo.name as any} size={24} color={iconInfo.color} />

@@ -31,10 +31,10 @@ interface ResponsiveWrapperProps {
 
 function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
   const { width } = useWindowDimensions();
+  const userContext = useUser();
   const isLargeScreen = Platform.OS === 'web' && width > 768;
 
   if (isLargeScreen) {
-    const userContext = useUser();
     const esEmpresa = userContext?.activeUser?.tipoEntidad === 'empresa';
     const colorMarca = esEmpresa ? '#818cf8' : '#FFB400';
     

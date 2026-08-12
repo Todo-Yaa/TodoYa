@@ -11,7 +11,8 @@
       "monedas": 24,
       "kycVerificado": false,
       "kycDetalles": "",
-      "createdAt": "2026-06-25T00:00:00.000Z"
+      "createdAt": "2026-06-25T00:00:00.000Z",
+      "tenantId": 1
     },
     {
       "id": 2,
@@ -30,7 +31,8 @@
       "monedas": 24,
       "kycVerificado": true,
       "kycDetalles": "Documento verificado",
-      "createdAt": "2026-06-25T00:00:00.000Z"
+      "createdAt": "2026-06-25T00:00:00.000Z",
+      "tenantId": 1
     },
     {
       "id": 3,
@@ -46,7 +48,8 @@
       "monedas": 24,
       "kycVerificado": true,
       "kycDetalles": "NIT e identidad B2B verificados",
-      "createdAt": "2026-06-25T00:00:00.000Z"
+      "createdAt": "2026-06-25T00:00:00.000Z",
+      "tenantId": 1
     },
     {
       "id": 4,
@@ -69,7 +72,8 @@
       "monedas": 24,
       "kycVerificado": true,
       "kycDetalles": "NIT e identidad B2B verificados",
-      "createdAt": "2026-06-25T00:00:00.000Z"
+      "createdAt": "2026-06-25T00:00:00.000Z",
+      "tenantId": 1
     },
     {
       "nombre": "Luis M",
@@ -82,7 +86,8 @@
       "id": 5,
       "monedas": 24,
       "kycVerificado": false,
-      "createdAt": "2026-07-21T18:30:15.271Z"
+      "createdAt": "2026-07-21T18:30:15.271Z",
+      "tenantId": 1
     }
   ],
   "orders": [
@@ -106,7 +111,8 @@
       "acceptedAt": "2026-06-25T00:00:00.000Z",
       "completedAt": null,
       "tiempoEjecucion": null,
-      "createdAt": "2026-06-25T00:00:00.000Z"
+      "createdAt": "2026-06-25T00:00:00.000Z",
+      "tenantId": 1
     },
     {
       "id": 2,
@@ -128,7 +134,8 @@
       "acceptedAt": null,
       "completedAt": null,
       "tiempoEjecucion": null,
-      "createdAt": "2026-06-25T00:00:00.000Z"
+      "createdAt": "2026-06-25T00:00:00.000Z",
+      "tenantId": 1
     },
     {
       "id": 3,
@@ -153,7 +160,8 @@
       "acceptedAt": "2026-06-24T20:00:00.000Z",
       "completedAt": "2026-06-24T22:00:00.000Z",
       "tiempoEjecucion": "2 horas",
-      "createdAt": "2026-06-24T17:00:00.000Z"
+      "createdAt": "2026-06-24T17:00:00.000Z",
+      "tenantId": 1
     },
     {
       "id": 4,
@@ -175,7 +183,8 @@
       "acceptedAt": null,
       "completedAt": null,
       "tiempoEjecucion": null,
-      "createdAt": "2026-06-25T00:00:00.000Z"
+      "createdAt": "2026-06-25T00:00:00.000Z",
+      "tenantId": 1
     }
   ],
   "messages": [],
@@ -206,5 +215,13 @@
       "createdAt": "2026-06-25T00:00:00.000Z"
     }
   ],
-  "reports": []
+  "reports": [],
+  "tenants": [
+    {
+      "id": 1,
+      "nombre": "Todo Ya",
+      "slug": "todoya",
+      "createdAt": "2026-08-08T01:36:31.512Z"
+    }
+  ]
 }

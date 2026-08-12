@@ -27,6 +27,7 @@
     "expo-system-ui": "~56.0.5",
     "expo-web-browser": "~56.0.5",
     "i18next": "^26.3.1",
+    "jose": "^6.2.8",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-i18next": "^17.0.8",
@@ -44,6 +45,8 @@
     "@types/pg": "^8.20.0",
     "@types/react": "~19.2.2",
     "drizzle-kit": "^0.31.10",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~56.0.4",
     "pg": "^8.22.0",
     "typescript": "~6.0.3"
   },
