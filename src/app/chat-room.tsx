@@ -74,10 +74,10 @@ export default function ChatRoomScreen() {
   useEffect(() => {
     fetchMessages(true);
 
-    // Polling cada 3 segundos para simular tiempo real
+    // Conexión en vivo ultrarrápida (1.5s) para garantizar tiempo real óptimo en web y móvil
     pollingIntervalRef.current = setInterval(() => {
       fetchMessages(false);
-    }, 3000);
+    }, 1500);
 
     return () => {
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);

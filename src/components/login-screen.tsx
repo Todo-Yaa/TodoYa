@@ -12,7 +12,7 @@ import KYCVerifierModal from './kyc-verifier-modal';
  * Todos los métodos, variables y parámetros nuevos están en español para su fácil lectura y modificación.
  */
 export default function LoginScreen() {
-  const { login, usuariosRegistrados, registrarEIniciarSesion, registrarUsuario } = useUser();
+  const { login, usuariosRegistrados, registrarEIniciarSesion, registrarUsuario, actualizarKYC } = useUser();
   const [correoOTelefono, setCorreoOTelefono] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [cargando, setCargando] = useState(false); // Spinner de carga al enviar
@@ -149,6 +149,7 @@ export default function LoginScreen() {
 
   /**
    * Callback que ejecuta el registro definitivo después de verificar KYC con éxito.
+   * Ahora persiste el resultado del KYC de Gemini en Neon DB.
    */
   const completarRegistroConKYC = async (kycDetalles: string) => {
     setMostrarKYC(false);
@@ -159,13 +160,19 @@ export default function LoginScreen() {
     const finalRole: UserRole = 'business';
 
     const exito = await registrarUsuario(nombre, correo, finalRole, contrasena, te, n, cf, rb, true);
+    
+    // ✅ Persistir estado KYC verificado en Neon DB
+    if (exito) {
+      await actualizarKYC(kycDetalles);
+    }
+    
     setCargando(false);
     setPendingRegistroData(null);
 
     if (exito) {
       setConfiguracionModal({
         titulo: '🎉 ¡Registro y KYC Exitoso!',
-        mensaje: `Identidad verificada con IA. Tu cuenta empresarial ha sido activada. ¡Bienvenido a Todo Ya, ${nombre}!`
+        mensaje: `Identidad verificada con Gemini AI. Tu cuenta empresarial ha sido activada. ¡Bienvenido a Todo Ya, ${nombre}!`
       });
       setMostrarModal(true);
       setEsRegistro(false);

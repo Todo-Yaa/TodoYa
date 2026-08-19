@@ -1,88 +1,116 @@
-// API Proxy para el Verificador de KYC de decouple-services (Walter Ibañez)
-// Endpoint base de AWS: https://cm981m6ag1.execute-api.us-east-1.amazonaws.com
+// API de Verificación KYC con SDK Oficial de Google AI (@google/generative-ai)
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const KYC_SIMULATED = process.env.EXPO_PUBLIC_KYC_SIMULATED !== 'false'; // Por defecto en modo simulado para no gastar recursos
-const KYC_API_BASE = 'https://cm981m6ag1.execute-api.us-east-1.amazonaws.com';
+const KYC_SIMULATED = process.env.EXPO_PUBLIC_KYC_SIMULATED === 'true';
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
 
-// POST: Generar presigned URL para subir la imagen a S3 (Step 1)
-// Body: { action: 'presign' } → { sessionId, uploadUrl }
-// POST: Verificar la imagen ya subida con Claude (Step 2)
-// Body: { action: 'verify', sessionId } → { approved, details, rejectedReasons }
+// Inicializar SDK oficial de Google AI
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+const KYC_PROMPT = `Eres un experto sistema de verificación de identidad (KYC) para Bolivia.
+Analiza la imagen adjunta y verifica si es un Carnet de Identidad (C.I.) boliviano oficial, DNI o Pasaporte legítimo.
+
+Responde ÚNICAMENTE con este JSON exacto (sin markdown, sin bloques de código ```json):
+{
+  "approved": true/false,
+  "documentType": "C.I. Bolivia / DNI / Pasaporte / Desconocido",
+  "holderName": "Nombre completo detectado o null",
+  "ciNumber": "Número de C.I. o documento detectado o null",
+  "confidenceScore": "98%",
+  "details": "Breve explicación en español del resultado",
+  "rejectedReasons": ["Razón de rechazo si aplica"]
+}
+
+RECHAZA (approved: false) SI:
+- La imagen no es un documento oficial (ej: paisajes, objetos, mascotas, capturas de pantalla o rostros sueltos).
+- El texto del carnet está ilegible o muy borroso.`;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { action, sessionId } = body;
+    const { action, sessionId, imageBase64 } = body;
 
-    // ========= MODO SIMULADO (para proteger recursos de AWS de Walter) =========
+    // ═══════════════ MODO SIMULADO ═══════════════
     if (KYC_SIMULATED) {
       if (action === 'presign') {
-        // Devolver una sesión y URL ficticia de S3
         const fakeSessionId = `sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        return Response.json({
-          status: 'simulated',
-          sessionId: fakeSessionId,
-          uploadUrl: `https://fake-s3-bucket.s3.amazonaws.com/kyc/${fakeSessionId}?presigned=true`,
-        });
+        return Response.json({ status: 'simulated', sessionId: fakeSessionId });
       }
-
       if (action === 'verify') {
-        // Simular una espera de análisis de IA (2.5s de delay)
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        
-        // Simular éxito: 90% aprobados, 10% rechazados (para demo)
-        const approved = Math.random() > 0.1;
+        await new Promise(resolve => setTimeout(resolve, 2000));
         return Response.json({
           status: 'simulated',
           result: {
-            approved,
-            details: approved
-              ? 'Carnet de Identidad boliviano verificado. Nombre visible: legible. Fecha de nacimiento válida. Documento dentro del período de vigencia.'
-              : 'Documento rechazado: imagen borrosa o ilegible. Por favor, intente nuevamente con mejor iluminación.',
-            rejectedReasons: approved ? [] : ['Image quality too low', 'Text not readable'],
+            approved: false,
+            documentType: 'Desconocido',
+            holderName: null,
+            details: 'Modo simulado activo. Por favor configura tu clave de Gemini API.',
+            rejectedReasons: ['Modo simulado de prueba'],
           }
         });
       }
     }
 
-    // ========= MODO REAL (conecta con AWS de Walter - solo para demo ante jurado) =========
+    // ═══════════════ MODO REAL — Google Generative AI SDK ═══════════════
+    if (!GEMINI_API_KEY) {
+      return Response.json({ error: 'EXPO_PUBLIC_GEMINI_API_KEY no está configurada en .env' }, { status: 500 });
+    }
+
     if (action === 'presign') {
-      const res = await fetch(`${KYC_API_BASE}/api/v1/identification/presign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      if (!res.ok) {
-        const errText = await res.text();
-        return Response.json({ error: 'Error en presign de AWS', details: errText }, { status: res.status });
-      }
-      
-      const data = await res.json();
-      return Response.json({ status: 'success', ...data });
+      const sessionId = `gemini_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      return Response.json({ status: 'success', sessionId });
     }
 
     if (action === 'verify') {
-      if (!sessionId) {
-        return Response.json({ error: 'sessionId es requerido para verificar' }, { status: 400 });
+      if (!imageBase64) {
+        return Response.json({ error: 'imageBase64 es requerido para verificar' }, { status: 400 });
       }
 
-      const res = await fetch(`${KYC_API_BASE}/api/v1/identification/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-      });
+      const mimeType = imageBase64.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
 
-      if (!res.ok) {
-        const errText = await res.text();
-        return Response.json({ error: 'Error en verificación de AWS', details: errText }, { status: res.status });
+      // Usar modelo gemini-1.5-flash vía SDK oficial
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      try {
+        const aiResponse = await model.generateContent([
+          KYC_PROMPT,
+          {
+            inlineData: {
+              data: imageBase64,
+              mimeType,
+            }
+          }
+        ]);
+
+        const rawText = aiResponse.response.text() || '{}';
+        const cleanedText = rawText.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(cleanedText);
+
+        return Response.json({ status: 'success', result });
+
+      } catch (geminiErr: any) {
+        console.error('[KYC Gemini SDK Error]:', geminiErr.message || geminiErr);
+
+        // Si la clave tiene restricciones en GCP o la API falla, responder con rechazo estricto
+        return Response.json({
+          status: 'rejected',
+          result: {
+            approved: false,
+            documentType: 'Desconocido',
+            holderName: null,
+            ciNumber: null,
+            confidenceScore: '0%',
+            details: 'No se pudo analizar la imagen. Verifica que tu clave de API en GCP no tenga restricciones o que la foto sea clara.',
+            rejectedReasons: ['Error de procesamiento en la IA de visión'],
+          }
+        });
       }
-
-      const data = await res.json();
-      return Response.json({ status: 'success', result: data });
     }
 
     return Response.json({ error: 'Acción inválida. Use "presign" o "verify".' }, { status: 400 });
 
   } catch (error: any) {
+    console.error('[KYC] Error interno:', error.message);
     return Response.json({ error: 'Error interno del proxy KYC', details: error.message }, { status: 500 });
   }
 }

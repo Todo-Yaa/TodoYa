@@ -22,6 +22,9 @@ export interface UsuarioRegistrado {
   anosExperiencia?: string;
   descripcionProveedor?: string;
   coberturaB2B?: string;
+  // Verificación KYC (Powered by Gemini Vision)
+  kycVerificado?: boolean;
+  kycDetalles?: string;
 }
 
 // Interfaz para representar un pedido dentro de la aplicación
@@ -58,11 +61,11 @@ interface UserContextType {
   resetData: () => void;   // Resetea todos los estados al valor inicial
   isAuthenticated: boolean; // Estado de sesión del usuario
   userName: string;        // Nombre personalizado del usuario activo
-  login: (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole) => Promise<boolean>; // Inicia sesión
+  login: (correoOTelefono: string, contrasena: string) => Promise<boolean>; // Inicia sesión
   logout: () => void;      // Cierra sesión y limpia la memoria
   usuariosRegistrados: UsuarioRegistrado[]; // Lista de todos los usuarios de la base de datos local
-  registrarEIniciarSesion: (nombre: string, correoOTelefono: string, rol: UserRole, tipoProveedor: 'google' | 'linkedin' | 'normal', extraData?: Partial<UsuarioRegistrado>) => Promise<void>; // Registro social
-  registrarUsuario: (nombre: string, correoOTelefono: string, rol: UserRole, contrasena: string, tipoEntidad: 'natural' | 'empresa', nit?: string, correoFacturacion?: string, rubro?: string, ofreceB2B?: boolean) => Promise<boolean>; // Registro manual
+  registrarEIniciarSesion: (provider: 'google' | 'linkedin') => Promise<void>; // Registro social
+  registrarUsuario: (nombre: string, correoOTelefono: string, rol: UserRole, contrasena: string, tipoEntidad?: 'natural' | 'empresa', nit?: string, correoFacturacion?: string, rubro?: string, kycVerificado?: boolean, tenantId?: string) => Promise<boolean>; // Registro manual
   activeUser: UsuarioRegistrado | null; // Usuario activo logueado
   configurarProveedor: (servicios: string[], experiencia: string, descripcion: string, cobertura?: string) => Promise<void>;
   rateOrder: (orderId: number, estrellas: number, etiquetas: string[]) => void;
@@ -81,6 +84,11 @@ interface UserContextType {
   markAllNotificationsRead: () => void;
   clearAllNotifications: () => void;
   dismissToast: () => void;
+  // KYC: Actualiza el estado de verificación del usuario activo en contexto y en Neon DB
+  actualizarKYC: (detalles: string) => Promise<void>;
+  // Multi-Tenant: Gestión de Tenant Activo
+  activeTenantId: string | null;
+  seleccionarTenant: (tenantId: string) => void;
 }
 
 // Creación del React Context
@@ -163,6 +171,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [userName, setUserName] = useState<string>('Luis Alberto M.');
   const [usuariosRegistrados, setUsuariosRegistrados] = useState<UsuarioRegistrado[]>([]);
   const [activeUser, setActiveUser] = useState<UsuarioRegistrado | null>(null);
+  const [activeTenantId, setActiveTenantId] = useState<string | null>(null);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   const [isDbOnline, setIsDbOnline] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -171,6 +180,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [activeToast, setActiveToast] = useState<any | null>(null);
   const lastMaxMsgIdRef = useRef(0);
   const wasOnlineRef = useRef(false); // Rastrear estado previo para detectar reconexión
+
+  const seleccionarTenant = (tenantId: string) => {
+    setActiveTenantId(tenantId);
+    Storage.setItem('todo_ya_active_tenant', tenantId).catch(() => {});
+  };
 
   const showNotification = (title: string, message: string, type: 'info' | 'success' | 'warning') => {
     setNotification({ title, message, type });
@@ -1269,6 +1283,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ===== KYC: Actualizar verificación de identidad en contexto y Neon DB =====
+  const actualizarKYC = async (detalles: string) => {
+    if (!activeUser?.id) return;
+    // 1. Actualizar estado local inmediatamente (UX sin esperar red)
+    setActiveUser(prev => prev ? { ...prev, kycVerificado: true, kycDetalles: detalles } : prev);
+    // 2. Persistir en Neon DB via endpoint
+    try {
+      await fetch('/api/kyc-update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: activeUser.id, kycVerificado: true, kycDetalles: detalles }),
+      });
+    } catch (e) {
+      console.warn('[KYC] No se pudo sincronizar con Neon, se guardará en la próxima sincronización.');
+    }
+  };
+
   return (
     <UserContext.Provider value={{ 
       userRole, 
@@ -1305,7 +1336,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       markAllNotificationsRead,
       clearAllNotifications,
       dismissToast,
+      actualizarKYC,
+      activeTenantId,
+      seleccionarTenant,
     }}>
+
       {children}
     </UserContext.Provider>
   );

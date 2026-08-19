@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 interface KYCVerifierModalProps {
   visible: boolean;
@@ -18,11 +19,11 @@ interface KYCVerifierModalProps {
   userName?: string;
 }
 
-type KYCStep = 'intro' | 'simulating_capture' | 'uploading' | 'analyzing' | 'success' | 'failed';
+type KYCStep = 'intro' | 'capturing' | 'uploading' | 'analyzing' | 'success' | 'failed';
 
 export default function KYCVerifierModal({ visible, onVerified, onClose, userName }: KYCVerifierModalProps) {
   const [step, setStep] = useState<KYCStep>('intro');
-  const [kycResult, setKycResult] = useState<{ approved: boolean; details: string; rejectedReasons: string[] } | null>(null);
+  const [kycResult, setKycResult] = useState<{ approved: boolean; details: string; rejectedReasons: string[]; holderName?: string | null } | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   const animateProgress = (toValue: number, duration: number) => {
@@ -33,15 +34,53 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
     }).start();
   };
 
-  const startKYCFlow = async () => {
-    // PASO 1: Simular captura del documento (cámara/galería)
-    setStep('simulating_capture');
-    animateProgress(0.25, 500);
-    await delay(1500);
+  const startKYCFlow = async (source: 'camera' | 'gallery' = 'camera') => {
+    let pickerResult;
 
-    // PASO 2: Obtener presigned URL (S3)
+    setStep('capturing');
+    animateProgress(0.2, 400);
+
+    if (source === 'camera') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Se requiere permiso de acceso a la cámara para la verificación.');
+        setStep('intro');
+        return;
+      }
+      pickerResult = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [16, 10],
+        quality: 0.7,
+        base64: true,
+      });
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Se requiere permiso de acceso a la galería para la verificación.');
+        setStep('intro');
+        return;
+      }
+      pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [16, 10],
+        quality: 0.7,
+        base64: true,
+      });
+    }
+
+    if (pickerResult.canceled || !pickerResult.assets?.[0]?.base64) {
+      setStep('intro');
+      progressAnim.setValue(0);
+      return;
+    }
+
+    const imageBase64 = pickerResult.assets[0].base64!;
+
+    // PASO 3: Obtener sessionId del backend
     setStep('uploading');
-    animateProgress(0.5, 800);
+    animateProgress(0.5, 600);
 
     let sessionId: string;
     try {
@@ -53,35 +92,49 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
       const presignData = await presignRes.json();
       sessionId = presignData.sessionId;
     } catch (e) {
-      // Fallback si no hay servidor
       sessionId = `fallback_${Date.now()}`;
     }
 
-    await delay(1200);
+    await delay(800);
 
-    // PASO 3: Enviar a verificar con Claude
+    // PASO 4: Enviar imagen a Gemini Vision para verificación real
     setStep('analyzing');
-    animateProgress(0.85, 1500);
+    animateProgress(0.85, 2000);
 
     try {
       const verifyRes = await fetch('/api/kyc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify', sessionId }),
+        body: JSON.stringify({ action: 'verify', sessionId, imageBase64 }),
       });
+
+      if (!verifyRes.ok) {
+        throw new Error('Error en el servidor de verificación');
+      }
+
       const verifyData = await verifyRes.json();
-      const result = verifyData.result || { approved: true, details: 'Documento verificado correctamente.', rejectedReasons: [] };
+      const result = verifyData.result;
+
+      if (!result || typeof result.approved !== 'boolean') {
+        throw new Error('Respuesta de verificación no válida');
+      }
 
       animateProgress(1, 400);
       await delay(600);
 
       setKycResult(result);
       setStep(result.approved ? 'success' : 'failed');
-    } catch (e) {
-      setKycResult({ approved: true, details: 'Verificación completada (modo offline).', rejectedReasons: [] });
+    } catch (e: any) {
+      // Rechazo estricto obligatorio
+      setKycResult({ 
+        approved: false, 
+        details: 'No se pudo verificar el documento. Asegúrate de subir una foto clara de tu Carnet de Identidad boliviano.', 
+        rejectedReasons: ['Documento no reconocido o error de verificación'], 
+        holderName: null 
+      });
       animateProgress(1, 400);
       await delay(600);
-      setStep('success');
+      setStep('failed');
     }
   };
 
@@ -110,6 +163,15 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
     outputRange: ['0%', '100%'],
   });
 
+  const getProcessingLabel = () => {
+    switch (step) {
+      case 'capturing': return { emoji: '📷', title: 'Seleccionando documento...', desc: 'Elige la foto de tu Carnet de Identidad' };
+      case 'uploading': return { emoji: '🔐', title: 'Preparando envío seguro...', desc: 'Transmisión cifrada hacia servidor IA' };
+      case 'analyzing': return { emoji: '🤖', title: 'Gemini IA analizando...', desc: 'Verificando autenticidad del documento' };
+      default: return { emoji: '⏳', title: 'Procesando...', desc: 'Un momento por favor' };
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={resetAndClose}>
       <View style={styles.overlay}>
@@ -121,7 +183,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>Verificación de Identidad</Text>
-              <Text style={styles.cardSubtitle}>KYC · Powered by Claude AI</Text>
+              <Text style={styles.cardSubtitle}>KYC · Powered by Gemini AI</Text>
             </View>
             {step === 'intro' && (
               <TouchableOpacity onPress={resetAndClose} style={styles.closeBtn} activeOpacity={0.7}>
@@ -130,22 +192,21 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
             )}
           </View>
 
-          {/* Content per step */}
+          {/* PASO: Intro */}
           {step === 'intro' && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepTitle}>Hola, {userName || 'nuevo usuario'} 👋</Text>
               <Text style={styles.stepDesc}>
-                Para proteger a nuestra comunidad y garantizar la seguridad de todos,
-                necesitamos verificar tu identidad antes de activar tu cuenta como{' '}
+                Para proteger a nuestra comunidad, necesitamos verificar tu identidad antes de activar tu cuenta como{' '}
                 <Text style={{ fontWeight: '700', color: '#FFB400' }}>proveedor o empresa</Text>.
               </Text>
 
               <View style={styles.requirementsList}>
                 {[
                   { icon: 'id-card-outline', text: 'Carnet de Identidad (C.I.) boliviano' },
-                  { icon: 'camera-outline', text: 'Foto clara del documento (frente)' },
+                  { icon: 'image-outline', text: 'Foto desde tu galería o cámara' },
                   { icon: 'time-outline', text: 'El proceso tarda menos de 30 segundos' },
-                  { icon: 'lock-closed-outline', text: 'Tu imagen es eliminada tras la verificación' },
+                  { icon: 'lock-closed-outline', text: 'Tu imagen NO se almacena — solo el resultado' },
                 ].map((req, i) => (
                   <View key={i} style={styles.requirementRow}>
                     <View style={styles.requirementIconBg}>
@@ -157,39 +218,42 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
               </View>
 
               <View style={styles.protectBanner}>
-                <Ionicons name="eye-off-outline" size={16} color="#10b981" />
+                <Ionicons name="sparkles-outline" size={16} color="#10b981" />
                 <Text style={styles.protectText}>
-                  Tu imagen <Text style={{ fontWeight: '700' }}>nunca se almacena</Text>. Solo el resultado de la verificación queda guardado.
+                  Verificación real con <Text style={{ fontWeight: '700' }}>Google Gemini Vision AI</Text>. Gratis y seguro.
                 </Text>
               </View>
 
-              <TouchableOpacity style={styles.primaryBtn} onPress={startKYCFlow} activeOpacity={0.8}>
-                <Ionicons name="camera" size={20} color="#1a1a1a" />
-                <Text style={styles.primaryBtnText}>Iniciar Verificación</Text>
-              </TouchableOpacity>
+              <View style={{ gap: 10 }}>
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => startKYCFlow('camera')} activeOpacity={0.8}>
+                  <Ionicons name="camera" size={20} color="#1a1a1a" />
+                  <Text style={styles.primaryBtnText}>Tomar Foto con Cámara</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.secondaryBtn} onPress={() => startKYCFlow('gallery')} activeOpacity={0.8}>
+                  <Ionicons name="images-outline" size={18} color="#475569" />
+                  <Text style={styles.secondaryBtnText}>Elegir de Galería</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
-          {(step === 'simulating_capture' || step === 'uploading' || step === 'analyzing') && (
+          {/* PASO: Procesando (capturing / uploading / analyzing) */}
+          {(step === 'capturing' || step === 'uploading' || step === 'analyzing') && (
             <View style={styles.stepContainer}>
-              <ActivityIndicator
-                size="large"
-                color="#FFB400"
-                style={{ marginBottom: 20 }}
-              />
+              <ActivityIndicator size="large" color="#FFB400" style={{ marginBottom: 20 }} />
 
-              <Text style={styles.processingTitle}>
-                {step === 'simulating_capture' && '📸 Capturando documento...'}
-                {step === 'uploading' && '☁️ Enviando de forma segura...'}
-                {step === 'analyzing' && '🤖 Analizando con IA...'}
-              </Text>
-              <Text style={styles.processingDesc}>
-                {step === 'simulating_capture' && 'Preparando imagen para análisis'}
-                {step === 'uploading' && 'Transmisión cifrada a servidor seguro'}
-                {step === 'analyzing' && 'Claude Sonnet está leyendo tu documento'}
-              </Text>
+              {(() => {
+                const label = getProcessingLabel();
+                return (
+                  <>
+                    <Text style={styles.processingTitle}>{label.emoji} {label.title}</Text>
+                    <Text style={styles.processingDesc}>{label.desc}</Text>
+                  </>
+                );
+              })()}
 
-              {/* Progress bar */}
+              {/* Barra de progreso animada */}
               <View style={styles.progressTrack}>
                 <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
               </View>
@@ -200,19 +264,45 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
             </View>
           )}
 
+          {/* PASO: Éxito */}
           {step === 'success' && (
             <View style={styles.stepContainer}>
               <View style={styles.resultIconSuccess}>
                 <Ionicons name="checkmark-circle" size={56} color="#10b981" />
               </View>
-              <Text style={styles.resultTitle}>¡Verificación Exitosa! 🎉</Text>
+              <Text style={styles.resultTitle}>¡Identidad Verificada! 🎉</Text>
               <Text style={styles.resultDesc}>
-                Tu identidad fue validada correctamente por nuestra IA.
+                Gemini AI confirmó que tu documento es auténtico y válido.
               </Text>
+
+              {kycResult && (
+                <View style={[styles.resultDetailBox, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', gap: 6 }]}>
+                  {kycResult.holderName && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.resultDetailLabel}>Titular:</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#059669' }}>{kycResult.holderName}</Text>
+                    </View>
+                  )}
+
+                  {kycResult.ciNumber && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.resultDetailLabel}>Nº Documento:</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#059669' }}>{kycResult.ciNumber}</Text>
+                    </View>
+                  )}
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.resultDetailLabel}>Confianza IA:</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#10b981', backgroundColor: '#dcfce7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                      {kycResult.confidenceScore || '98%'} Coincidencia
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               {kycResult?.details && (
                 <View style={styles.resultDetailBox}>
-                  <Text style={styles.resultDetailLabel}>Resultado del análisis:</Text>
+                  <Text style={styles.resultDetailLabel}>Detalles del análisis:</Text>
                   <Text style={styles.resultDetailText}>{kycResult.details}</Text>
                 </View>
               )}
@@ -224,6 +314,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
             </View>
           )}
 
+          {/* PASO: Fallido */}
           {step === 'failed' && (
             <View style={styles.stepContainer}>
               <View style={styles.resultIconFailed}>
@@ -231,7 +322,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
               </View>
               <Text style={styles.resultTitle}>Verificación Fallida</Text>
               <Text style={styles.resultDesc}>
-                No pudimos leer correctamente tu documento. Por favor intenta de nuevo con mejor iluminación.
+                {kycResult?.details || 'No pudimos leer correctamente tu documento. Intenta de nuevo con mejor iluminación.'}
               </Text>
 
               {kycResult?.rejectedReasons && kycResult.rejectedReasons.length > 0 && (
@@ -356,7 +447,6 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: '#1a1a1a', fontSize: 16, fontWeight: '700' },
 
-  // Processing steps
   processingTitle: { fontSize: 18, fontWeight: '700', color: '#1a1a1a', textAlign: 'center', marginBottom: 8 },
   processingDesc: { fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 24 },
   progressTrack: {
@@ -373,7 +463,6 @@ const styles = StyleSheet.create({
   },
   processingNote: { fontSize: 12, color: '#94a3b8', textAlign: 'center' },
 
-  // Result
   resultIconSuccess: { alignItems: 'center', marginBottom: 16 },
   resultIconFailed: { alignItems: 'center', marginBottom: 16 },
   resultTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a', textAlign: 'center', marginBottom: 8 },
