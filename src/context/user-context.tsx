@@ -76,7 +76,7 @@ interface UserContextType {
   resetData: () => void;   // Resetea todos los estados al valor inicial
   isAuthenticated: boolean; // Estado de sesión del usuario
   userName: string;        // Nombre personalizado del usuario activo
-  login: (correoOTelefono: string, contrasena: string) => Promise<boolean>; // Inicia sesión
+  login: (correoOTelefono: string, contrasena: string, forceRole?: UserRole) => Promise<boolean>; // Inicia sesión
   logout: () => void;      // Cierra sesión y limpia la memoria
   deleteAccount: () => Promise<boolean>; // Elimina la cuenta permanentemente
   usuariosRegistrados: UsuarioRegistrado[]; // Lista de todos los usuarios de la base de datos local
@@ -1384,7 +1384,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     correoOTelefono: string,
     rol: UserRole,
     contrasena: string,
-    tipoEntidad: 'natural' | 'empresa',
+    tipoEntidad: 'natural' | 'empresa' = 'natural',
     nit?: string,
     correoFacturacion?: string,
     rubro?: string,
@@ -2178,7 +2178,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.warn('[KYC] No se pudo sincronizar con Neon, se guardará en la próxima sincronización.');
     }
->>>>>>> origin/mejoras-hackathon
   };
 
   return (

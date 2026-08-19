@@ -3,8 +3,8 @@
 // Permite que la app reciba mensajes nuevos al instante sin polling (0s de latencia)
 
 import { db } from '../../../db';
-import { chatMessages } from '../../../db/schema';
-import { eq, gte } from 'drizzle-orm';
+import { messages as messagesTable } from '../../../db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -31,8 +31,8 @@ export async function GET(request: Request) {
           if (db) {
             const newMsgs = await db
               .select()
-              .from(chatMessages)
-              .where(eq(chatMessages.pedidoId, orderId));
+              .from(messagesTable)
+              .where(eq(messagesTable.orderId, orderId));
 
             const fresh = newMsgs.filter(m => m.id > currentLastId);
             if (fresh.length > 0) {

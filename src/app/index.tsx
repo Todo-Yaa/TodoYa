@@ -36,9 +36,6 @@ export default function HomeScreen() {
     return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
   };
 
-  // Conteo de notificaciones sin leer para el badge de la campana
-  const unreadCount = notificationsList.filter(n => !n.read).length;
-
   const executePanicAction = async (quickDesc?: string) => {
     const descToUse = quickDesc || panicDesc;
     if (!descToUse.trim()) return;
