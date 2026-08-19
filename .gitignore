@@ -42,7 +42,7 @@ example
 /ios
 /android
 .vercel
-.env*
+.env*.local
 
 # Confidential Legal & Governance documents
 CAP_TABLE_Y_GOBERNANZA.*

@@ -96,6 +96,8 @@ function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
   return <>{children}</>;
 }
 
+import { registerForPushNotificationsAsync } from '../services/notifications';
+
 /**
  * Componente NavigationLayout:
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
@@ -105,6 +107,13 @@ function NavigationLayout() {
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
+
+  useEffect(() => {
+    // Inicializar Notificaciones Push Nativas
+    if (isAuthenticated) {
+      registerForPushNotificationsAsync();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (notification) {

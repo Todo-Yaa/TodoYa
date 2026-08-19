@@ -76,12 +76,12 @@ interface UserContextType {
   resetData: () => void;   // Resetea todos los estados al valor inicial
   isAuthenticated: boolean; // Estado de sesión del usuario
   userName: string;        // Nombre personalizado del usuario activo
-  login: (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole) => Promise<boolean>; // Inicia sesión
+  login: (correoOTelefono: string, contrasena: string) => Promise<boolean>; // Inicia sesión
   logout: () => void;      // Cierra sesión y limpia la memoria
   deleteAccount: () => Promise<boolean>; // Elimina la cuenta permanentemente
   usuariosRegistrados: UsuarioRegistrado[]; // Lista de todos los usuarios de la base de datos local
   registrarEIniciarSesion: (nombre: string, correoOTelefono: string, rol: UserRole, tipoProveedor: 'google' | 'linkedin' | 'normal', extraData?: Partial<UsuarioRegistrado>) => Promise<void>; // Registro social
-  registrarUsuario: (nombre: string, correoOTelefono: string, rol: UserRole, contrasena: string, tipoEntidad: 'natural' | 'empresa', nit?: string, correoFacturacion?: string, rubro?: string, ofreceB2B?: boolean, celular?: string, codigoPais?: string) => Promise<boolean>; // Registro manual
+  registrarUsuario: (nombre: string, correoOTelefono: string, rol: UserRole, contrasena: string, tipoEntidad?: 'natural' | 'empresa', nit?: string, correoFacturacion?: string, rubro?: string, ofreceB2B?: boolean, celular?: string, codigoPais?: string) => Promise<boolean>; // Registro manual
   activeUser: UsuarioRegistrado | null; // Usuario activo logueado
   configurarProveedor: (servicios: string[], experiencia: string, descripcion: string, cobertura?: string) => Promise<void>;
   actualizarKyc: (kycVerificado: boolean, kycDetalles: string) => Promise<void>;
@@ -121,6 +121,9 @@ interface UserContextType {
   actualizarFotoPerfil: (foto: string | null) => Promise<boolean>;
   actualizarDatosPersonales: (nuevosDatos: { nombre?: string; correoOTelefono?: string; celular?: string }) => Promise<{ success: boolean; message?: string; diasRestantes?: number }>;
   getB2BTrialStatus: (userTarget?: UsuarioRegistrado | null) => { active: boolean; daysLeft: number; totalDays: number };
+  actualizarKYC: (detalles: string) => Promise<void>;
+  activeTenantId: string | null;
+  seleccionarTenant: (tenantId: string) => void;
 }
 
 // Creación del React Context
@@ -204,6 +207,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [userName, setUserName] = useState<string>('Luis Alberto M.');
   const [usuariosRegistrados, setUsuariosRegistrados] = useState<UsuarioRegistrado[]>([]);
   const [activeUser, setActiveUser] = useState<UsuarioRegistrado | null>(null);
+  const [activeTenantId, setActiveTenantId] = useState<string | null>(null);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   const [isDbOnline, setIsDbOnline] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -322,6 +326,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn('[Location] Error al obtener/verificar la ubicación:', err);
     }
+  };
+
+  const seleccionarTenant = (tenantId: string) => {
+    setActiveTenantId(tenantId);
+    Storage.setItem('todo_ya_active_tenant', tenantId).catch(() => {});
   };
 
   const showNotification = (title: string, message: string, type: 'info' | 'success' | 'warning') => {
@@ -2154,6 +2163,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  // ===== KYC: Actualizar verificación de identidad en contexto y Neon DB =====
+  const actualizarKYC = async (detalles: string) => {
+    if (!activeUser?.id) return;
+    // 1. Actualizar estado local inmediatamente (UX sin esperar red)
+    setActiveUser(prev => prev ? { ...prev, kycVerificado: true, kycDetalles: detalles } : prev);
+    // 2. Persistir en Neon DB via endpoint
+    try {
+      await fetch('/api/kyc-update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: activeUser.id, kycVerificado: true, kycDetalles: detalles }),
+      });
+    } catch (e) {
+      console.warn('[KYC] No se pudo sincronizar con Neon, se guardará en la próxima sincronización.');
+    }
+>>>>>>> origin/mejoras-hackathon
+  };
+
   return (
     <UserContext.Provider value={{ 
       userRole, 
@@ -2214,7 +2241,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       actualizarFotoPerfil,
       actualizarDatosPersonales,
       getB2BTrialStatus,
+      actualizarKYC,
+      activeTenantId,
+      seleccionarTenant,
     }}>
+
       {children}
     </UserContext.Provider>
   );

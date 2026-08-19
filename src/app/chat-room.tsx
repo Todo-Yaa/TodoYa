@@ -91,9 +91,10 @@ export default function ChatRoomScreen() {
       setIsLoading(false);
     } else {
       fetchMessages(true);
+      // Conexión en vivo ultrarrápida (1.5s) para garantizar tiempo real óptimo en web y móvil
       pollingIntervalRef.current = setInterval(() => {
         fetchMessages(false);
-      }, 3000);
+      }, 1500);
     }
 
     return () => {
