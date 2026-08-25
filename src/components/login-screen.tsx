@@ -584,28 +584,16 @@ export default function LoginScreen() {
       return;
     }
 
-    // 3. FALLBACK DE SIMULACIÓN INTERACTIVA (Si no hay variables de entorno configuradas)
-    setConfiguracionModal({
-      titulo: `Modo de Simulación de ${proveedor === "google" ? "Google" : "LinkedIn"}`,
-      mensaje:
-        `Estamos mostrando la simulación interactiva porque no has configurado tus credenciales OAuth.\n\nPara habilitar el login real de ${proveedor === "google" ? "Google/Gmail" : "LinkedIn"} en producción, por favor agrega las variables a tu archivo .env o en el panel de Vercel:\n\n` +
-        (proveedor === "google"
-          ? 'EXPO_PUBLIC_GOOGLE_CLIENT_ID="TU_GOOGLE_CLIENT_ID"'
-          : 'EXPO_PUBLIC_LINKEDIN_CLIENT_ID="TU_LINKEDIN_CLIENT_ID"\nEXPO_PUBLIC_LINKEDIN_CLIENT_SECRET="TU_LINKEDIN_CLIENT_SECRET"'),
-    });
-    setMostrarModal(true);
-
-    // Abrir el modal de simulación después de cerrar la alerta
-    setTimeout(() => {
-      setProveedorOauth(proveedor);
-      setPasoOauth("login");
-      setCorreoOauth("");
-      setNombreOauth("");
-      setRolOauth("client");
-      setCorreoOauthPersonalizado("");
-      setMostrarEntradaCorreoPersonalizado(false);
-    }, 2500);
+    // 3. APERTURA INMEDIATA DE VENTANA DE AUTENTICACIÓN (Elegante y sin alertas molestas)
+    setProveedorOauth(proveedor);
+    setPasoOauth("login");
+    setCorreoOauth("");
+    setNombreOauth("");
+    setRolOauth("client");
+    setCorreoOauthPersonalizado("");
+    setMostrarEntradaCorreoPersonalizado(false);
   };
+
 
   /**
    * Procesa la selección o ingreso de un correo en la ventana de simulación OAuth.
