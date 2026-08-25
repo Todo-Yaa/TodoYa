@@ -8,9 +8,10 @@ Este documento contiene la **estructura de software, carpetas, base de datos, di
 
 ```text
 todo-ya/
-├── package.json                         # Dependencias y scripts npm (Expo 56, Drizzle, React 19)
+├── package.json                         # Dependencias y scripts npm (Expo 56, Drizzle, React 19, jose)
 ├── app.json                         # Configuración de Expo y API Routes (Serverless)
 ├── drizzle.config.ts                # Configuración del ORM Drizzle para Neon Postgres
+├── eslint.config.js                 # Configuración de linter Flat Config (ESLint)
 ├── tsconfig.json                    # Configuración global de TypeScript 6.0
 │
 ├── assets/                          # Recursos gráficos (iconos, splash, imágenes)
@@ -18,7 +19,8 @@ todo-ya/
 └── src/
     ├── db/                          # 🗄️ CAPA DE BASE DE DATOS (NEON POSTGRES + DRIZZLE)
     │   ├── index.ts                 # Conexión HTTP Serverless a Neon.db
-    │   └── schema.ts                # Tablas: users, orders, messages, transactions, ratings, applications, reports, admin_audit_logs, system_settings, referrals
+    │   ├── localDb.ts               # Persistencia local / respaldo offline en JSON
+    │   └── schema.ts                # Tablas relacionales: tenants, users, orders, messages, transactions, ratings, applications, reports
     │
     ├── context/                     # 🔑 ESTADO GLOBAL Y SESIÓN DE USUARIO
     │   └── user-context.tsx         # Gestión de login, roles (client, provider, business, admin) y almacenamiento seguro
@@ -28,7 +30,8 @@ todo-ya/
     │   ├── transcribe.ts            # Transcripción de audios de voz a texto
     │   └── kyc-verification.ts      # Análisis de documentos de identidad con IA
     │
-    ├── utils/                       # 🛠️ UTILIDADES Y ALMACENAMIENTO HÍBRIDO
+    ├── utils/                       # 🛠️ UTILIDADES Y SEGURIDAD
+    │   ├── auth.ts                  # Autenticación JWT (jose), hashing scrypt y resolución de Tenant ID
     │   └── storage.ts               # SecureStore en nativo / LocalStorage en Web
     │
     ├── components/                  # 🧩 COMPONENTES REUTILIZABLES DE UI
@@ -55,13 +58,26 @@ todo-ya/
         │   └── auditoria.tsx        # Historial de acciones de los administradores
         │
         └── api/                     # ⚡ ENDPOINTS BACKEND SERVERLESS
-            ├── auth/                # Endpoints de login y refresco de token JWT
-            ├── db-status+api.ts     # Chequeo de salud de Neon.db
-            ├── matching+api.ts      # Endpoint de búsqueda semántica IA Gemini
-            ├── reports+api.ts       # Registro y resolución de denuncias
-            ├── users+api.ts         # Modificación de usuarios y estado de cuenta
-            ├── payments/            # Endpoints de integración con Culqi y BCP
-            └── admin/               # Endpoints REST protegidos para el Panel Admin
+            ├── applications+api.ts  # POST/GET: Postulaciones de proveedores a pedidos
+            ├── auth-linkedin+api.ts # POST: Autenticación social con LinkedIn
+            ├── chat+api.ts          # POST/GET: Chat en tiempo real por pedido
+            ├── db-status+api.ts     # GET: Chequeo de salud de Neon.db
+            ├── kyc+api.ts           # POST: Verificación biométrica KYC
+            ├── matching+api.ts      # POST: Emparejamiento semántico con IA Gemini
+            ├── orders+api.ts        # GET/POST/PUT: Gestión de pedidos multi-tenant
+            ├── peru-geo+api.ts      # GET: Geocodificación GPS / OpenStreetMap
+            ├── peru-invoice+api.ts  # POST: Emisión de boletas/facturas SUNAT
+            ├── peru-legal+api.ts    # GET: Consulta RENIEC (DNI) y SUNAT (RUC)
+            ├── ratings+api.ts       # POST/GET: Calificación relacional de servicios
+            ├── reports+api.ts       # POST/GET: Registro y resolución de denuncias
+            ├── seed+api.ts          # POST: Semilla de datos iniciales
+            ├── send-sms+api.ts      # POST: Envió de códigos PIN por SMS/WhatsApp
+            ├── sync+api.ts          # GET/POST: Sincronización offline/online
+            ├── transcribe+api.ts    # POST: Transcripción de notas de voz
+            ├── upload+api.ts        # POST: Carga de imágenes a CDN Cloudinary/Firebase
+            ├── users+api.ts         # GET/POST/PUT/DELETE: Gestión de usuarios, login y JWT
+            ├── veripagos+api.ts     # POST: Pasarela de verificación de pagos BCP/QR
+            └── wallet+api.ts        # GET/POST: Billetera virtual y saldo de monedas
 ```
 
 ---
@@ -76,46 +92,59 @@ graph TD
         AdminWeb[Panel Admin Web /src/app/admin]
     end
 
+    subgraph Middleware y Seguridad (src/utils/auth.ts)
+        JWTAuth[Verificador JWT jose - HS256]
+        TenantRes[Resolución Jerárquica de Tenant ID]
+        ScryptHash[Password Hash scrypt]
+    end
+
     subgraph Backend Serverless (Expo API Routes / Node.js)
-        Auth[Auth Middleware RBAC]
         UsersAPI[/api/users]
+        OrdersAPI[/api/orders]
+        ChatAPI[/api/chat]
+        AppsAPI[/api/applications]
+        RatingsAPI[/api/ratings]
+        WalletAPI[/api/wallet]
         MatchingAPI[/api/matching]
-        PaymentsAPI[/api/payments]
-        AdminAPI[/api/admin]
-        Drizzle[Drizzle ORM]
+        Drizzle[Drizzle ORM Multi-Tenant]
     end
 
-    subgraph Infraestructura Nube (Costo $0 inicial)
-        Gemini[Google Gemini 2.5 Flash API]
-        NeonDB[(Neon.db PostgreSQL Serverless)]
-        Culqi[Culqi API v2 - Payments]
-        BCP[BCP Crece - Pagos QR]
+    subgraph Infraestructura Nube (Neon DB & Terceros)
+        Gemini[Google Gemini API]
+        NeonDB[(Neon.db PostgreSQL Multi-Tenant)]
+        Cloudinary[Cloudinary / Firebase CDN]
+        VeriPagos[VeriPagos / BCP QR]
     end
 
-    AppMob & AppWeb --> Auth
-    AdminWeb --> Auth
+    AppMob & AppWeb --> JWTAuth
+    AdminWeb --> JWTAuth
     
-    Auth --> UsersAPI & MatchingAPI & PaymentsAPI & AdminAPI
+    JWTAuth --> TenantRes
+    TenantRes --> UsersAPI & OrdersAPI & ChatAPI & AppsAPI & RatingsAPI & WalletAPI & MatchingAPI
     
     MatchingAPI --> Gemini
-    PaymentsAPI --> Culqi & BCP
-    AdminAPI --> Drizzle
-    UsersAPI --> Drizzle
+    UsersAPI & OrdersAPI & ChatAPI & AppsAPI & RatingsAPI & WalletAPI --> Drizzle
     Drizzle --> NeonDB
 ```
+
+### Mecanismo de Resolución de Tenant (`src/utils/auth.ts`)
+El backend resuelve el `tenantId` en cada petición HTTP siguiendo un orden jerárquico estricto:
+1. **Token JWT de Sesión**: Extrae la cabecera `Authorization: Bearer <token>`, verifica la firma con `jose` y utiliza el `tenantId` contenido en el payload.
+2. **Parámetro Query HTTP**: Si no se proporciona token, busca el parámetro `?tenantId=` en la URL.
+3. **Tenant Predeterminado**: Si no existe ni token ni query param, asigna el tenant global por defecto (`tenantId = 1`).
 
 ---
 
 ## 3. 🗄️ Estructura de la Base de Datos (Tablas Principales)
 
-1. **`users`**: Clientes, Proveedores, Empresas B2B y Administradores (`rol: 'client' | 'provider' | 'business' | 'admin'`).
-2. **`orders`**: Solicitudes de servicio, licitaciones B2B, precios, urgencia y estados.
-3. **`applications`**: Postulaciones de técnicos a pedidos y consumo de monedas.
-4. **`transactions`**: Historial de billetera virtual (recargas de monedas por Culqi/BCP y consumo).
-5. **`reports`**: Denuncias de usuarios, problemas en servicios y motivo de suspensión.
-6. **`admin_audit_logs`**: Registro de auditoría de cada acción ejecutada en el panel administrativo.
-7. **`system_settings`**: Parámetros globales de comisiones, tarifas y llaves configurables.
-8. **`referrals`**: Control de códigos de referidos y recompensa de monedas de regalo por invitar usuarios.
+1. **`tenants`**: Registro de organizaciones y empresas multi-tenant (`id`, `nombre`, `slug`).
+2. **`users`**: Clientes, Proveedores, Empresas B2B y Administradores (`tenantId`, `nombre`, `correoOTelefono`, `rol`, `contrasena`, `monedas`, `pushToken`, `kycVerificado`, `baneado`, `fotoPerfil`).
+3. **`orders`**: Solicitudes de servicio relacionales (`tenantId`, `titulo`, `clienteId`, `proveedorId`, `servicio`, `descripcion`, `estado`, `urgencia`, `precio`).
+4. **`messages`**: Chat en tiempo real por pedido (`tenantId`, `orderId`, `senderId`, `senderName`, `messageText`, `createdAt`).
+5. **`transactions`**: Historial de movimientos de billetera (`usuario_id`, `tipo: 'recarga' | 'gasto'`, `monto_monedas`, `detalle`).
+6. **`ratings`**: Calificaciones relacionales (`orderId`, `calificadorId`, `calificadoId`, `estrellas`, `etiquetas`, `comentario`).
+7. **`applications`**: Postulaciones de proveedores a pedidos (`orderId`, `proveedorId`, `estado: 'pendiente' | 'aceptado' | 'rechazado'`, `monedasGastadas`, `notaPersonal`).
+8. **`reports`**: Denuncias y moderación (`pedidoId`, `reportanteId`, `reportadoNombre`, `motivo`, `descripcion`, `estado`).
 
 ---
 

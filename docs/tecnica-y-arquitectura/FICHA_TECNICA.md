@@ -22,12 +22,15 @@ El árbol de directorios del código fuente está estructurado de la siguiente m
 Todo_ya-/
 ├── metro.config.js                  # Configuración de resolución ESM para Metro/Expo
 ├── app.json                         # Configuración de Expo y API Routes (output: server)
-├── package.json                     # Dependencias y scripts npm
+├── drizzle.config.ts                # Configuración del ORM Drizzle para Neon Postgres
+├── eslint.config.js                 # Configuración de linter Flat Config (ESLint)
+├── package.json                     # Dependencias y scripts npm (Expo 56, Drizzle, React 19, jose)
 ├── assets/                          # Activos del proyecto (iconos, splash, imágenes)
 └── src/
     ├── db/                          # Capa de Persistencia y Modelado ORM
     │   ├── index.ts                 # Instanciación de Drizzle con Neon.db (HTTP Serverless)
-    │   └── schema.ts                # Modelado relacional (users, orders) en TypeScript
+    │   ├── localDb.ts               # Persistencia local / respaldo offline en JSON
+    │   └── schema.ts                # Modelado relacional multi-tenant (tenants, users, orders, messages, transactions, ratings, applications, reports)
     ├── i18n/                        # Configuración de Internacionalización (i18n)
     │   ├── index.ts                 # Configuración de i18next y expo-localization
     │   └── locales/                 # Diccionarios JSON de traducción (es, en, qu, ay, gn)
@@ -36,6 +39,9 @@ Todo_ya-/
     ├── context/                     # Contexto de estado de sesión (user-context.tsx)
     ├── hooks/                       # Hooks personalizados
     ├── services/                    # Capa de Lógica de Negocio y Clasificación (ai-matching.ts)
+    ├── utils/                       # Utilidades y Seguridad
+    │   ├── auth.ts                  # Autenticación JWT (jose), hashing scrypt y resolución jerárquica de Tenant ID
+    │   └── storage.ts               # Adaptador híbrido (SecureStore en nativo / LocalStorage en Web)
     └── app/                         # Pantallas de la Aplicación y Endpoints de API
         ├── _layout.tsx              # Splash animado e inicialización de i18n
         ├── index.tsx                # Pantalla principal (Cliente/Empresa) con Grid de 6 categorías
@@ -45,10 +51,26 @@ Todo_ya-/
         ├── perfil.tsx               # Ajustes y selector multicultural de idiomas
         ├── pperfil.tsx              # Dashboard del proveedor con insignia Premium
         └── api/                     # Endpoints Backend (Serverless Routes)
-            ├── db-status+api.ts     # GET: Chequeo de conexión con Neon.db
-            ├── matching+api.ts      # POST: Endpoint integrado con Google Gemini API
-            ├── reports+api.ts       # GET/POST: Registro y consulta de quejas/denuncias
-            └── users+api.ts         # PUT: Actualización de perfiles en Neon.db y baneo
+            ├── applications+api.ts  # POST/GET: Postulaciones de proveedores a pedidos
+            ├── auth-linkedin+api.ts # POST: Autenticación social con LinkedIn
+            ├── chat+api.ts          # POST/GET: Chat en tiempo real por pedido
+            ├── db-status+api.ts     # GET: Chequeo de salud de Neon.db
+            ├── kyc+api.ts           # POST: Verificación biométrica KYC
+            ├── matching+api.ts      # POST: Emparejamiento semántico con IA Gemini
+            ├── orders+api.ts        # GET/POST/PUT: Gestión de pedidos multi-tenant
+            ├── peru-geo+api.ts      # GET: Geocodificación GPS / OpenStreetMap
+            ├── peru-invoice+api.ts  # POST: Emisión de boletas/facturas SUNAT
+            ├── peru-legal+api.ts    # GET: Consulta RENIEC (DNI) y SUNAT (RUC)
+            ├── ratings+api.ts       # POST/GET: Calificación relacional de servicios
+            ├── reports+api.ts       # POST/GET: Registro y resolución de denuncias
+            ├── seed+api.ts          # POST: Semilla de datos iniciales
+            ├── send-sms+api.ts      # POST: Envió de códigos PIN por SMS/WhatsApp
+            ├── sync+api.ts          # GET/POST: Sincronización offline/online
+            ├── transcribe+api.ts    # POST: Transcripción de notas de voz
+            ├── upload+api.ts        # POST: Carga de imágenes a CDN Cloudinary/Firebase
+            ├── users+api.ts         # GET/POST/PUT/DELETE: Gestión de usuarios, login y JWT
+            ├── veripagos+api.ts     # POST: Pasarela de verificación de pagos BCP/QR
+            └── wallet+api.ts        # GET/POST: Billetera virtual y saldo de monedas
 ```
 
 ---
@@ -171,8 +193,16 @@ El modelo relacional detallado refleja exactamente el esquema definido mediante 
 
 ```mermaid
 erDiagram
+    tenants {
+        int id PK
+        varchar nombre
+        varchar slug UK
+        timestamp created_at
+    }
+
     users {
         int id PK
+        int tenant_id FK
         varchar nombre
         varchar correo_o_telefono UK
         varchar rol
@@ -196,11 +226,13 @@ erDiagram
         boolean kyc_verificado
         text kyc_detalles
         boolean baneado
+        text foto_perfil
         timestamp created_at
     }
 
     orders {
         int id PK
+        int tenant_id FK
         varchar titulo
         int cliente_id FK
         int proveedor_id FK
@@ -224,6 +256,7 @@ erDiagram
 
     messages {
         int id PK
+        int tenant_id FK
         int order_id FK
         int sender_id FK
         varchar sender_name
@@ -271,6 +304,10 @@ erDiagram
         varchar estado
         timestamp created_at
     }
+
+    tenants ||--o{ users : "pertenece"
+    tenants ||--o{ orders : "pertenece"
+    tenants ||--o{ messages : "pertenece"
 
     users ||--o{ orders : "solicita (como cliente)"
     users ||--o{ orders : "atiende (como proveedor)"
@@ -434,6 +471,11 @@ graph LR
   * **Filtro Online**: La API Route de matching (`/api/matching`) solicita a Gemini retornar un campo booleano `tieneSentido`. Si es `false`, retorna un código especial para alertar al cliente.
   * **Filtro Offline / Local**: Un algoritmo heurístico en `ai-matching.ts` valida si la longitud es mayor o igual a 8 caracteres, si tiene 2 o más palabras y si contiene verbos y palabras clave de la categoría o términos de servicios.
   * **Notificación de Incoherencia**: Al detectarse una descripción sin sentido, se despliega un modal con el título `⚠️ No se entiende` y el mensaje interactivo `Vuelve a escribirlo` bloqueando el registro de la orden.
+
+### 4. Autenticación JWT, Hashing `scrypt` y Aislamiento Multi-Tenant (`src/utils/auth.ts`)
+* **Hashing seguro de contraseñas**: Emplea el algoritmo criptográfico `scrypt` de Node.js para generar hashes con sal aleatoria de 16 bytes y clave derivada de 64 bytes (`scrypt$<saltHex>$<hashHex>`). Incluye la función `verifyPassword` utilizando comparación de tiempo constante (`timingSafeEqual`) contra ataques de sincronización.
+* **Tokens de Sesión JWT**: Firma y valida tokens mediante la librería `jose` (algoritmo `HS256`, secreto configurable en `JWT_SECRET`, vigencia 30 días) conteniendo `userId`, `tenantId` y opcionalmente `rol`.
+* **Resolución Jerárquica de Tenant ID (`resolveTenantId`)**: Inspeciona la petición HTTP resolviendo el `tenantId` en orden de prioridad: cabecera `Authorization: Bearer <token>` → parámetro `?tenantId=` → tenant por defecto (`1`).
 
 ### 8. Registro Regional, Doble Verificación (PIN SMS) y Verificación de Proveedores (KYC)
 * **Registro con Correo Electrónico Real**: El proceso de registro de usuarios (naturales y corporativos) se efectúa capturando y validando el correo real del usuario (con control de formato `@` y no vacío), en lugar de mapear el celular en el campo correo.
