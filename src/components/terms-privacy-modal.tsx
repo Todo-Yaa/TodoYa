@@ -90,6 +90,15 @@ export default function TermsPrivacyModal({ visible, onClose, initialTab = 'term
                 <Text style={styles.paragraph}>
                   Cualquier cobro indebido, conducta inapropiada o incumplimiento dará lugar a denuncias formales, suspensión temporal de la cuenta o suspensión definitiva sin devolución de saldos.
                 </Text>
+
+                <Text style={styles.sectionHeading}>6. Deslinde de Responsabilidad por Hurtos, Robos, Daños y Negligencia</Text>
+                <Text style={styles.paragraph}>
+                  <Text style={{ fontWeight: 'bold', color: '#ef4444' }}>EXENCIÓN Y DESLINDE LEGAL DE RESPONSABILIDAD DE TODO YA:</Text>{"\n\n"}
+                  • <Text style={{ fontWeight: 'bold' }}>Independencia de las Partes</Text>: Los Proveedores Técnicos son profesionales independientes y no empleados, dependientes ni representantes de Todo Ya. La contratación del servicio constituye un acuerdo directo e independiente entre el Cliente y el Proveedor.{"\n\n"}
+                  • <Text style={{ fontWeight: 'bold' }}>Ausencia de Responsabilidad por Delitos o Perjuicios</Text>: Todo Ya actúa únicamente como un canal tecnológico de conexión. Todo Ya <Text style={{ fontWeight: 'bold', color: '#dc2626' }}>NO se hace responsable en ningún caso por robos, hurtos, sustracciones de bienes, extravíos, cobros excesivos, fraudes, estafas, negligencia, mala praxis técnica ni daños materiales o morales</Text> causados por proveedores o clientes dentro o fuera del domicilio o local de atención.{"\n\n"}
+                  • <Text style={{ fontWeight: 'bold' }}>Responsabilidad Penal y Civil Directa</Text>: La responsabilidad civil y penal por cualquier ilícito o daño recae de forma exclusiva sobre la persona natural o jurídica que cometa la infracción o delito.{"\n\n"}
+                  • <Text style={{ fontWeight: 'bold' }}>Verificación KYC y Colaboración con las Autoridades (PNP)</Text>: Aunque Todo Ya implementa la verificación de identidad (DNI / CE y selfie biométrica con IA), esto constituye una medida preventiva de seguridad y no una garantía de conducta. Ante la denuncia o comisión de un delito, Todo Ya inhabilitará inmediatamente la cuenta y <Text style={{ fontWeight: 'bold', color: '#2563eb' }}>proporcionará de forma prioritaria la identidad y datos registrados del infractor a la Policía Nacional del Perú (PNP), Ministerio Público o Autoridad Judicial competente</Text> que lo solicite mediante mandato oficial.
+                </Text>
               </View>
             )}
 

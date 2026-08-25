@@ -9,8 +9,8 @@ import TermsPrivacyModal from './terms-privacy-modal';
 import { sanitizeText, sanitizeEmail, sanitizePhone } from '../utils/security';
 
 const PAISES_LATINOS = [
-  { nombre: "Bolivia", codigo: "591", bandera: "🇧🇴" },
   { nombre: "Perú", codigo: "51", bandera: "🇵🇪" },
+  { nombre: "Bolivia", codigo: "591", bandera: "🇧🇴" },
   { nombre: "Colombia", codigo: "57", bandera: "🇨🇴" },
   { nombre: "Ecuador", codigo: "593", bandera: "🇪🇨" },
   { nombre: "Chile", codigo: "56", bandera: "🇨🇱" },
@@ -62,9 +62,10 @@ export default function LoginScreen() {
   const [b2bRol, setB2bRol] = useState<"client" | "provider">("client");
   const [naturalRol, setNaturalRol] = useState<"client" | "provider">("client");
 
-  // Nuevos campos de celular y país
-  const [codigoPais, setCodigoPais] = useState("591");
+  // Nuevos campos de celular y país (Perú +51 por defecto)
+  const [codigoPais, setCodigoPais] = useState("51");
   const [celular, setCelular] = useState("");
+
   const [correoRegistro, setCorreoRegistro] = useState("");
   const [mostrarPaises, setMostrarPaises] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
