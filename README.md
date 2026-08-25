@@ -90,8 +90,6 @@ Toda la documentación técnica, comercial y de gestión del proyecto se encuent
 ### 💼 1. Estudio de Mercado y Publicidad
 * 📊 [**Dossier Maestro de Inversión**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/DOSSIER_INVERSIONISTA.md): Documento único unificado para rondas de inversión, modelo de negocio B2C/B2B, proyecciones financieras, formalización S.A.C. y pasarelas de pago.
 * 📱 [**Estrategia de Marketing Digital y Redes Sociales**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/ESTRATEGIA_MARKETING_Y_REDES.md): Plan de acción para el equipo de marketing con estrategias de contenido viral para TikTok, Instagram (`@todoo__ya`), Facebook y LinkedIn.
-* 📜 [**Acuerdo Preliminar de Carlos Arbulú (CMO - 8.0%)**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/Acuerdo_Carlos_Arbulu.md): Contrato pre-societario sincronizado al 17 de Octubre de 2026.
-* ⚖️ [**Pacto de Socios Post-Prueba (17 Octubre 2026)**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/Pacto_Socios_Y_CapTable_PostPrueba_Oct2026.md): Convenio global de reestructuración accionaria con 51% para Luis (CEO), 8% Víctor, 7% Wilber, 7% Aldair, 8% Carlos, 8% Juan Diego y 11% Reserva de Inversionistas.
 * 📈 [**Plan de Arranque y Presupuesto Comercial**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/PLAN_DE_ARRANQUE_Y_PRESUPUESTO_COMERCIAL.md): Estrategia de tracción comercial, campañas publicitarias y presupuesto operacional.
 
 ### 🛠️ 2. Técnica y Arquitectura
