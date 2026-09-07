@@ -1,7 +1,8 @@
 import { db, isDbConnected } from '../../db';
-import { ratings, orders } from '../../db/schema';
+import { ratings, orders, users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { localDb } from '../../db/localDb';
+import { getProviderScore } from '../../services/scoring';
 
 // GET: Obtener calificaciones (por orderId o por calificadoId para stats del proveedor)
 export async function GET(request: Request) {
@@ -42,10 +43,26 @@ export async function GET(request: Request) {
       const promedio = total > 0
         ? result.reduce((sum, r) => sum + (r.estrellas || 0), 0) / total
         : 0;
+
+      // Sistema de Scoring (Tarea 3.3): incluir puntaje y estrellas derivadas del proveedor
+      let puntaje: number | null = null;
+      let cancelacionesInjustificadas: number | null = null;
+      let estrellasScoring: number | null = null;
+      const [proveedor] = await db.select().from(users).where(eq(users.id, Number(calificadoId))).limit(1);
+      if (proveedor) {
+        const score = getProviderScore(proveedor);
+        puntaje = score.puntaje;
+        cancelacionesInjustificadas = score.cancelacionesInjustificadas;
+        estrellasScoring = score.estrellas;
+      }
+
       return Response.json({
         status: 'success',
         totalCalificaciones: total,
         promedioEstrellas: Math.round(promedio * 10) / 10,
+        estrellasScoring,
+        puntaje,
+        cancelacionesInjustificadas,
         data: result
       });
     }

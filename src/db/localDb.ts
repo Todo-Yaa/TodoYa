@@ -13,6 +13,7 @@ export interface LocalDbSchema {
   ratings: any[];
   applications: any[];
   reports: any[];
+  provider_cancelaciones: any[];
 }
 
 const DEFAULT_TENANT_ID = 1;
@@ -23,9 +24,9 @@ const initialSeedTenants = [
 
 const initialSeedUsers = [
   { id: 1, tenantId: DEFAULT_TENANT_ID, nombre: 'Luis Alberto M.', correoOTelefono: 'luis@todoya.com', rol: 'client', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural', monedas: 24, kycVerificado: false, kycDetalles: '', createdAt: new Date().toISOString() },
-  { id: 2, tenantId: DEFAULT_TENANT_ID, nombre: 'Juan Ríos', correoOTelefono: 'juan.rios@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural', proveedorConfigurado: true, serviciosOfrecidos: ['Plomería'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Plomero certificado con 5 años de experiencia residencial.', monedas: 24, kycVerificado: true, kycDetalles: 'Documento verificado', createdAt: new Date().toISOString() },
+  { id: 2, tenantId: DEFAULT_TENANT_ID, nombre: 'Juan Ríos', correoOTelefono: 'juan.rios@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'natural', proveedorConfigurado: true, serviciosOfrecidos: ['Plomería'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Plomero certificado con 5 años de experiencia residencial.', monedas: 24, kycVerificado: true, kycDetalles: 'Documento verificado', puntaje: 100, cancelacionesInjustificadas: 0, createdAt: new Date().toISOString() },
   { id: 3, tenantId: DEFAULT_TENANT_ID, nombre: 'Corporación Alfa S.A.', correoOTelefono: 'empresa@todoya.com', rol: 'business', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '481920028', correoFacturacion: 'facturas@alfa.corp.bo', rubro: 'Papelería', monedas: 24, kycVerificado: true, kycDetalles: 'NIT e identidad B2B verificados', createdAt: new Date().toISOString() },
-  { id: 4, tenantId: DEFAULT_TENANT_ID, nombre: 'Imprenta y Gráfica Beta', correoOTelefono: 'proveedor_empresa@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '839201992', correoFacturacion: 'facturas@beta.bo', rubro: 'Branding & Lettering', ofreceB2B: true, proveedorConfigurado: true, serviciosOfrecidos: ['Branding & Lettering'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.', monedas: 24, kycVerificado: true, kycDetalles: 'NIT e identidad B2B verificados', createdAt: new Date().toISOString() }
+  { id: 4, tenantId: DEFAULT_TENANT_ID, nombre: 'Imprenta y Gráfica Beta', correoOTelefono: 'proveedor_empresa@todoya.com', rol: 'provider', contrasena: 'demo1234', tipoProveedor: 'normal', tipoEntidad: 'empresa', nit: '839201992', correoFacturacion: 'facturas@beta.bo', rubro: 'Branding & Lettering', ofreceB2B: true, proveedorConfigurado: true, serviciosOfrecidos: ['Branding & Lettering'], anosExperiencia: 'Más de 3 años', descripcionProveedor: 'Ofrecemos soluciones gráficas y branding corporativo de alta calidad.', monedas: 24, kycVerificado: true, kycDetalles: 'NIT e identidad B2B verificados', puntaje: 100, cancelacionesInjustificadas: 0, createdAt: new Date().toISOString() }
 ];
 
 const initialSeedOrders = [
@@ -148,7 +149,8 @@ class LocalDb {
           transactions: [],
           ratings: initialSeedRatings,
           applications: [],
-          reports: []
+          reports: [],
+          provider_cancelaciones: []
         });
       }
       const data = fs.readFileSync(DB_FILE_PATH, 'utf-8');
@@ -158,6 +160,7 @@ class LocalDb {
       if (!parsed.ratings) parsed.ratings = initialSeedRatings;
       if (!parsed.applications) parsed.applications = [];
       if (!parsed.reports) parsed.reports = [];
+      if (!parsed.provider_cancelaciones) parsed.provider_cancelaciones = [];
       // Migración automática: rellenar tenantId faltante en registros antiguos
       (parsed.users || []).forEach((u: any) => { if (!u.tenantId) u.tenantId = DEFAULT_TENANT_ID; });
       (parsed.orders || []).forEach((o: any) => { if (!o.tenantId) o.tenantId = DEFAULT_TENANT_ID; });
@@ -165,7 +168,7 @@ class LocalDb {
       return parsed;
     } catch (e) {
       console.error('Error reading local JSON database:', e);
-      return { tenants: initialSeedTenants, users: [], orders: [], messages: [], transactions: [], ratings: [], applications: [], reports: [] };
+      return { tenants: initialSeedTenants, users: [], orders: [], messages: [], transactions: [], ratings: [], applications: [], reports: [], provider_cancelaciones: [] };
     }
   }
 
@@ -227,6 +230,9 @@ class LocalDb {
       tenantId: user.tenantId || DEFAULT_TENANT_ID,
       monedas: user.monedas !== undefined ? user.monedas : 24,
       kycVerificado: user.kycVerificado || false,
+      // Sistema de Scoring: todo proveedor inicia con 100 pts = 5.0 estrellas
+      puntaje: user.puntaje !== undefined ? user.puntaje : 100,
+      cancelacionesInjustificadas: user.cancelacionesInjustificadas !== undefined ? user.cancelacionesInjustificadas : 0,
       createdAt: new Date().toISOString()
     };
     dbData.users.push(newUser);
@@ -437,7 +443,7 @@ class LocalDb {
   }
 
   /**
-   * Promedio de calificaciones de un proveedor específico
+   * Promedio de calificaciones de un proveedor específico + scoring (Tarea 3.3)
    */
   getProveedorStats(proveedorId: number) {
     const ratingsList = this.getRatingsByCalificado(proveedorId);
@@ -445,11 +451,74 @@ class LocalDb {
     const promedio = ratingsList.length > 0
       ? ratingsList.reduce((sum, r) => sum + (r.estrellas || 0), 0) / ratingsList.length
       : 0;
+    const proveedor = this.getUserById(proveedorId);
+    const puntaje = proveedor?.puntaje !== undefined ? proveedor.puntaje : 100;
+    const cancelaciones = proveedor?.cancelacionesInjustificadas !== undefined ? proveedor.cancelacionesInjustificadas : 0;
     return {
       totalCalificaciones: ratingsList.length,
       promedioEstrellas: Math.round(promedio * 10) / 10,
-      totalTrabajosCompletados: totalJobs
+      totalTrabajosCompletados: totalJobs,
+      puntaje,
+      estrellasScoring: Math.round((puntaje / 20) * 10) / 10,
+      cancelacionesInjustificadas: cancelaciones,
     };
+  }
+
+  // --- PROVIDER_CANCELACIONES (Sistema de Scoring) ---
+  getProviderCancelaciones(proveedorId?: number, orderId?: number) {
+    const list = this.read().provider_cancelaciones || [];
+    const filtered = proveedorId !== undefined
+      ? list.filter(c => c.proveedorId === proveedorId)
+      : list;
+    return orderId !== undefined ? filtered.filter(c => c.orderId === orderId) : filtered;
+  }
+
+  insertProviderCancelacion(cancelacion: any) {
+    const dbData = this.read();
+    if (!dbData.provider_cancelaciones) dbData.provider_cancelaciones = [];
+    const newId = dbData.provider_cancelaciones.reduce((max, c) => Math.max(max, c.id || 0), 0) + 1;
+    const newCancelacion = {
+      ...cancelacion,
+      id: newId,
+      tenantId: cancelacion.tenantId || DEFAULT_TENANT_ID,
+      justificada: cancelacion.justificada || false,
+      puntosPenalizados: cancelacion.puntosPenalizados || 0,
+      createdAt: new Date().toISOString()
+    };
+    dbData.provider_cancelaciones.push(newCancelacion);
+    this.write(dbData);
+    return newCancelacion;
+  }
+
+  /**
+   * Aplica la penalización (o no) por una cancelación de servicio al proveedor.
+   * - Cancelación injustificada: resta 10 puntos e incrementa el contador.
+   * - Cancelación justificada: no afecta el puntaje.
+   * Devuelve el proveedor actualizado y el registro de cancelación.
+   */
+  registrarCancelacionProveedor(orderId: number, proveedorId: number, justificada: boolean, motivo: string | null) {
+    const proveedor = this.getUserById(proveedorId);
+    if (!proveedor) return null;
+
+    const puntosPenalizados = justificada ? 0 : 10;
+    const puntosActuales = proveedor.puntaje !== undefined ? proveedor.puntaje : 100;
+    const cancelacionesPrevias = proveedor.cancelacionesInjustificadas !== undefined ? proveedor.cancelacionesInjustificadas : 0;
+
+    const proveedorActualizado = this.updateUserById(proveedorId, {
+      puntaje: justificada ? puntosActuales : Math.max(0, puntosActuales - puntosPenalizados),
+      cancelacionesInjustificadas: justificada ? cancelacionesPrevias : cancelacionesPrevias + 1,
+      fechaUltimaPenalizacion: justificada ? proveedor.fechaUltimaPenalizacion : new Date().toISOString(),
+    });
+
+    const cancelacion = this.insertProviderCancelacion({
+      orderId,
+      proveedorId,
+      justificada,
+      motivo,
+      puntosPenalizados,
+    });
+
+    return { proveedor: proveedorActualizado, cancelacion, puntosPenalizados, puntosActuales: proveedorActualizado.puntaje };
   }
 
   // --- REPORTS (NUEVA TABLA) ---

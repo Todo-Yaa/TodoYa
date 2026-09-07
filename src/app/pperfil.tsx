@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
 import TermsPrivacyModal from '../components/terms-privacy-modal';
+import { getProviderScore } from '../services/scoring';
 
 // Configura los enlaces de tus redes sociales aquí:
 const FACEBOOK_LINK = 'https://www.instagram.com/todoo__ya';
@@ -194,13 +195,10 @@ export default function ProviderPerfilScreen() {
   }, 0);
   const totalEarnings = 2800 + dynamicEarnings;
 
-  // Calcular calificación promedio dinámicamente
-  const ratedJobs = myJobs.filter(o => o.estado === 'Completado' && o.calificado);
-  let averageRating = 4.9;
-  if (ratedJobs.length > 0) {
-    const sum = ratedJobs.reduce((acc, o) => acc + (o.calificacionEstrellas || 5), 0);
-    averageRating = parseFloat((sum / ratedJobs.length).toFixed(1));
-  }
+  // Sistema de Scoring (Tarea 3.3): la calificación visible se deriva del puntaje
+  // (todo proveedor inicia con 100 pts = 5.0★; cada cancelación injustificada resta 10 pts).
+  const providerScore = getProviderScore(activeUser);
+  const visibleRating = providerScore.estrellas;
 
   return (
     <View style={styles.container}>
@@ -282,14 +280,26 @@ export default function ProviderPerfilScreen() {
             </View>
           </View>
 
+          {/* Sistema de Scoring (Tarea 3.3): acceso a pedidos de tarifa alta */}
+          <View style={[styles.headerBadgePill, providerScore.puedeAccederTarifaAlta ? { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' } : { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
+            <Ionicons name={providerScore.puedeAccederTarifaAlta ? "shield-checkmark" : "close-circle"} size={13} color={providerScore.puedeAccederTarifaAlta ? "#059669" : "#dc2626"} />
+            <Text style={[styles.headerBadgeText, providerScore.puedeAccederTarifaAlta ? { color: '#047857' } : { color: '#b91c1c' }]}>
+              {providerScore.puedeAccederTarifaAlta
+                ? 'Tarifa Alta: Acceso permitido'
+                : `Tarifa Alta: Restringida (min 80 pts, tienes ${providerScore.puntaje})`}
+            </Text>
+          </View>
+
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{trabajosCount}</Text>
               <Text style={styles.statLabel}>{t('profile.jobs')}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{averageRating} ★</Text>
-              <Text style={styles.statLabel}>{t('profile.rating')}</Text>
+              <Text style={styles.statNumber}>{visibleRating} ★</Text>
+              <Text style={styles.statLabel}>
+                {providerScore.puntaje} pts · {providerScore.cancelacionesInjustificadas} cancelaciones
+              </Text>
             </View>
             <View style={styles.statItem}>
               <Text style={[

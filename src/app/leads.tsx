@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import NotificationTray from '../components/notification-tray';
 import { useUser } from '../context/user-context';
+import { esPedidoTarifaAlta, getProviderScore } from '../services/scoring';
 
 export default function LeadsScreen() {
   const {
@@ -112,6 +113,20 @@ export default function LeadsScreen() {
   });
 
   const handleApply = (leadId: number, cost: number, title: string, isB2BOrder: boolean) => {
+    // Sistema de Scoring (Tarea 3.3): bloquear tarifa alta con puntaje insuficiente
+    const leadObj = orders.find(o => o.id === leadId);
+    const providerScore = getProviderScore(activeUser);
+    if (leadObj && esPedidoTarifaAlta(leadObj.precio) && !providerScore.puedeAccederTarifaAlta) {
+      setConfirmConfig({
+        title: 'Tarifa Alta restringida',
+        message: `Necesitas al menos 80 pts (4.0★) para postularte a pedidos de tarifa alta. Tu puntaje actual es ${providerScore.puntaje} pts (${providerScore.estrellas}★). Las cancelaciones injustificadas reducen tu puntaje.`,
+        singleButton: true,
+        onConfirm: () => { }
+      });
+      setShowConfirmModal(true);
+      return;
+    }
+
     // Validar exclusividad de entidad para la postulación
     if (currentEntidad === 'natural' && isB2BOrder) {
       setConfirmConfig({
@@ -379,6 +394,11 @@ export default function LeadsScreen() {
             lead.servicio === 'Papelería & Oficina' ||
             lead.servicio === 'Servicios B2B';
 
+          // Sistema de Scoring (Tarea 3.3): pedidos de tarifa alta exigen >= 80 pts (4.0★)
+          const esTarifaAlta = esPedidoTarifaAlta(lead.precio);
+          const providerScore = getProviderScore(activeUser);
+          const tarifaAltaRestringida = esTarifaAlta && !providerScore.puedeAccederTarifaAlta;
+
           // Calculate cost in coins (higher for B2B leads)
           const cost = isB2B ? 5 : (lead.urgencia === 'Alta' ? 3 : (lead.servicio === 'Climatización' ? 4 : 2));
           // Calculate distance deterministically from ID
@@ -403,6 +423,12 @@ export default function LeadsScreen() {
                 </View>
               )}
 
+              {esTarifaAlta && (
+                <View style={[styles.b2bLabel, { backgroundColor: '#fef2f2' }]}>
+                  <Text style={[styles.b2bLabelText, { color: '#b91c1c' }]}>TARIFA ALTA · min 80 pts ({providerScore.puntaje} pts actuales {providerScore.puedeAccederTarifaAlta ? '✓' : '✗'})</Text>
+                </View>
+              )}
+
               <View style={styles.leadHeader}>
                 <Text style={styles.leadTitle}>
                   {isUrgent && <Ionicons name="flash" size={18} color="#e53935" />}
@@ -422,12 +448,16 @@ export default function LeadsScreen() {
 
               <View style={styles.actions}>
                 <TouchableOpacity
-                  style={[styles.postularBtn, isB2B && { backgroundColor: '#6366f1' }]}
+                  style={[styles.postularBtn, isB2B && { backgroundColor: '#6366f1' }, tarifaAltaRestringida && { backgroundColor: '#dc2626' }]}
                   onPress={() => handleApply(lead.id, cost, lead.titulo, isB2B)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="key-outline" size={16} color={isB2B ? '#fff' : '#2F2F2F'} />
-                  <Text style={[styles.postularText, isB2B && { color: '#fff' }]}>Postularse con mi Plan</Text>
+                  <Ionicons name={tarifaAltaRestringida ? "lock-closed" : "key-outline"} size={16} color="#fff" />
+                  <Text style={[styles.postularText, { color: '#fff' }]}>
+                    {tarifaAltaRestringida
+                      ? `Bloqueado (${providerScore.puntaje} pts)`
+                      : (esTarifaAlta ? 'Postularse (Tarifa Alta)' : 'Postularse con mi Plan')}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

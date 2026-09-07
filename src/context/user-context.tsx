@@ -4,6 +4,7 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import { uploadImage } from '../utils/image-uploader';
+import { esPedidoTarifaAlta, getProviderScore } from '../services/scoring';
 
 // Definición de roles de usuario disponibles: cliente, proveedor o empresa (B2B)
 export type UserRole = 'client' | 'provider' | 'business';
@@ -38,6 +39,10 @@ export interface UsuarioRegistrado {
   fechaUltimaModificacionDatos?: string | null;
   b2bTrialStartDate?: string | Date | null;
   createdAt?: string | Date | null;
+  // Sistema de Scoring (Tarea 3.3): 100 pts = 5.0★. Cada cancelación injustificada resta 10 pts.
+  puntaje?: number;
+  cancelacionesInjustificadas?: number;
+  fechaUltimaPenalizacion?: string | Date | null;
 }
 
 // Interfaz para representar un pedido dentro de la aplicación
@@ -47,7 +52,7 @@ export interface Order {
   proveedor: string | null; // Nombre del proveedor asignado (null si está buscando)
   servicio: string;        // Categoría (Plomería, Electricidad, etc.)
   description: string;     // Detalle del problema
-  estado: 'Buscando proveedor' | 'En progreso' | 'Completado';
+  estado: 'Buscando proveedor' | 'En progreso' | 'Completado' | 'Cancelado';
   progreso: number;        // Porcentaje visual (25%, 65%, 100%)
   hora: string;            // Fecha o indicador de tiempo del pedido
   color: string;           // Color del tag según el estado
@@ -73,6 +78,7 @@ interface UserContextType {
   addOrder: (titulo: string, servicio: string, description: string, precio: string, urgencia: string, proveedor?: string | null) => void; // Crea un pedido
   applyToLead: (orderId: number, coinsCost: number, providerName: string) => boolean; // Aplica a un trabajo (descuenta monedas)
   completeJob: (orderId: number) => void; // Finaliza un trabajo
+  cancelOrder: (orderId: number, justificada: boolean, motivo?: string) => boolean; // Cancela un trabajo y penaliza el scoring
   resetData: () => void;   // Resetea todos los estados al valor inicial
   isAuthenticated: boolean; // Estado de sesión del usuario
   userName: string;        // Nombre personalizado del usuario activo
@@ -1061,6 +1067,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
        if (found?.id) finalUserId = found.id;
     }
 
+    // 3.5 Sistema de Scoring (Tarea 3.3): bloquear pedidos de tarifa alta
+    //    si el proveedor tiene menos de 80 puntos (4.0 estrellas).
+    const score = getProviderScore(activeUser);
+    if (esPedidoTarifaAlta(targetOrder.precio) && !score.puedeAccederTarifaAlta) {
+      showNotification(
+        'Tarifa Alta restringida',
+        `Necesitas al menos 80 pts (4.0★) para acceder a pedidos de tarifa alta. Tu puntaje actual es ${score.puntaje} pts (${score.estrellas}★).`,
+        'warning'
+      );
+      return false;
+    }
+
     if (isDbOnline && finalUserId && coinsCost > 0) {
       fetch('/api/wallet', {
         method: 'POST',
@@ -1149,8 +1167,95 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
-   * Proceso de Inicio de Sesión
+   * Cancela un trabajo asignado al proveedor activo y aplica el Sistema de
+   * Scoring (Tarea 3.3):
+   * - Cancelación injustificada: resta 10 puntos (100 pts = 5.0★).
+   * - Cancelación justificada: no afecta el puntaje.
+   * Actualiza el puntaje del proveedor activo y el estado del pedido.
    */
+  const cancelOrder = (orderId: number, justificada: boolean, motivo?: string): boolean => {
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) return false;
+    if (targetOrder.estado !== 'En progreso') {
+      showNotification('No se puede cancelar', 'Solo puedes cancelar un trabajo en progreso.', 'warning');
+      return false;
+    }
+
+    const finalUserId = activeUser?.id;
+
+    const scoringBody = {
+      id: orderId,
+      action: 'cancel',
+      justificada,
+      motivo: motivo || null,
+      proveedorId: finalUserId || null,
+    };
+
+    if (isDbOnline) {
+      fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scoringBody)
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data?.scoring?.puntaje !== undefined && activeUser) {
+            const updatedUser = {
+              ...activeUser,
+              puntaje: data.scoring.puntaje,
+              cancelacionesInjustificadas: (activeUser.cancelacionesInjustificadas ?? 0) + (justificada ? 0 : 1),
+              fechaUltimaPenalizacion: justificada ? activeUser.fechaUltimaPenalizacion : new Date().toISOString(),
+            };
+            setActiveUser(updatedUser);
+            Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+            if (justificada) {
+              showNotification('Trabajo cancelado', 'Cancelación registrada como justificada. No pierdes puntos.', 'info');
+            } else {
+              showNotification('Trabajo cancelado', `Cancelación injustificada: perdiste 10 puntos. Nuevo puntaje: ${data.scoring.puntaje} pts.`, 'warning');
+            }
+          }
+        })
+        .catch(err => console.warn('[cancelOrder] Error al cancelar en backend:', err));
+    }
+
+    const updatedOrders = orders.map(order => {
+      if (order.id === orderId) {
+        return {
+          ...order,
+          estado: 'Cancelado' as const,
+          color: '#ef4444',
+          hora: 'Cancelado recientemente',
+        };
+      }
+      return order;
+    });
+    setOrders(updatedOrders);
+    Storage.setItem('todo_ya_orders', JSON.stringify(updatedOrders));
+
+    // Modo local (sin Neon): aplicar la penalización en localDb vía API
+    if (!isDbOnline && finalUserId) {
+      fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scoringBody)
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data?.scoring?.puntaje !== undefined && activeUser) {
+            const updatedUser = {
+              ...activeUser,
+              puntaje: data.scoring.puntaje,
+              cancelacionesInjustificadas: (activeUser.cancelacionesInjustificadas ?? 0) + (justificada ? 0 : 1),
+            };
+            setActiveUser(updatedUser);
+            Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+          }
+        })
+        .catch(err => console.warn('[cancelOrder] Error al cancelar en localDb:', err));
+    }
+
+    return true;
+  };
   const login = async (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole): Promise<boolean> => {
     if (!telefonoOCorreo.trim() || !contrasena.trim()) {
       return false;
@@ -2192,6 +2297,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       addOrder, 
       applyToLead, 
       completeJob,
+      cancelOrder,
       resetData,
       isAuthenticated,
       userName,

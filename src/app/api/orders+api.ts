@@ -1,8 +1,13 @@
 import { eq, and } from 'drizzle-orm';
 import { db, isDbConnected } from '../../db';
 import { localDb } from '../../db/localDb';
-import { orders, users } from '../../db/schema';
+import { orders, users, providerCancelaciones } from '../../db/schema';
 import { resolveTenantId } from '../../utils/auth';
+import {
+  PENALIZACION_CANCELACION_INJUSTIFICADA,
+  calcularPuntosTrasCancelacion,
+  getProviderScore,
+} from '../../services/scoring';
 
 const DEFAULT_TENANT_ID = 1;
 
@@ -174,11 +179,11 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT: Actualizar un pedido (Postulación, Finalización o Calificación)
+// PUT: Actualizar un pedido (Postulación, Finalización, Calificación o Cancelación)
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, action, providerName, proveedorId, estrellas, etiquetas } = body;
+    const { id, action, providerName, proveedorId, estrellas, etiquetas, justificada = false, motivo = null } = body;
 
     if (!id) {
       return Response.json({ error: 'El ID del pedido es requerido' }, { status: 400 });
@@ -226,6 +231,34 @@ export async function PUT(request: Request) {
           calificado: true,
           calificacionEstrellas: estrellas,
           calificacionEtiquetas: etiquetas
+        });
+      } else if (action === 'cancel') {
+        const orderToCancel = localDb.getOrderById(id);
+        if (!orderToCancel) return Response.json({ error: 'Pedido no encontrado' }, { status: 404 });
+        if (orderToCancel.estado !== 'En progreso') {
+          return Response.json({ error: 'Solo puedes cancelar pedidos en progreso' }, { status: 400 });
+        }
+
+        const proveedorIdNum = proveedorId ? Number(proveedorId) : null;
+        const cancelResult = proveedorIdNum
+          ? localDb.registrarCancelacionProveedor(Number(id), proveedorIdNum, !!justificada, motivo || null)
+          : null;
+
+        updated = localDb.updateOrder(id, {
+          estado: 'Cancelado',
+          color: '#ef4444',
+          hora: 'Cancelado recientemente',
+        });
+
+        return Response.json({
+          status: 'success',
+          tenantId,
+          order: updated,
+          scoring: cancelResult ? {
+            puntaje: cancelResult.proveedor?.puntaje,
+            estrellas: getProviderScore(cancelResult.proveedor).estrellas,
+            puntosPenalizados: cancelResult.puntosPenalizados,
+          } : null,
         });
       } else {
         return Response.json({ error: 'Acción no válida' }, { status: 400 });
@@ -280,6 +313,60 @@ export async function PUT(request: Request) {
         })
         .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)))
         .returning();
+    } else if (action === 'cancel') {
+      const [orderToCancel] = await db.select().from(orders).where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)));
+      if (!orderToCancel) return Response.json({ error: 'Pedido no encontrado' }, { status: 404 });
+      if (orderToCancel.estado !== 'En progreso') {
+        return Response.json({ error: 'Solo puedes cancelar pedidos en progreso' }, { status: 400 });
+      }
+
+      // Sistema de Scoring: aplicar penalización al proveedor si NO está justificada
+      let scoringResult = null;
+      const proveedorIdNum = proveedorId ? Number(proveedorId) : null;
+      if (proveedorIdNum) {
+        const [proveedor] = await db.select().from(users).where(eq(users.id, proveedorIdNum)).limit(1);
+        if (proveedor) {
+          const puntosNuevos = calcularPuntosTrasCancelacion(proveedor.puntaje ?? 100, !!justificada);
+          const cancelacionesPrevias = proveedor.cancelacionesInjustificadas ?? 0;
+          const puntosPenalizados = justificada ? 0 : PENALIZACION_CANCELACION_INJUSTIFICADA;
+
+          const [proveedorActualizado] = await db.update(users)
+            .set({
+              puntaje: puntosNuevos,
+              cancelacionesInjustificadas: justificada ? cancelacionesPrevias : cancelacionesPrevias + 1,
+              fechaUltimaPenalizacion: justificada ? proveedor.fechaUltimaPenalizacion : new Date(),
+            })
+            .where(eq(users.id, proveedorIdNum))
+            .returning();
+
+          // Registrar en el historial de auditoría
+          await db.insert(providerCancelaciones).values({
+            orderId: Number(id),
+            proveedorId: proveedorIdNum,
+            justificada: !!justificada,
+            motivo: motivo || null,
+            puntosPenalizados,
+            tenantId: tenantId || DEFAULT_TENANT_ID,
+          });
+
+          scoringResult = {
+            puntaje: proveedorActualizado.puntaje,
+            estrellas: getProviderScore(proveedorActualizado).estrellas,
+            puntosPenalizados,
+          };
+        }
+      }
+
+      updated = await db.update(orders)
+        .set({
+          estado: 'Cancelado',
+          color: '#ef4444',
+          hora: 'Cancelado recientemente',
+        })
+        .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)))
+        .returning();
+
+      return Response.json({ status: 'success', tenantId, order: updated[0], scoring: scoringResult });
     } else {
       return Response.json({ error: 'Acción no válida' }, { status: 400 });
     }
