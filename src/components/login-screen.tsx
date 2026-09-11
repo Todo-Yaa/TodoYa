@@ -1,33 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView, Platform, Modal, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, ScrollView, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useUser, UserRole } from '../context/user-context';
 import { router } from 'expo-router'; // Importar enrutador para redireccionar tras login dinámico
 import KYCVerifierModal from './kyc-verifier-modal';
 import TermsPrivacyModal from './terms-privacy-modal';
-import { sanitizeText, sanitizeEmail, sanitizePhone } from '../utils/security';
-
-const PAISES_LATINOS = [
-  { nombre: "Perú", codigo: "51", bandera: "🇵🇪" },
-  { nombre: "Bolivia", codigo: "591", bandera: "🇧🇴" },
-  { nombre: "Colombia", codigo: "57", bandera: "🇨🇴" },
-  { nombre: "Ecuador", codigo: "593", bandera: "🇪🇨" },
-  { nombre: "Chile", codigo: "56", bandera: "🇨🇱" },
-  { nombre: "Argentina", codigo: "54", bandera: "🇦🇷" },
-  { nombre: "México", codigo: "52", bandera: "🇲🇽" },
-  { nombre: "Venezuela", codigo: "58", bandera: "🇻🇪" },
-  { nombre: "Paraguay", codigo: "595", bandera: "🇵🇾" },
-  { nombre: "Uruguay", codigo: "598", bandera: "🇺🇾" },
-  { nombre: "Brasil", codigo: "55", bandera: "🇧🇷" },
-  { nombre: "Costa Rica", codigo: "506", bandera: "🇨🇷" },
-  { nombre: "Panamá", codigo: "507", bandera: "🇵🇦" },
-  { nombre: "Guatemala", codigo: "502", bandera: "🇬🇹" },
-  { nombre: "El Salvador", codigo: "503", bandera: "🇸🇻" },
-  { nombre: "Honduras", codigo: "504", bandera: "🇭🇳" },
-  { nombre: "Nicaragua", codigo: "505", bandera: "🇳🇮" },
-  { nombre: "República Dominicana", codigo: "1-809", bandera: "🇩🇴" },
-];
+import { sanitizeText } from '../utils/security';
+import CountryPickerModal, { PAISES_LATINOS } from './auth/country-picker-modal';
+import PinVerificationModal from './auth/pin-verification-modal';
 
 /**
  * Componente LoginScreen:
@@ -1464,199 +1445,29 @@ export default function LoginScreen() {
       )}
 
       {/* MODAL SELECCIONAR PAIS */}
-      <Modal
+      <CountryPickerModal
         visible={mostrarPaises}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMostrarPaises(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalContent,
-              { maxHeight: "70%", paddingBottom: 20 },
-            ]}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <Text
-                style={{ fontSize: 18, fontWeight: "700", color: "#2F2F2F" }}
-              >
-                Elegir Código de País
-              </Text>
-              <TouchableOpacity
-                onPress={() => setMostrarPaises(false)}
-                style={{ padding: 4 }}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.paisesList}>
-              {PAISES_LATINOS.map((pais) => (
-                <TouchableOpacity
-                  key={pais.nombre}
-                  style={styles.paisItem}
-                  onPress={() => {
-                    setCodigoPais(pais.codigo);
-                    setMostrarPaises(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.paisBandera}>{pais.bandera}</Text>
-                  <Text style={styles.paisNombre}>{pais.nombre}</Text>
-                  <Text style={styles.paisCodigo}>+{pais.codigo}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setMostrarPaises(false)}
+        onSelectCountry={(codigo) => setCodigoPais(codigo)}
+      />
 
       {/* MODAL VERIFICACIÓN DOBLE FACTOR PIN */}
-      <Modal
+      <PinVerificationModal
         visible={mostrarModalPIN}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setMostrarModalPIN(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxWidth: 360 }]}>
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={48}
-              color="#FFB400"
-              style={{ alignSelf: "center", marginBottom: 12 }}
-            />
-            <Text
-              style={[styles.modalTitle, { textAlign: "center", fontSize: 18 }]}
-            >
-              Verificación del Teléfono
-            </Text>
-            <Text
-              style={[
-                styles.modalMessage,
-                { textAlign: "center", color: "#64748b" },
-              ]}
-            >
-              Por favor, introduce el código de 4 dígitos enviado por SMS a:
-              {"\n"}
-              <Text style={{ fontWeight: "700", color: "#1e293b" }}>
-                +{codigoPais} {celular}
-              </Text>
-            </Text>
-
-            {/* Input PIN */}
-            <View style={styles.pinContainer}>
-              {[0, 1, 2, 3].map((idx) => {
-                const char = pinIngresado[idx] || "";
-                return (
-                  <TextInput
-                    key={idx}
-                    style={[
-                      styles.pinInputBox,
-                      pinIngresado.length === idx && styles.pinInputBoxFocused,
-                    ]}
-                    maxLength={1}
-                    keyboardType="numeric"
-                    value={char}
-                    onChangeText={(val) => {
-                      if (val) {
-                        const newPin = pinIngresado + val;
-                        setPinIngresado(newPin.slice(0, 4));
-                        setPinError("");
-                      } else {
-                        setPinIngresado(pinIngresado.slice(0, -1));
-                      }
-                    }}
-                    editable={!cargando}
-                    selectTextOnFocus
-                  />
-                );
-              })}
-            </View>
-
-            {pinError ? (
-              <Text
-                style={{
-                  color: "#ef4444",
-                  textAlign: "center",
-                  fontSize: 13,
-                  marginBottom: 12,
-                }}
-              >
-                {pinError}
-              </Text>
-            ) : null}
-
-            <Text style={styles.countdownText}>
-              {smsCountdown > 0
-                ? `El código expira en ${smsCountdown}s`
-                : "El código ha expirado"}
-            </Text>
-
-            <View style={{ gap: 10 }}>
-              <TouchableOpacity
-                style={styles.modalConfirmBtn}
-                onPress={confirmarPinYRegistrar}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalConfirmText}>Verificar y Activar</Text>
-              </TouchableOpacity>
-
-              {/* Botón de Enviar Código a WhatsApp */}
-              <TouchableOpacity
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "#25D366",
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  gap: 8,
-                }}
-                onPress={() => enviarSmsPin("whatsapp")}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="logo-whatsapp" size={18} color="#fff" />
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
-                  Enviar a mi WhatsApp
-                </Text>
-              </TouchableOpacity>
-
-              {/* Botón de Enviar por SMS Nativo */}
-              <TouchableOpacity
-                style={[
-                  styles.resendBtn,
-                  { flexDirection: "row", justifyContent: "center", gap: 6 },
-                ]}
-                onPress={() => enviarSmsPin("sms")}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chatbubble-ellipses-outline" size={16} color="#475569" />
-                <Text style={styles.resendText}>Enviar por SMS</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{ paddingVertical: 8, alignItems: "center" }}
-                onPress={() => setMostrarModalPIN(false)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{ color: "#64748b", fontSize: 13, fontWeight: "500" }}
-                >
-                  Cancelar
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setMostrarModalPIN(false)}
+        codigoPais={codigoPais}
+        celular={celular}
+        pinIngresado={pinIngresado}
+        onPinChange={(pin) => {
+          setPinIngresado(pin);
+          setPinError("");
+        }}
+        pinError={pinError}
+        smsCountdown={smsCountdown}
+        cargando={cargando}
+        onConfirm={confirmarPinYRegistrar}
+        onSendChannel={(canal) => enviarSmsPin(canal)}
+      />
 
       {/* POPUP SIMULACIÓN OAUTH FLOTANTE (Google / LinkedIn) */}
       {proveedorOauth && (

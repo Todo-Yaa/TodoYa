@@ -1,7 +1,17 @@
 import { randomBytes, scrypt as _scrypt, timingSafeEqual } from 'crypto';
 import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET_KEY = () => new TextEncoder().encode(process.env.JWT_SECRET || 'todo-ya-dev-secret');
+const JWT_SECRET_KEY = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('CRÍTICO: La variable de entorno JWT_SECRET es obligatoria en entorno de producción.');
+    } else {
+      console.warn('[SEGURIDAD] Advertencia: Usando clave secreta JWT por defecto para desarrollo ("todo-ya-dev-secret").');
+    }
+  }
+  return new TextEncoder().encode(secret || 'todo-ya-dev-secret');
+};
 const TOKEN_EXPIRATION = '30d';
 
 export interface SessionPayload {
