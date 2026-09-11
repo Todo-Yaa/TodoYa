@@ -96,6 +96,9 @@ export async function POST(request: Request) {
             planId: localUser.planId || null,
             kycVerificado: localUser.kycVerificado || false,
             kycDetalles: localUser.kycDetalles || null,
+            puntaje: localUser.puntaje ?? 100,
+            cancelacionesInjustificadas: localUser.cancelacionesInjustificadas ?? 0,
+            fechaUltimaPenalizacion: localUser.fechaUltimaPenalizacion ? new Date(localUser.fechaUltimaPenalizacion) : null,
           });
           syncResults.users++;
           neonEmails.add(localUser.correoOTelefono); // Actualizar el set

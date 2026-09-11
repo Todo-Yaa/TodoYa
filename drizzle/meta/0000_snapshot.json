@@ -1,0 +1,1302 @@
+{
+  "id": "0da48616-fc20-4a0e-ae23-b980606fd43f",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.applications": {
+      "name": "applications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proveedor_id": {
+          "name": "proveedor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pendiente'"
+        },
+        "monedas_gastadas": {
+          "name": "monedas_gastadas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nota_personal": {
+          "name": "nota_personal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "applications_order_idx": {
+          "name": "applications_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "applications_proveedor_idx": {
+          "name": "applications_proveedor_idx",
+          "columns": [
+            {
+              "expression": "proveedor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "applications_order_id_orders_id_fk": {
+          "name": "applications_order_id_orders_id_fk",
+          "tableFrom": "applications",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "applications_proveedor_id_users_id_fk": {
+          "name": "applications_proveedor_id_users_id_fk",
+          "tableFrom": "applications",
+          "tableTo": "users",
+          "columnsFrom": [
+            "proveedor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.messages": {
+      "name": "messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sender_id": {
+          "name": "sender_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sender_name": {
+          "name": "sender_name",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message_text": {
+          "name": "message_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "messages_tenant_idx": {
+          "name": "messages_tenant_idx",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "messages_order_idx": {
+          "name": "messages_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "messages_sender_idx": {
+          "name": "messages_sender_idx",
+          "columns": [
+            {
+              "expression": "sender_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "messages_tenant_id_tenants_id_fk": {
+          "name": "messages_tenant_id_tenants_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "messages_order_id_orders_id_fk": {
+          "name": "messages_order_id_orders_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "messages_sender_id_users_id_fk": {
+          "name": "messages_sender_id_users_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "users",
+          "columnsFrom": [
+            "sender_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.orders": {
+      "name": "orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "titulo": {
+          "name": "titulo",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cliente_id": {
+          "name": "cliente_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proveedor_id": {
+          "name": "proveedor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proveedor": {
+          "name": "proveedor",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "servicio": {
+          "name": "servicio",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Buscando proveedor'"
+        },
+        "progreso": {
+          "name": "progreso",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "hora": {
+          "name": "hora",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'#FFB400'"
+        },
+        "precio": {
+          "name": "precio",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "urgencia": {
+          "name": "urgencia",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Normal'"
+        },
+        "calificado": {
+          "name": "calificado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "calificacion_estrellas": {
+          "name": "calificacion_estrellas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "calificacion_etiquetas": {
+          "name": "calificacion_etiquetas",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tiempo_ejecucion": {
+          "name": "tiempo_ejecucion",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "orders_tenant_idx": {
+          "name": "orders_tenant_idx",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "orders_cliente_idx": {
+          "name": "orders_cliente_idx",
+          "columns": [
+            {
+              "expression": "cliente_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "orders_proveedor_idx": {
+          "name": "orders_proveedor_idx",
+          "columns": [
+            {
+              "expression": "proveedor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "orders_tenant_id_tenants_id_fk": {
+          "name": "orders_tenant_id_tenants_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "orders_cliente_id_users_id_fk": {
+          "name": "orders_cliente_id_users_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "users",
+          "columnsFrom": [
+            "cliente_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "orders_proveedor_id_users_id_fk": {
+          "name": "orders_proveedor_id_users_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "users",
+          "columnsFrom": [
+            "proveedor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.provider_cancelaciones": {
+      "name": "provider_cancelaciones",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proveedor_id": {
+          "name": "proveedor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "justificada": {
+          "name": "justificada",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "motivo": {
+          "name": "motivo",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "puntos_penalizados": {
+          "name": "puntos_penalizados",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "provider_cancelaciones_proveedor_idx": {
+          "name": "provider_cancelaciones_proveedor_idx",
+          "columns": [
+            {
+              "expression": "proveedor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "provider_cancelaciones_order_idx": {
+          "name": "provider_cancelaciones_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "provider_cancelaciones_tenant_id_tenants_id_fk": {
+          "name": "provider_cancelaciones_tenant_id_tenants_id_fk",
+          "tableFrom": "provider_cancelaciones",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "provider_cancelaciones_order_id_orders_id_fk": {
+          "name": "provider_cancelaciones_order_id_orders_id_fk",
+          "tableFrom": "provider_cancelaciones",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "provider_cancelaciones_proveedor_id_users_id_fk": {
+          "name": "provider_cancelaciones_proveedor_id_users_id_fk",
+          "tableFrom": "provider_cancelaciones",
+          "tableTo": "users",
+          "columnsFrom": [
+            "proveedor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ratings": {
+      "name": "ratings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "calificador_id": {
+          "name": "calificador_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "calificado_id": {
+          "name": "calificado_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estrellas": {
+          "name": "estrellas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etiquetas": {
+          "name": "etiquetas",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comentario": {
+          "name": "comentario",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "ratings_order_idx": {
+          "name": "ratings_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ratings_calificador_idx": {
+          "name": "ratings_calificador_idx",
+          "columns": [
+            {
+              "expression": "calificador_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "ratings_calificado_idx": {
+          "name": "ratings_calificado_idx",
+          "columns": [
+            {
+              "expression": "calificado_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ratings_order_id_orders_id_fk": {
+          "name": "ratings_order_id_orders_id_fk",
+          "tableFrom": "ratings",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ratings_calificador_id_users_id_fk": {
+          "name": "ratings_calificador_id_users_id_fk",
+          "tableFrom": "ratings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "calificador_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ratings_calificado_id_users_id_fk": {
+          "name": "ratings_calificado_id_users_id_fk",
+          "tableFrom": "ratings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "calificado_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.reports": {
+      "name": "reports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "pedido_id": {
+          "name": "pedido_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reportante_id": {
+          "name": "reportante_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reportado_nombre": {
+          "name": "reportado_nombre",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "motivo": {
+          "name": "motivo",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'pendiente'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "reports_pedido_idx": {
+          "name": "reports_pedido_idx",
+          "columns": [
+            {
+              "expression": "pedido_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "reports_reportante_idx": {
+          "name": "reports_reportante_idx",
+          "columns": [
+            {
+              "expression": "reportante_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "reports_pedido_id_orders_id_fk": {
+          "name": "reports_pedido_id_orders_id_fk",
+          "tableFrom": "reports",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "pedido_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "reports_reportante_id_users_id_fk": {
+          "name": "reports_reportante_id_users_id_fk",
+          "tableFrom": "reports",
+          "tableTo": "users",
+          "columnsFrom": [
+            "reportante_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tenants": {
+      "name": "tenants",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tenants_slug_unique": {
+          "name": "tenants_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.transactions": {
+      "name": "transactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "monto_monedas": {
+          "name": "monto_monedas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detalle": {
+          "name": "detalle",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "transactions_usuario_idx": {
+          "name": "transactions_usuario_idx",
+          "columns": [
+            {
+              "expression": "usuario_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transactions_usuario_id_users_id_fk": {
+          "name": "transactions_usuario_id_users_id_fk",
+          "tableFrom": "transactions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "correo_o_telefono": {
+          "name": "correo_o_telefono",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rol": {
+          "name": "rol",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'client'"
+        },
+        "contrasena": {
+          "name": "contrasena",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo_proveedor": {
+          "name": "tipo_proveedor",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'normal'"
+        },
+        "tipo_entidad": {
+          "name": "tipo_entidad",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'natural'"
+        },
+        "celular": {
+          "name": "celular",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codigo_pais": {
+          "name": "codigo_pais",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nit": {
+          "name": "nit",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "correo_facturacion": {
+          "name": "correo_facturacion",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rubro": {
+          "name": "rubro",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ofrece_b2b": {
+          "name": "ofrece_b2b",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "proveedor_configurado": {
+          "name": "proveedor_configurado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "servicios_ofrecidos": {
+          "name": "servicios_ofrecidos",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anos_experiencia": {
+          "name": "anos_experiencia",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descripcion_provider": {
+          "name": "descripcion_provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cobertura_b2b": {
+          "name": "cobertura_b2b",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monedas": {
+          "name": "monedas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 24
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'provider_1'"
+        },
+        "push_token": {
+          "name": "push_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kyc_verificado": {
+          "name": "kyc_verificado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "kyc_detalles": {
+          "name": "kyc_detalles",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baneado": {
+          "name": "baneado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "foto_perfil": {
+          "name": "foto_perfil",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_ultima_modificacion_foto": {
+          "name": "fecha_ultima_modificacion_foto",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fecha_ultima_modificacion_datos": {
+          "name": "fecha_ultima_modificacion_datos",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "b2b_trial_start_date": {
+          "name": "b2b_trial_start_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "puntaje": {
+          "name": "puntaje",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 100
+        },
+        "cancelaciones_injustificadas": {
+          "name": "cancelaciones_injustificadas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "fecha_ultima_penalizacion": {
+          "name": "fecha_ultima_penalizacion",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "users_tenant_idx": {
+          "name": "users_tenant_idx",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "users_tenant_id_tenants_id_fk": {
+          "name": "users_tenant_id_tenants_id_fk",
+          "tableFrom": "users",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_correo_o_telefono_unique": {
+          "name": "users_correo_o_telefono_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "correo_o_telefono"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

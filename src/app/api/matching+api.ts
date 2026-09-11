@@ -3,6 +3,7 @@ import { users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { getClientIp, isRateLimited, isPayloadTooLarge } from '../../utils/rate-limiter';
 import { sanitizePromptInput } from '../../utils/security';
+import { puntosAEstrellas, puedeAccederTarifaAlta } from '../../services/scoring';
 
 // Datos de prueba locales para la simulación del Matching si no hay base de datos real
 const PROVEEDORES_MOCK = [
@@ -356,7 +357,12 @@ Descripción del servicio: "${descripcion}"`;
             serviciosOfrecidos: p.serviciosOfrecidos,
             ofreceB2B: p.ofreceB2B,
             rubro: p.rubro,
-            rating: 4.8, // En una versión futura se sacaría del promedio de calificacionEstrellas
+            // Sistema de Scoring (Tarea 3.3): la calificación visible se deriva
+            // del puntaje del proveedor (100 pts = 5.0★, cada cancelación injustificada -10 pts).
+            rating: puntosAEstrellas(p.puntaje ?? 100),
+            puntajeScoring: p.puntaje ?? 100,
+            cancelacionesInjustificadas: p.cancelacionesInjustificadas ?? 0,
+            puedeAccederTarifaAlta: puedeAccederTarifaAlta(p.puntaje ?? 100),
             experiencia: expAnos,
             lat: -17.780 + (Math.random() * 0.02 - 0.01), // Coordenada simulada en radio de SCZ
             lng: -63.180 + (Math.random() * 0.02 - 0.01),

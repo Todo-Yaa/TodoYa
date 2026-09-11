@@ -2,12 +2,13 @@ import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useUser } from '../context/user-context';
+import { esPedidoTarifaAlta } from '../services/scoring';
 
 export default function TrabajosScreen() {
-  const { orders, completeJob, activeUser } = useUser();
+  const { orders, completeJob, activeUser, cancelOrder } = useUser();
   const isB2BProvider = activeUser?.tipoEntidad === 'empresa';
 
-  // Obtener el nombre de perfil del proveedor activo de forma dinámica
+  // Nombre de perfil del proveedor activo de forma dinámica
   const providerName = activeUser?.nombre || 'Juan Ríos';
 
   // Filtrar los trabajos asignados al proveedor actual en lugar de usar un nombre fijo
@@ -21,6 +22,10 @@ export default function TrabajosScreen() {
     onConfirm: () => {},
     singleButton: false
   });
+
+  // Modal de cancelación con justificación (Sistema de Scoring Tarea 3.3)
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelConfig, setCancelConfig] = useState<{ orderId: number; titulo: string } | null>(null);
 
   const handleComplete = (id: number, title: string) => {
     setConfirmConfig({
@@ -41,6 +46,30 @@ export default function TrabajosScreen() {
       }
     });
     setShowConfirmModal(true);
+  };
+
+  const handleCancelAsk = (id: number, title: string) => {
+    setCancelConfig({ orderId: id, titulo: title });
+    setShowCancelModal(true);
+  };
+
+  const confirmCancel = (justificada: boolean) => {
+    if (!cancelConfig) return;
+    const ok = cancelOrder(cancelConfig.orderId, justificada, justificada ? 'Cancelación justificada por el proveedor' : 'Cancelación injustificada');
+    setShowCancelModal(false);
+    if (ok) {
+      setTimeout(() => {
+        setConfirmConfig({
+          title: justificada ? 'Cancelación Justificada' : 'Cancelación Registrada',
+          message: justificada
+            ? 'El trabajo se canceló sin penalización. No pierdes puntos de tu calificación.'
+            : 'Se registró una cancelación injustificada: pierdes 10 puntos de tu calificación visible.',
+          onConfirm: () => {},
+          singleButton: true
+        });
+        setShowConfirmModal(true);
+      }, 100);
+    }
   };
 
   return (
@@ -87,13 +116,22 @@ export default function TrabajosScreen() {
             </View>
 
             {trabajo.estado === 'En progreso' && (
-              <TouchableOpacity 
-                style={[styles.completeBtn, isB2BProvider && { backgroundColor: '#6366f1' }]}
-                onPress={() => handleComplete(trabajo.id, trabajo.titulo)}
-              >
-                <Ionicons name="checkmark-circle" size={18} color={isB2BProvider ? '#fff' : '#2F2F2F'} />
-                <Text style={[styles.completeBtnText, isB2BProvider && { color: '#fff' }]}>Marcar como completado</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity 
+                  style={[styles.completeBtn, isB2BProvider && { backgroundColor: '#6366f1' }]}
+                  onPress={() => handleComplete(trabajo.id, trabajo.titulo)}
+                >
+                  <Ionicons name="checkmark-circle" size={18} color={isB2BProvider ? '#fff' : '#2F2F2F'} />
+                  <Text style={[styles.completeBtnText, isB2BProvider && { color: '#fff' }]}>Marcar como completado</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.cancelWorkBtn, isB2BProvider && { borderColor: '#c7d2fe' }]}
+                  onPress={() => handleCancelAsk(trabajo.id, trabajo.titulo)}
+                >
+                  <Ionicons name="close-circle" size={16} color={isB2BProvider ? '#4f46e5' : '#b91c1c'} />
+                  <Text style={[styles.cancelWorkBtnText, isB2BProvider && { color: '#4f46e5' }]}>Cancelar trabajo (afecta puntaje)</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         ))}
@@ -134,6 +172,38 @@ export default function TrabajosScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      )}
+    {/* Modal de Cancelación con justificación (Sistema de Scoring Tarea 3.3) */}
+      {showCancelModal && cancelConfig && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, isB2BProvider && { borderColor: '#6366f1' }]}>
+            <Text style={styles.modalTitle}>¿Cancelar "{cancelConfig.titulo}"?</Text>
+            <Text style={styles.modalMessage}>
+              Toda cancelación injustificada resta 10 puntos de tu calificación visible (100 pts = 5.0★).{' '}
+              {esPedidoTarifaAlta(orders.find(o => o.id === cancelConfig.orderId)?.precio)
+                ? 'Este trabajo es de tarifa alta: perder acceso durante un tiempo también podría impedirte postularte a nuevos pedidos de alto valor.'
+                : 'Si pierdes el puntaje perderás acceso a pedidos de tarifa alta (min 80 pts).'}
+            </Text>
+            <Text style={styles.modalMessageSmall}>¿La cancelación tiene una justificación válida?</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { borderColor: '#059669' }]}
+                onPress={() => confirmCancel(true)}
+              >
+                <Text style={[styles.modalCancelText, { color: '#059669' }]}>Sí, justificada</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirmBtn, { backgroundColor: '#dc2626' }]}
+                onPress={() => confirmCancel(false)}
+              >
+                <Text style={styles.modalConfirmText}>No, cancelar igual</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => setShowCancelModal(false)} style={{ marginTop: 12, alignItems: 'center' }}>
+              <Text style={[styles.modalCancelText, { color: '#888' }]}>Volver sin cancelar</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -203,6 +273,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  cancelWorkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 10,
+    padding: 10,
+    gap: 8,
+    marginTop: 8,
+  },
+  cancelWorkBtnText: {
+    color: '#b91c1c',
+    fontWeight: '600',
+    fontSize: 13,
+  },
 
   emptyContainer: {
     alignItems: 'center',
@@ -259,7 +346,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
-    marginBottom: 24,
+    marginBottom: 12,
+  },
+  modalMessageSmall: {
+    fontSize: 14,
+    color: '#2F2F2F',
+    lineHeight: 18,
+    marginBottom: 20,
+    fontWeight: '600',
   },
   modalButtons: {
     flexDirection: 'row',

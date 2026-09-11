@@ -1,5 +1,11 @@
 import { pgTable, serial, text, varchar, integer, boolean, jsonb, timestamp, index } from 'drizzle-orm/pg-core';
 
+// Puntaje inicial de todo proveedor y equivalencia con estrellas:
+// 100 puntos = 5.0 estrellas. Cada cancelación injustificada resta 10 puntos.
+export const PUNTOS_SCORE_INICIAL = 100;
+export const PENALIZACION_CANCELACION_INJUSTIFICADA = 10;
+export const UMBRAL_PUNTOS_TARIFA_ALTA = 80; // Menos de 80 pts (4.0★) bloquea pedidos de tarifa alta
+
 // Tabla de Tenants (organizaciones/empresas que consumen la plataforma)
 export const tenants = pgTable('tenants', {
   id: serial('id').primaryKey(),
@@ -53,8 +59,14 @@ export const users = pgTable('users', {
   fechaUltimaModificacionFoto: varchar('fecha_ultima_modificacion_foto', { length: 100 }),
   fechaUltimaModificacionDatos: varchar('fecha_ultima_modificacion_datos', { length: 100 }),
   b2bTrialStartDate: timestamp('b2b_trial_start_date'),
-
   createdAt: timestamp('created_at').defaultNow(),
+
+  // Sistema de Scoring del Proveedor (Tarea 3.3)
+  // Todo proveedor inicia con 100 puntos = 5.0 estrellas visibles.
+  // Cada cancelación injustificada resta 10 puntos.
+  puntaje: integer('puntaje').default(PUNTOS_SCORE_INICIAL).notNull(),
+  cancelacionesInjustificadas: integer('cancelaciones_injustificadas').default(0).notNull(),
+  fechaUltimaPenalizacion: timestamp('fecha_ultima_penalizacion'),
 }, (table) => ({
   tenantIdx: index('users_tenant_idx').on(table.tenantId),
 }));
@@ -73,7 +85,7 @@ export const orders = pgTable('orders', {
   proveedor: varchar('proveedor', { length: 256 }), // Nombre del proveedor (display)
   servicio: varchar('servicio', { length: 256 }).notNull(), // Categoría (Plomería, Electricidad, etc.)
   descripcion: text('descripcion').notNull(),
-  estado: varchar('estado', { length: 50 }).$type<'Buscando proveedor' | 'En progreso' | 'Completado'>().default('Buscando proveedor').notNull(),
+  estado: varchar('estado', { length: 50 }).$type<'Buscando proveedor' | 'En progreso' | 'Completado' | 'Cancelado'>().default('Buscando proveedor').notNull(),
   progreso: integer('progreso').default(0).notNull(), // 0%, 25%, 50%, 100%
   hora: varchar('hora', { length: 100 }).notNull(), // Fecha/Hora formateada de creación
   color: varchar('color', { length: 50 }).default('#FFB400'), // Color de la tarjeta/tag
@@ -169,5 +181,21 @@ export const reports = pgTable('reports', {
 }, (table) => ({
   pedidoIdx: index('reports_pedido_idx').on(table.pedidoId),
   reportanteIdx: index('reports_reportante_idx').on(table.reportanteId),
+}));
+
+// Tabla de Historial de Cancelaciones de Proveedores (Sistema de Scoring)
+// Registra cada cancelación para auditoría y cálculo transparente del puntaje.
+export const providerCancelaciones = pgTable('provider_cancelaciones', {
+  id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }).default(1).notNull(),
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),    // Pedido cancelado
+  proveedorId: integer('proveedor_id').references(() => users.id, { onDelete: 'cascade' }).notNull(), // Proveedor que cancela
+  justificada: boolean('justificada').default(false).notNull(), // true = cancelación justificada (sin penalización)
+  motivo: varchar('motivo', { length: 256 }),                     // Motivo de la cancelación
+  puntosPenalizados: integer('puntos_penalizados').default(0).notNull(), // Puntos restados (10 si es injustificada)
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  proveedorIdx: index('provider_cancelaciones_proveedor_idx').on(table.proveedorId),
+  orderIdx: index('provider_cancelaciones_order_idx').on(table.orderId),
 }));
 
