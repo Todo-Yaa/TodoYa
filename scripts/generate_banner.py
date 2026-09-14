@@ -17,7 +17,7 @@ ASSETS.mkdir(exist_ok=True)
 
 ROWS = [
     ("Subject", "Luis Merma (Wasausky16)"),
-    ("Role", "Mobile & Full Stack Engineer · Creator of Todo Ya"),
+    ("Role", "Mobile & Full Stack Engineer · Tech Lead"),
     ("Origin", "Perú 🇵🇪"),
     ("Education", "Software Development · Android & Web"),
     ("Status", "Building Todo Ya + Learning + Shipping"),
@@ -27,9 +27,10 @@ ROWS = [
     ("Core.Backend", "Node.js · Serverless APIs · Express"),
     ("Core.Database", "Postgres (Neon DB) · Firebase · Supabase"),
     ("Core.Infra", "Vercel · Cloudinary · Docker"),
-    ("Grid.LinkedIn", "/in/luis-merma"),
+    ("Grid.LinkedIn", "/in/luis-merma-alarcon-01379a1b9"),
     ("Grid.GitHub", "Wasausky16"),
-    ("Grid.Instagram", "@todoo__ya"),
+    ("Grid.Instagram", "@soy_luchito"),
+    ("Grid.Facebook", "luis.mermaalarcon"),
 ]
 
 THEMES = {

@@ -2,9 +2,9 @@
 
   <!-- TERMINAL BANNER - profile.sh --live -->
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
-    <img src="assets/banner-dark.svg" width="100%" alt="profile.sh --live">
+    <source media="(prefers-color-scheme: dark)"  srcset="https://raw.githubusercontent.com/Wasausky16/TodoYa/main/assets/banner-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Wasausky16/TodoYa/main/assets/banner-light.svg">
+    <img src="https://raw.githubusercontent.com/Wasausky16/TodoYa/main/assets/banner-dark.svg" width="100%" alt="profile.sh --live">
   </picture>
 
   <br><br>

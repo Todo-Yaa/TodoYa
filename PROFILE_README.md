@@ -1,10 +1,10 @@
 <div align="center">
 
-<!-- TERMINAL BANNER - profile.sh --live (Dynamic Dark/Light SVG) -->
+<!-- TERMINAL BANNER - profile.sh --live (Dynamic Dark/Light SVG with Absolute GitHub Raw URLs) -->
 <picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="assets/banner-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
-  <img src="assets/banner-dark.svg" width="100%" alt="profile.sh --live">
+  <source media="(prefers-color-scheme: dark)"  srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/banner-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/banner-light.svg">
+  <img src="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/banner-dark.svg" width="100%" alt="profile.sh --live">
 </picture>
 
 <br><br>
@@ -16,9 +16,10 @@
 
 <br><br>
 
-<!-- SOCIALS — Styled Shields Badges matching emmi-lili style -->
-<a href="https://linkedin.com"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn"></a>&nbsp;&nbsp;
-<a href="https://instagram.com/todoo__ya"><img src="https://img.shields.io/badge/Instagram-0d1117?style=for-the-badge&logo=instagram&logoColor=aa9bef" alt="Instagram"></a>&nbsp;&nbsp;
+<!-- REAL SOCIAL BADGES -->
+<a href="https://www.linkedin.com/in/luis-merma-alarcon-01379a1b9/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn"></a>&nbsp;&nbsp;
+<a href="https://www.instagram.com/soy_luchito/"><img src="https://img.shields.io/badge/Instagram-0d1117?style=for-the-badge&logo=instagram&logoColor=aa9bef" alt="Instagram"></a>&nbsp;&nbsp;
+<a href="https://www.facebook.com/luis.mermaalarcon/"><img src="https://img.shields.io/badge/Facebook-1877F2?style=for-the-badge&logo=facebook&logoColor=white" alt="Facebook"></a>&nbsp;&nbsp;
 <a href="https://github.com/Wasausky16"><img src="https://img.shields.io/badge/GitHub-0d1117?style=for-the-badge&logo=github&logoColor=aa9bef" alt="GitHub"></a>
 
 <br><br>
@@ -32,10 +33,10 @@
 
 ## 🙋‍♂️ This is me :) / Sobre Mí
 
-Hi, I'm **Luis Merma (Wasausky16)**, Mobile & Full Stack Software Engineer broadcasting from Perú 🇵🇪.
+Hi, I'm **Luis Merma Alarcon (Wasausky16)**, Mobile & Full Stack Software Engineer broadcasting from Perú 🇵🇪.
 I build intuitive cross-platform applications and real-time backend systems, passionate about bridging technology and everyday life.
 
-- 🚀 **Creator & Lead Architect at [Todo Ya](https://github.com/Wasausky16/todo-ya)**: connecting local services with customers in minutes using React Native, Expo v56, and Google Gemini AI.
+- 🚀 **Creator & Lead Architect at [Todo Ya](https://github.com/Wasausky16/TodoYa)**: connecting local services with customers in minutes using React Native, Expo v56, and Google Gemini AI.
 - 📱 **Mobile Specialist**: Android native development (Kotlin, Java) and cross-platform architecture (React Native, Expo, Flutter).
 - 🤖 **AI & Agents Enthusiast**: integrating NLP, 2-level semantic matching, and multimodal identity verification (KYC).
 - 🌱 **My Mission**: Building software that delivers real-world impact for communities across LATAM.
@@ -63,9 +64,9 @@ I build intuitive cross-platform applications and real-time backend systems, pas
 
 <!-- Self-rated skill radar -->
 <picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="assets/radar-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/radar-light.svg">
-  <img src="assets/radar-dark.svg" width="400" alt="skill radar chart">
+  <source media="(prefers-color-scheme: dark)"  srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-light.svg">
+  <img src="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-dark.svg" width="400" alt="skill radar chart">
 </picture>
 
 </td>
@@ -73,9 +74,9 @@ I build intuitive cross-platform applications and real-time backend systems, pas
 
 <!-- Language stack radar -->
 <picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="assets/radar-langs-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/radar-langs-light.svg">
-  <img src="assets/radar-langs-dark.svg" width="400" alt="language radar chart">
+  <source media="(prefers-color-scheme: dark)"  srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-langs-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-langs-light.svg">
+  <img src="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-langs-dark.svg" width="400" alt="language radar chart">
 </picture>
 
 </td>
@@ -88,11 +89,11 @@ I build intuitive cross-platform applications and real-time backend systems, pas
 
 <div align="center">
 
-## 📊 Numbers matter? ohhh yes.
+## 📊 Numbers matter? ohhh yes. (Live GitHub Stats)
 
 <div align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=Wasausky16&show_icons=true&theme=dark&title_color=aa9bef&text_color=dde7f5&bg_color=0d1628&border_color=1b283d" alt="GitHub Stats" width="48%">
-  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=Wasausky16&layout=compact&theme=dark&title_color=aa9bef&text_color=dde7f5&bg_color=0d1628&border_color=1b283d" alt="Top Languages" width="48%">
+  <img src="https://github-readme-stats.vercel.app/api?username=Wasausky16&show_icons=true&theme=dark&include_all_commits=true&count_private=true&title_color=aa9bef&text_color=dde7f5&bg_color=0d1628&border_color=1b283d" alt="GitHub Stats" width="48%">
+  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=Wasausky16&layout=compact&theme=dark&hide_progress=false&title_color=aa9bef&text_color=dde7f5&bg_color=0d1628&border_color=1b283d" alt="Top Languages" width="48%">
 </div>
 
 <br>
