@@ -1,10 +1,10 @@
 <div align="center">
 
-<!-- TERMINAL BANNER - profile.sh --live (Dynamic Dark/Light SVG with Absolute GitHub Raw URLs) -->
+<!-- TERMINAL BANNER - profile.sh --live -->
 <picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/banner-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/banner-light.svg">
-  <img src="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/banner-dark.svg" width="100%" alt="profile.sh --live">
+  <source media="(prefers-color-scheme: dark)"  srcset="assets/banner-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
+  <img src="assets/banner-dark.svg" width="100%" alt="profile.sh --live">
 </picture>
 
 <br><br>
@@ -64,9 +64,9 @@ I build intuitive cross-platform applications and real-time backend systems, pas
 
 <!-- Self-rated skill radar -->
 <picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-light.svg">
-  <img src="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-dark.svg" width="400" alt="skill radar chart">
+  <source media="(prefers-color-scheme: dark)"  srcset="assets/radar-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/radar-light.svg">
+  <img src="assets/radar-dark.svg" width="400" alt="skill radar chart">
 </picture>
 
 </td>
@@ -74,9 +74,9 @@ I build intuitive cross-platform applications and real-time backend systems, pas
 
 <!-- Language stack radar -->
 <picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-langs-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-langs-light.svg">
-  <img src="https://raw.githubusercontent.com/Wasausky16/Wasausky16/main/assets/radar-langs-dark.svg" width="400" alt="language radar chart">
+  <source media="(prefers-color-scheme: dark)"  srcset="assets/radar-langs-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/radar-langs-light.svg">
+  <img src="assets/radar-langs-dark.svg" width="400" alt="language radar chart">
 </picture>
 
 </td>
@@ -89,18 +89,14 @@ I build intuitive cross-platform applications and real-time backend systems, pas
 
 <div align="center">
 
-## 📊 Numbers matter? ohhh yes. (Live GitHub Stats)
+## 📊 Numbers matter? ohhh yes.
 
-<div align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=Wasausky16&show_icons=true&theme=dark&include_all_commits=true&count_private=true&title_color=aa9bef&text_color=dde7f5&bg_color=0d1628&border_color=1b283d" alt="GitHub Stats" width="48%">
-  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=Wasausky16&layout=compact&theme=dark&hide_progress=false&title_color=aa9bef&text_color=dde7f5&bg_color=0d1628&border_color=1b283d" alt="Top Languages" width="48%">
-</div>
-
-<br>
-
-<div align="center">
-  <img src="https://github-readme-streak-stats.herokuapp.com/?user=Wasausky16&theme=dark&background=0d1628&border=1b283d&stroke=aa9bef&ring=aa9bef&fire=aa9bef&currStreakNum=dde7f5&sideNums=dde7f5&sideTitle=aa9bef&dates=8291a8" alt="GitHub Streak" width="97%">
-</div>
+<!-- SVG stats card -->
+<picture>
+  <source media="(prefers-color-scheme: dark)"  srcset="assets/card-stats-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/card-stats-light.svg">
+  <img src="assets/card-stats-dark.svg" width="480" alt="GitHub statistics">
+</picture>
 
 </div>
 
