@@ -145,8 +145,7 @@ def build_svg(theme_name):
     # SVG Styles & Fonts
     svg_parts.append(f'''<defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap');
-      .mono {{ font-family: 'JetBrains Mono', monospace, ui-monospace; }}
+      .mono {{ font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace; }}
       .title-text {{ fill: {t["title"]}; font-size: 13px; font-weight: 500; letter-spacing: 0.5px; }}
       .heading-text {{ fill: {t["heading"]}; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }}
       .key-text {{ fill: {t["text_key"]}; font-size: 12.5px; font-weight: 500; }}

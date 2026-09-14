@@ -1,11 +1,9 @@
 <div align="center">
 
 <!-- TERMINAL BANNER - profile.sh --live -->
-<picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="assets/banner-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
+<a href="https://github.com/Wasausky16">
   <img src="assets/banner-dark.svg" width="100%" alt="profile.sh --live">
-</picture>
+</a>
 
 <br><br>
 
@@ -63,21 +61,13 @@ I build intuitive cross-platform applications and real-time backend systems, pas
 <td width="50%" align="center" valign="middle">
 
 <!-- Self-rated skill radar -->
-<picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="assets/radar-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/radar-light.svg">
-  <img src="assets/radar-dark.svg" width="400" alt="skill radar chart">
-</picture>
+<img src="assets/radar-dark.svg" width="400" alt="skill radar chart">
 
 </td>
 <td width="50%" align="center" valign="middle">
 
 <!-- Language stack radar -->
-<picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="assets/radar-langs-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/radar-langs-light.svg">
-  <img src="assets/radar-langs-dark.svg" width="400" alt="language radar chart">
-</picture>
+<img src="assets/radar-langs-dark.svg" width="400" alt="language radar chart">
 
 </td>
 </tr>
@@ -91,12 +81,23 @@ I build intuitive cross-platform applications and real-time backend systems, pas
 
 ## 📊 Numbers matter? ohhh yes.
 
-<!-- SVG stats card -->
-<picture>
-  <source media="(prefers-color-scheme: dark)"  srcset="assets/card-stats-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/card-stats-light.svg">
-  <img src="assets/card-stats-dark.svg" width="480" alt="GitHub statistics">
-</picture>
+<br>
+
+<div align="center">
+  <img src="https://github-readme-stats.vercel.app/api?username=Wasausky16&show_icons=true&theme=dark&include_all_commits=true&count_private=true&title_color=aa9bef&text_color=dde7f5&bg_color=0d1628&border_color=1b283d" alt="GitHub Stats" width="48%">
+  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=Wasausky16&layout=compact&theme=dark&hide_progress=false&title_color=aa9bef&text_color=dde7f5&bg_color=0d1628&border_color=1b283d" alt="Top Languages" width="48%">
+</div>
+
+<br>
+
+<div align="center">
+  <img src="https://github-readme-streak-stats.herokuapp.com/?user=Wasausky16&theme=dark&background=0d1628&border=1b283d&stroke=aa9bef&ring=aa9bef&fire=aa9bef&currStreakNum=dde7f5&sideNums=dde7f5&sideTitle=aa9bef&dates=8291a8" alt="GitHub Streak" width="97%">
+</div>
+
+<br>
+
+<!-- Local SVG stats card fallback -->
+<img src="assets/card-stats-dark.svg" width="480" alt="GitHub statistics summary">
 
 </div>
 
