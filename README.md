@@ -1,114 +1,165 @@
-# Todo Ya — Servicios Locales en Minutos 🚀
+<div align="center">
 
-**Todo Ya** es una aplicación móvil universal y web desarrollada con **React Native** y **Expo** diseñada para conectar a clientes locales con proveedores de servicios de confianza en minutos. La plataforma cuenta con flujos especializados tanto para usuarios residenciales (particulares) como para empresas (B2B/Corporativos).
+  <!-- TERMINAL BANNER - profile.sh --live -->
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.svg">
+    <img src="assets/banner-dark.svg" width="100%" alt="profile.sh --live">
+  </picture>
 
----
+  <br><br>
 
-## 🎨 Imagen de Marca y Diseño Premium
+  <!-- ANIMATED TYPING HEADER -->
+  <a href="https://github.com/Wasausky16/todo-ya">
+    <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=26&duration=2500&pause=1000&color=AA9BEF&center=true&vCenter=true&width=880&lines=Todo+Ya+%E2%80%94+Servicios+Locales+en+Minutos;Universal+Mobile+%26+Web+App;React+Native+%2B+Expo+v56+%2B+Gemini+AI;B2C+Emergencies+%2B+B2B+Corporate+Bidding" alt="Todo Ya Banner">
+  </a>
 
-* **Logotipo Oficial e Insignia BETA**: Integrado de manera consistente en la pantalla de inicio de sesión (`login-screen`), pantallas de carga (`splash screen`), iconos de la aplicación (iOS/Android/Web) e interfaz general con la insignia estilizada **`BETA`** para indicar la fase activa de demostración y pruebas.
-* **Color de Marca**: **`#FFB400`** (un tono oro/amarillo cálido extraído del logotipo oficial) combinado con acabados premium en gris oscuro (`#2F2F2F`) y gradientes modernos en la interfaz de usuario.
-* **Estilos B2B y Proveedor**: Acabados en tonalidades índigo (`#6366f1` / `#1e293b`) para denotar un entorno corporativo y profesional premium.
-* **Diseño Fijo de Selección Multilingüe**: El selector de idiomas (`ES`, `EN`, `PT-BR`, `QU`, `AY`, `GN`) implementa un contenedor con posición y alineación fija e inamovible, impidiendo desplazamientos o desalineaciones visuales al alternar entre idiomas.
+  <br><br>
 
----
+  <!-- BADGES ROW 1: CORE TECH STACK -->
+  <a href="https://expo.dev"><img src="https://img.shields.io/badge/Expo-v56.0-000000?style=for-the-badge&logo=expo&logoColor=white" alt="Expo v56"></a>&nbsp;
+  <a href="https://reactnative.dev"><img src="https://img.shields.io/badge/React_Native-v0.85-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native"></a>&nbsp;
+  <a href="https://deepmind.google/technologies/gemini/"><img src="https://img.shields.io/badge/Google_Gemini-2.5_Flash-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Google Gemini AI"></a>&nbsp;
+  <a href="https://neon.tech"><img src="https://img.shields.io/badge/Neon_DB-PostgreSQL-00E599?style=for-the-badge&logo=postgresql&logoColor=black" alt="Neon Postgres"></a>&nbsp;
+  <a href="https://drizzle.team"><img src="https://img.shields.io/badge/Drizzle-ORM-C5F74F?style=for-the-badge&logo=drizzle&logoColor=black" alt="Drizzle ORM"></a>
 
-## 🛠️ Características Principales Implementadas
+  <br>
 
-### 1. Registro Validado, Términos Exclusivos y Verificación Real por WhatsApp / SMS
-* **Términos y Condiciones en Registro de Nuevos Usuarios**: La aceptación explícita y obligatoria de los Términos de Servicio y Política de Privacidad mediante casilla de verificación se exige **exclusivamente al crear una cuenta nueva**, eliminando fricciones en el inicio de sesión habitual.
-* **Verificación de Teléfono Real (WhatsApp & SMS)**: Proceso de validación mediante código PIN de 4 dígitos con integración directa para transmisión por **WhatsApp** (`https://wa.me/...`) y **SMS nativo** (`sms:`), además de notificación flotante emergente de respaldo.
-* **Registro de Usuarios con Correo Real**: Se captura y valida la dirección de correo real (con control de formato `@` y no vacío) para el registro de cuentas de personas y empresas.
-* **Registro por Defecto**: Los usuarios nuevos se registran automáticamente con rol de comprador (`client` para personas naturales y `business` para empresas B2B).
-* **Login Flexible**: El sistema de autenticación admite el inicio de sesión indicando indistintamente el correo (`correoOTelefono`), el número celular (`celular`) o con el código de país (`+${codigoPais} ${celular}`).
-* **Simulación OAuth**: Flujo visual de inicio de sesión y registro social a través de Google Account y LinkedIn.
+  <!-- BADGES ROW 2: BRAND & COMMUNITY -->
+  <a href="https://instagram.com/todoo__ya"><img src="https://img.shields.io/badge/Instagram-0d1117?style=for-the-badge&logo=instagram&logoColor=aa9bef" alt="Instagram"></a>&nbsp;
+  <a href="https://github.com/Wasausky16/todo-ya"><img src="https://img.shields.io/badge/GitHub-0d1117?style=for-the-badge&logo=github&logoColor=aa9bef" alt="GitHub Repo"></a>&nbsp;
+  <img src="https://komarev.com/ghpvc/?username=Wasausky16-todo-ya&style=flat&color=aa9bef&label=profile+views" alt="Repo Views">
 
-### 2. Motor de Búsqueda Semántica IA de 2 Niveles (Deep Matching)
-* **Filtro 1 (Categoría Base)**: Clasifica y filtra los proveedores según la especialidad del servicio (`Plomería`, `Electricidad`, `Climatización`, `Branding & Lettering`, etc.).
-* **Filtro 2 (Coincidencia Semántica por Descripción)**: Compara la solicitud del cliente (ej: *"necesito un gasfitero especializado en cambio de tubería de gas"*) con la descripción/biografía técnica del proveedor.
-* **Insignias y Posicionamiento Top 1**: Si el proveedor especificó la frase o términos exactos en su perfil, la IA lo posiciona en la primera ubicación con la insignia **`✨ IA 98% Match`**.
-
-### 3. Carruseles de Onboarding de 5 Pasos Diferenciados
-* **Diferenciación por Tipo de Entidad**:
-  * 🏠 **Persona Natural (Hogar)**: Tonalidades cálidas con foco en resolver emergencias del hogar, radar de 90 segundos, IA por voz multilingüe (Español, Quechua, Aymara, Guaraní) y verificación KYC de técnicos.
-  * 💼 **Empresas (B2B Corporativo)**: Tonalidades índigo corporativo con foco en compras de oficina, **3 Meses Gratis de Solicitudes B2B**, subasta invertida y facturación electrónica.
-* **Comunidad e Instagram Directo**: En el paso 5, cuenta con un botón interactivo oficial **`Seguir a @todoo__ya`** que abre la aplicación de Instagram en tiempo real.
-
-### 4. Sistema No Invasivo de Mejora de Plan (Estilo Uber One)
-* **Modal Emergente Estratégico (`plan-upsell-modal.tsx`)**: Recomienda planes superiores (Plan 2 Profesional `S/. 120/mes` o Plan Empresa `S/. 300/mes`) mostrando carruseles horizontales de beneficios.
-* **Frecuencia Inteligente Cero Fricción**: Solo se muestra **1 vez cada 24 horas** con un retardo amigable de 3 segundos, y se desactiva permanentemente para usuarios con planes Élite máximos.
-
-### 5. Búsqueda de Proveedores en Tiempo Real (Estilo inDriver & B2B)
-* **Geocodificación de Moneda por GPS**: Ajuste automático a la divisa local (`S/.` para Perú, `Bs.` para Bolivia).
-* **Flujo Residencial**: Cuenta regresiva de 90s con mapa interactivo y tarifas dinámicas progresivas.
-* **Flujo Corporativo B2B (Contraofertas)**: Presupuesto objetivo corporativo con subasta invertida en tiempo real y cotizaciones de proveedores.
-
-### 6. Sistema de Calificación Forzada con Bloqueo (Estilo Jango)
-* **Bloqueo a Nivel Raíz**: La aplicación detecta servicios completados sin calificar y bloquea el uso hasta recibir la evaluación con estrellas y etiquetas de retroalimentación.
-
-### 7. Verificación KYC de Proveedores (Jumio & Onfido Biométrico)
-* **Modulo KYC Obligatorio**: Escaneo de DNI/C.I. y biometría facial mediante selfie (*Facematch Liveness*) conectado con **Onfido API** y **Jumio Netverify API** en `/api/kyc`.
-
-### 8. Sistema de Almacenamiento CDN en Nube (Cloudinary & Firebase)
-* **Gestión de Imágenes en la Nube**: Subida automática de fotos de perfil y documentos a **Cloudinary CDN** y **Firebase Storage** a través de `/api/upload` y `image-uploader.ts`.
-
-### 9. Sistema de Denuncias y Control de Baneo (Administrador)
-* **Reportes y Baneo en Tiempo Real**: Botón de denuncia en tarjetas de pedido y panel administrativo para suspender/reactivar cuentas infractoras.
-
-### 10. Arquitectura Multi-Tenant y Seguridad JWT (`src/utils/auth.ts`)
-* **Aislamiento Multi-Tenant**: Soporte nativo para organizaciones/empresas con aislamiento de datos por `tenant_id` en usuarios, pedidos y chats.
-* **Autenticación JWT & Hashing `scrypt`**: Hashing criptográfico de contraseñas mediante `scrypt` (`scrypt$<saltHex>$<hashHex>`) y generación de tokens de sesión firmados con `jose` (`SignJWT` HS256, expiración 30 días).
-* **Resolución Automática de Tenant ID**: Extracción jerárquica de tenant en peticiones HTTP: `Authorization: Bearer <token>` → Parámetro `?tenantId=` → Tenant predeterminado (`1`).
-
-### 11. Chat en Tiempo Real, Postulaciones y Billetera Virtual
-* **Chat Integrado por Pedido (`/api/chat`)**: Mensajería en tiempo real por `order_id` con validación de remitente y pertenencia al tenant.
-* **Gestión Relacional de Postulaciones (`/api/applications`)**: Registro de proveedores postulados a pedidos con costo de monedas y notas personales.
-* **Calificaciones Relacionales & Transacciones (`/api/ratings` & `/api/wallet`)**: Evaluación de servicio separada por usuario/pedido e historial auditado de recargas/gastos en la billetera virtual.
+</div>
 
 ---
 
-## ⚡ Escalabilidad y Rendimiento para 1,000+ Usuarios Activos en Perú
+## 💡 Sobre Todo Ya
 
-La arquitectura de **Todo Ya** ha sido sometida a análisis y pruebas de concurrencia para soportar más de **1,000 usuarios activos simultáneos** en el lanzamiento inicial en Perú:
-
-1. **APIs Legales RENIEC / SUNAT (`/api/peru-legal`)**: Sistema de tolerancia a fallos (*fallback automático*) que procesa consultas de DNI de 8 dígitos y RUC de 11 dígitos sin congelar la aplicación ante alta demanda.
-2. **Geocodificación GPS (`/api/peru-geo`)**: Uso de GPS nativo en móviles (`expo-location`) con consumo 0 de servidor, y respaldo OpenStreetMap Nominatim en Web.
-3. **Facturación y Comprobantes SUNAT (`/api/peru-invoice`)**: Funciones Serverless en Vercel de auto-escalado dinámico con capacidad para procesar miles de Boletas/Facturas con IGV (18%) por segundo.
-4. **Verificación KYC Biométrico (`/api/kyc`)**: Conexión con Jumio API y Onfido API para validación facial y de documentos.
-5. **Almacenamiento CDN en Nube (`/api/upload`)**: Hospedaje distribuido en Cloudinary y Firebase Storage.
-6. **Base de Datos Neon DB (PostgreSQL) Multi-Tenant**: Conexión mediante *Connection Pooling Serverless* con Drizzle ORM optimizada para gestionar más de **10,000 conexiones concurrentes** con aislamiento por tenant.
+**Todo Ya** es una plataforma móvil universal y web de última generación desarrollada con **React Native** y **Expo (v56.0.0)** diseñada para conectar a clientes locales con proveedores de servicios de confianza en minutos. La plataforma integra flujos altamente especializados tanto para **particulares (B2C)** como para **empresas (B2B Corporativo)**.
 
 ---
 
+## 🎨 Imagen de Marca & Sistema de Diseño
+
+| Elemento | Especificación & Aplicación |
+| :--- | :--- |
+| 🟡 **Color de Marca Principal** | **`#FFB400`** (Tono oro/amarillo cálido extraído del logotipo oficial con acabados en gris oscuro `#2F2F2F`) |
+| 👔 **Estilo B2B & Proveedor** | Tonalidades índigo corporativo (**`#6366f1`** / **`#1e293b`**) para un entorno profesional premium |
+| 🌐 **Selector Multilingüe Fijo** | Idiomas soportados: `ES`, `EN`, `PT-BR`, `QU`, `AY`, `GN` con contenedor alineado e inamovible |
+| 🏷️ **Badge Oficial BETA** | Integrado de manera consistente en login, splash screens, e iconos nativos |
 
 ---
 
-## 📚 Índice de Documentación Organizada (`docs/`)
+## 🛠️ Pila Tecnológica (Tech Stack)
 
-Toda la documentación técnica, comercial y de gestión del proyecto se encuentra organizada en la carpeta [`docs/`](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs):
+```
+                 ┌──────────────────────────────────────────────┐
+                 │                TODO YA STACK                 │
+                 └──────────────────────┬───────────────────────┘
+                                        │
+         ┌──────────────────────────────┼──────────────────────────────┐
+         ▼                              ▼                              ▼
+ 📱 Frontend & Mobile            🤖 AI & Engine                 ⚡ Backend & Database
+ ├─ React Native v0.85           ├─ Google Gemini 2.5 Flash     ├─ Expo Serverless API Routes
+ ├─ Expo v56.0.0                 ├─ 2-Level Semantic Match      ├─ Neon DB (PostgreSQL)
+ ├─ React 19                     ├─ Gemini Vision KYC           ├─ Drizzle ORM Multi-tenant
+ └─ Expo Location & Push         └─ NLP Grammatical Search      └─ JWT (jose) + scrypt Hashing
+```
 
-### 💼 1. Estudio de Mercado y Publicidad
-* 📊 [**Dossier Maestro de Inversión**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/DOSSIER_INVERSIONISTA.md): Documento único unificado para rondas de inversión, modelo de negocio B2C/B2B, proyecciones financieras, formalización S.A.C. y pasarelas de pago.
-* 📱 [**Estrategia de Marketing Digital y Redes Sociales**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/ESTRATEGIA_MARKETING_Y_REDES.md): Plan de acción para el equipo de marketing con estrategias de contenido viral para TikTok, Instagram (`@todoo__ya`), Facebook y LinkedIn.
-* 📈 [**Plan de Arranque y Presupuesto Comercial**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/PLAN_DE_ARRANQUE_Y_PRESUPUESTO_COMERCIAL.md): Estrategia de tracción comercial, campañas publicitarias y presupuesto operacional.
+### Tecnologías & Herramientas
 
-### 🛠️ 2. Técnica y Arquitectura
-* 📋 [**Ficha Técnica Completa**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/tecnica-y-arquitectura/FICHA_TECNICA.md): Especificación detallada de arquitectura, endpoints Serverless, KYC Gemini Vision, Notificaciones Push y autenticación JWT.
-* 🏗️ [**Estructura del Proyecto**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/tecnica-y-arquitectura/ESTRUCTURA_PROYECTO.md): Árbol del código fuente, esquema de base de datos Drizzle ORM Multi-tenant y diagramas de flujo.
-
-### 🎓 3. Gestión y Académico
-* 🎓 [**Propuesta Académica**](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/gestion-y-academico/PROPUESTA_ACADEMICA.md): Presentación formal del proyecto para contextos académicos y hackathons.
+- **Mobile & Web Framework**: ![React Native](https://img.shields.io/badge/React_Native-0.85-61DAFB?style=flat-square&logo=react&logoColor=black) ![Expo](https://img.shields.io/badge/Expo-v56-000000?style=flat-square&logo=expo&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white)
+- **Inteligencia Artificial**: ![Google Gemini](https://img.shields.io/badge/Google_Gemini-2.5_Flash-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) ![Gemini Vision](https://img.shields.io/badge/Gemini_Vision-Multimodal-4285F4?style=flat-square&logo=google&logoColor=white)
+- **Base de Datos & ORM**: ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon_DB-4169E1?style=flat-square&logo=postgresql&logoColor=white) ![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-Serverless-C5F74F?style=flat-square&logo=drizzle&logoColor=black)
+- **Seguridad & Auth**: ![JWT](https://img.shields.io/badge/JWT-jose_HS256-000000?style=flat-square&logo=jsonwebtokens&logoColor=white) ![Scrypt](https://img.shields.io/badge/Password-scrypt-FF6C37?style=flat-square)
+- **Servicios Legales & Cloud**: ![RENIEC/SUNAT](https://img.shields.io/badge/Peru_Legal-RENIEC_%2F_SUNAT-D9381E?style=flat-square) ![Cloudinary](https://img.shields.io/badge/CDN-Cloudinary-3448C5?style=flat-square&logo=cloudinary&logoColor=white) ![Firebase](https://img.shields.io/badge/Storage-Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)
 
 ---
 
-## 💻 Pila Tecnológica (Tech Stack)
+## ⚡ Características Principales
 
-1. **Núcleo**: React Native (v0.85), React 19 y Expo (v56).
-2. **Estilos**: Vanilla CSS / React Native StyleSheet con tokens de diseño adaptativos.
-3. **IA & NLP**: Google Gemini API integration (gemini-2.5-flash) para reconocimiento gramatical, KYC multimodal con Gemini Vision y emparejamiento semántico de 2 niveles.
-4. **Base de Datos & Multi-Tenancy**: Neon DB (PostgreSQL) con Drizzle ORM, tablas relacionales (`tenants`, `users`, `orders`, `messages`, `transactions`, `ratings`, `applications`, `reports`) e índices optimizados por `tenant_id`.
-5. **Autenticación & Seguridad**: Tokens JWT con `jose` (HS256), hashing `scrypt` de Node.js, y middleware de resolución de tenant (`src/utils/auth.ts`).
-6. **Notificaciones & Comunicación**: Push Notifications con Expo Notifications API y mensajería en tiempo real por pedido (`/api/chat`).
-7. **APIs Serverless (Expo API Routes)**: `/api/users`, `/api/orders`, `/api/chat`, `/api/applications`, `/api/ratings`, `/api/wallet`, `/api/sync`, `/api/veripagos`, `/api/peru-legal`, `/api/peru-geo`, `/api/peru-invoice`, `/api/kyc` y `/api/upload`.
+<details open>
+<summary><b>1. Autenticación & Verificación Real WhatsApp / SMS</b></summary>
+
+- **Casilla de Términos Exclusiva**: Exigida únicamente al crear cuentas nuevas para eliminar fricción al iniciar sesión.
+- **Verificación PIN Real**: Envío de código de 4 dígitos integrado directamente con **WhatsApp** (`wa.me`) y **SMS Nativo** (`sms:`).
+- **OAuth Social**: Flujos visuales de inicio de sesión con Google y LinkedIn.
+- **Login Flexible**: Admite correo, teléfono celular o código de país (`+51`, `+591`, etc.).
+
+</details>
+
+<details>
+<summary><b>2. Motor de Búsqueda Semántica IA de 2 Niveles</b></summary>
+
+- **Nivel 1 (Categoría Base)**: Filtro dinámico por especialidad (`Plomería`, `Electricidad`, `Climatización`, `Branding & Lettering`).
+- **Nivel 2 (Match Semántico por Descripción)**: Comparación en tiempo real entre la necesidad del cliente y la biografía técnica del proveedor.
+- **Posicionamiento Top 1**: Insignia destacada **`✨ IA 98% Match`** para la mejor coincidencia.
+
+</details>
+
+<details>
+<summary><b>3. Onboarding Diferenciado B2C & B2B (5 Pasos)</b></summary>
+
+- 🏠 **Persona Natural**: Radar de 90 segundos, asistencia de voz multilingüe (Español, Quechua, Aymara, Guaraní) y verificación KYC.
+- 💼 **Empresas B2B**: **3 Meses Gratis de Solicitudes**, subasta invertida, cotizaciones corporativas y facturación electrónica.
+- 📱 **Comunidad**: Botón oficial integrado **`Seguir a @todoo__ya`** en Instagram.
+
+</details>
+
+<details>
+<summary><b>4. Búsqueda de Proveedores en Tiempo Real (Estilo inDriver & Uber One)</b></summary>
+
+- **Geolocalización & Divisa Dinámica**: Ajuste automático según GPS (`S/.` Perú, `Bs.` Bolivia).
+- **Subasta Invertida Corporativa**: Presupuesto objetivo con recepción de contraofertas en tiempo real.
+- **Sistema Upsell No Invasivo**: Recomendación estratégica de planes 1 vez cada 24 horas (`plan-upsell-modal.tsx`).
+
+</details>
+
+<details>
+<summary><b>5. Verificación KYC Biométrica & Seguridad Multi-Tenant</b></summary>
+
+- **KYC Facial Biométrico**: Escaneo de DNI/C.I. y Facematch Liveness con Onfido API y Jumio Netverify API.
+- **Aislamiento Multi-Tenant**: Aislamiento estricto por `tenant_id` en PostgreSQL con resolución de token JWT HS256.
+
+</details>
+
+---
+
+## ⚡ Escalabilidad & Rendimiento (1,000+ Usuarios Simultáneos)
+
+> [!IMPORTANT]
+> Arquitectura optimizada y testeada para soportar más de **1,000 usuarios activos concurrentes** en Perú y Bolivia.
+
+1. ⚖️ **APIs Legales RENIEC / SUNAT (`/api/peru-legal`)**: Tolerance a fallos con fallback automático.
+2. 📍 **Geocodificación GPS (`/api/peru-geo`)**: GPS nativo (`expo-location`) con consumo cero en servidor.
+3. 🧾 **Facturación SUNAT (`/api/peru-invoice`)**: Serverless auto-scalable con IGV (18%).
+4. 🗄️ **Neon DB Connection Pooling**: Drizzle ORM optimizado para **10,000+ conexiones concurrentes**.
+
+---
+
+## 📚 Índice de Documentación (`docs/`)
+
+Toda la documentación técnica, comercial y de gestión está disponible en [`docs/`](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs):
+
+- 💼 **[1. Estudio de Mercado y Publicidad](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad)**
+  - 📊 [Dossier Maestro de Inversión](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/DOSSIER_INVERSIONISTA.md)
+  - 📱 [Estrategia de Marketing Digital y Redes](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/ESTRATEGIA_MARKETING_Y_REDES.md)
+  - 📈 [Plan de Arranque y Presupuesto Comercial](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/estudio-mercado-y-publicidad/PLAN_DE_ARRANQUE_Y_PRESUPUESTO_COMERCIAL.md)
+- 🛠️ **[2. Técnica y Arquitectura](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/tecnica-y-arquitectura)**
+  - 📋 [Ficha Técnica Completa](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/tecnica-y-arquitectura/FICHA_TECNICA.md)
+  - 🏗️ [Estructura del Proyecto](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/tecnica-y-arquitectura/ESTRUCTURA_PROYECTO.md)
+- 🎓 **[3. Gestión y Académico](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/gestion-y-academico)**
+  - 🎓 [Propuesta Académica](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/gestion-y-academico/PROPUESTA_ACADEMICA.md)
+  - 📜 [Contrato de Evaluación y Vesting](file:///c:/Users/PCZ/Desktop/Git%20Luchito/todo-ya/docs/gestion-y-academico/CONTRATO_EVALUACION_Y_VESTING.md)
+
+---
+
+<div align="center">
+
+  <sub>Desarrollado con ❤️ para LATAM · <b>Todo Ya © 2026</b></sub>
+
+</div>
+
 
 

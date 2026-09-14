@@ -1,0 +1,12 @@
+{
+  "title": "Skill Radar",
+  "axes": [
+    { "label": "Android / Kotlin",           "value": 90 },
+    { "label": "React Native / Expo v56",    "value": 88 },
+    { "label": "TypeScript",                 "value": 85 },
+    { "label": "Java / Mobile Architecture", "value": 82 },
+    { "label": "Node.js & APIs",              "value": 84 },
+    { "label": "PostgreSQL & Neon DB",        "value": 80 },
+    { "label": "AI Matching & NLP",          "value": 85 }
+  ]
+}

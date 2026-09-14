@@ -1,0 +1,11 @@
+{
+  "title": "Stack & Language Mix",
+  "axes": [
+    { "label": "Kotlin",      "value": 90 },
+    { "label": "TypeScript",  "value": 88 },
+    { "label": "Java",        "value": 80 },
+    { "label": "JavaScript",  "value": 85 },
+    { "label": "Python",      "value": 75 },
+    { "label": "SQL",         "value": 82 }
+  ]
+}
