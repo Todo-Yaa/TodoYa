@@ -232,7 +232,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const wasOnlineRef = useRef(false); // Rastrear estado previo para detectar reconexión
 
   // Estados para ubicación real y detección de cambio de ciudad
-  const [lastKnownCity, setLastKnownCity] = useState<string | null>(null);
+  const getInitialCity = () => {
+    try {
+      if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        if (tz.toLowerCase().includes('lima') || tz.toLowerCase().includes('peru')) {
+          return 'Lima';
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const [lastKnownCity, setLastKnownCity] = useState<string | null>(getInitialCity());
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
   const [showLocationChangeModal, setShowLocationChangeModal] = useState<boolean>(false);

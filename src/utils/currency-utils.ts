@@ -56,10 +56,23 @@ const BASE_PRICE_MAP_BOB_TO_PEN: Record<number, number> = {
 export function getCurrencyConfig(cityOrLocation?: string | null, countryHint?: string | null, phoneCode?: string | null): CurrencyConfig {
   const input = `${cityOrLocation || ''} ${countryHint || ''}`.toLowerCase();
   
-  // Verificación directa para Perú (Lima, Arequipa, etc.)
+  let isPeru = false;
+  try {
+    if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      if (timeZone.toLowerCase().includes('lima') || timeZone.toLowerCase().includes('peru')) {
+        isPeru = true;
+      }
+    }
+  } catch (e) {}
+
+  // Verificación directa para Perú (Lima, Arequipa, zona horaria America/Lima, etc.)
   if (
+    isPeru ||
     input.includes('peru') || 
     input.includes('perú') || 
+    input.includes('lima') ||
+    input.includes('arequipa') ||
     phoneCode === '51' || 
     PERU_CITIES.some(c => input.includes(c))
   ) {
