@@ -456,7 +456,6 @@ export default function SolicitarScreen() {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
-        sampleRate: 44100
       }
     })
     .then((stream) => {
