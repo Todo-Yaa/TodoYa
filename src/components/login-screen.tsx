@@ -80,6 +80,9 @@ export default function LoginScreen() {
     "terms",
   );
 
+  // Estado para desplegar sutilmente opciones de prueba y simulaciones
+  const [mostrarOpcionesPrueba, setMostrarOpcionesPrueba] = useState(false);
+
   // Configuración del modal de error/éxito personalizado
   const [mostrarModal, setMostrarModal] = useState(false);
   const [configuracionModal, setConfiguracionModal] = useState({
@@ -1256,119 +1259,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Accesos Rápidos de Prueba (Con inicio de sesión automático y disabled al cargar) */}
-        <View style={styles.demoCard}>
-          <Text style={styles.demoTitle}>
-           Acceso rápido de prueba (Entrar al instante):
-          </Text>
-          <View style={styles.demoButtons}>
-            <TouchableOpacity
-              style={styles.demoBtn}
-              onPress={() => manejarAccesoRapido("luis@todoya.com")}
-              disabled={cargando}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.demoBtnText}>Cliente (Luis)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.demoBtn}
-              onPress={() => manejarAccesoRapido("juan.rios@todoya.com")}
-              disabled={cargando}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.demoBtnText}>Proveedor (Juan)</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.demoButtons}>
-            <TouchableOpacity
-              style={styles.demoBtn}
-              onPress={() => manejarAccesoRapido("empresa@todoya.com")}
-              disabled={cargando}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.demoBtnText}>Empresa (Alfa)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.demoBtn}
-              onPress={() =>
-                manejarAccesoRapido("proveedor_empresa@todoya.com")
-              }
-              disabled={cargando}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.demoBtnText}>Empresa PRO (Beta)</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Simulaciones Guiadas de Casos Reales */}
-        <View
-          style={[
-            styles.demoCard,
-            { borderColor: "#818cf8", borderWidth: 1, marginTop: 15 },
-          ]}
-        >
-          <Text
-            style={[styles.demoTitle, { color: "#6366f1", fontWeight: "bold" }]}
-          >
-           🤖 Simulaciones Guiadas (Casos Reales):
-          </Text>
-          <Text
-            style={{
-              fontSize: 11,
-              color: "#666",
-              marginBottom: 8,
-              textAlign: "center",
-            }}
-          >
-            Simula paso a paso flujos completos para clientes o proveedores.
-          </Text>
-          <View style={styles.demoButtons}>
-            <TouchableOpacity
-              style={[
-                styles.demoBtn,
-                { backgroundColor: "#fffbeb", borderColor: "#d97706" },
-              ]}
-              onPress={() => {
-                setCargando(true);
-                startClientSimulation().finally(() => setCargando(false));
-              }}
-              disabled={cargando}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.demoBtnText,
-                  { color: "#d97706", fontWeight: "bold" },
-                ]}
-              >
-                Simular Cliente 🏠
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.demoBtn,
-                { backgroundColor: "#e0e7ff", borderColor: "#4f46e5" },
-              ]}
-              onPress={() => {
-                setCargando(true);
-                startProviderSimulation().finally(() => setCargando(false));
-              }}
-              disabled={cargando}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.demoBtnText,
-                  { color: "#4f46e5", fontWeight: "bold" },
-                ]}
-              >
-                Simular Proveedor 🛠️
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Divisor Visual de Redes Sociales */}
         <Text style={styles.socialDivider}>O CONECTAR CON</Text>
 
@@ -1390,6 +1280,156 @@ export default function LoginScreen() {
               LinkedIn
             </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Botón de Despliegue Sutil de Opciones de Prueba y Simulaciones (Abajo de Gmail / LinkedIn) */}
+        <View style={{ marginTop: 22, alignItems: "center", width: "100%" }}>
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              paddingVertical: 8,
+              paddingHorizontal: 14,
+              borderRadius: 20,
+              backgroundColor: "rgba(241, 245, 249, 0.6)",
+            }}
+            onPress={() => setMostrarOpcionesPrueba(!mostrarOpcionesPrueba)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 11, color: "#94a3b8", fontWeight: "600" }}>
+              {mostrarOpcionesPrueba
+                ? "Ocultar accesos de prueba"
+                : "Pruebas y simulaciones de demo"}
+            </Text>
+            <Ionicons
+              name={mostrarOpcionesPrueba ? "chevron-up" : "chevron-down"}
+              size={14}
+              color="#94a3b8"
+            />
+          </TouchableOpacity>
+
+          {/* Secciones Desplegables de Prueba */}
+          {mostrarOpcionesPrueba && (
+            <View style={{ width: "100%", marginTop: 14, gap: 14 }}>
+              {/* Accesos Rápidos de Prueba */}
+              <View style={styles.demoCard}>
+                <Text style={styles.demoTitle}>
+                  Acceso rápido de prueba (Entrar al instante):
+                </Text>
+                <View style={styles.demoButtons}>
+                  <TouchableOpacity
+                    style={styles.demoBtn}
+                    onPress={() => manejarAccesoRapido("luis@todoya.com")}
+                    disabled={cargando}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.demoBtnText}>Cliente (Luis)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.demoBtn}
+                    onPress={() => manejarAccesoRapido("juan.rios@todoya.com")}
+                    disabled={cargando}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.demoBtnText}>Proveedor (Juan)</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.demoButtons}>
+                  <TouchableOpacity
+                    style={styles.demoBtn}
+                    onPress={() => manejarAccesoRapido("empresa@todoya.com")}
+                    disabled={cargando}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.demoBtnText}>Empresa (Alfa)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.demoBtn}
+                    onPress={() =>
+                      manejarAccesoRapido("proveedor_empresa@todoya.com")
+                    }
+                    disabled={cargando}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.demoBtnText}>Empresa PRO (Beta)</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Simulaciones Guiadas de Casos Reales */}
+              <View
+                style={[
+                  styles.demoCard,
+                  { borderColor: "#818cf8", borderWidth: 1 },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.demoTitle,
+                    { color: "#6366f1", fontWeight: "bold" },
+                  ]}
+                >
+                  🤖 Simulaciones Guiadas (Casos Reales):
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: "#666",
+                    marginBottom: 8,
+                    textAlign: "center",
+                  }}
+                >
+                  Simula paso a paso flujos completos para clientes o proveedores.
+                </Text>
+                <View style={styles.demoButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.demoBtn,
+                      { backgroundColor: "#fffbeb", borderColor: "#d97706" },
+                    ]}
+                    onPress={() => {
+                      setCargando(true);
+                      startClientSimulation().finally(() => setCargando(false));
+                    }}
+                    disabled={cargando}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.demoBtnText,
+                        { color: "#d97706", fontWeight: "bold" },
+                      ]}
+                    >
+                      Simular Cliente 🏠
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.demoBtn,
+                      { backgroundColor: "#e0e7ff", borderColor: "#4f46e5" },
+                    ]}
+                    onPress={() => {
+                      setCargando(true);
+                      startProviderSimulation().finally(() => setCargando(false));
+                    }}
+                    disabled={cargando}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.demoBtnText,
+                        { color: "#4f46e5", fontWeight: "bold" },
+                      ]}
+                    >
+                      Simular Proveedor 🛠️
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
       </View>
 
