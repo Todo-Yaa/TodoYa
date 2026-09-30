@@ -103,8 +103,9 @@ const generateTrackingMapHtml = (orderId: number, providerName: string, serviceN
       attributionControl: false
     }).setView([(${center[0]} + start[0]) / 2, (${center[1]} + start[1]) / 2], 14);
  
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
     }).addTo(map);
  
     // Marcador del Usuario (Destino)
@@ -462,7 +463,7 @@ export default function PedidosScreen() {
                     activeTrackingOrder.proveedor || 'Técnico',
                     activeTrackingOrder.servicio
                   )}
-                  style={styles.iframe}
+                  style={{ width: '100%', height: '100%', border: 'none' } as any}
                   title="Seguimiento de Proveedor"
                 />
               ) : (
