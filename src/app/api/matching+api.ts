@@ -18,13 +18,12 @@ const PROVEEDORES_MOCK = [
   { id: 'p9', nombre: 'Julio Vera', especialidad: 'Técnico de laptop-celulares', rating: 4.9, experiencia: 8, lat: -17.778, lng: -63.186, descripcion: 'Reparación de celulares y laptops. Cambio de pantalla y batería.' },
   { id: 'p10', nombre: 'Elena Paz', especialidad: 'Sastrería', rating: 4.8, experiencia: 12, lat: -17.781, lng: -63.189, descripcion: 'Arreglos de costura, entalles, confección a medida y bastas.' },
   { id: 'p11', nombre: 'Pensionado Doña Flor', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 5, lat: -17.781, lng: -63.189, descripcion: 'Almuerzos completos y viandas a domicilio.' },
-  { id: 'p12', nombre: 'Pensionado El Buen Sabor', especialidad: 'Viandas y Pensiones', rating: 4.8, experiencia: 3, lat: -17.785, lng: -63.169, descripcion: 'Comida criolla y pensiones ejecutivas.' },
   { id: 'p13', nombre: 'José Mamani', especialidad: 'Albañilería & Construcción', rating: 4.9, experiencia: 15, lat: -17.785, lng: -63.180, descripcion: 'Colocación de cerámica, revoques, construcción y refacciones en general.' },
 ];
 
 // Diccionarios de palabras clave para "Todas las Probabilidades" (Sistema de Puntaje)
 const CATEGORIAS_BASE: Record<string, string[]> = {
-  'Plomería': ['tubo', 'agua', 'gotera', 'fuga', 'grifo', 'lavaplatos', 'inodoro', 'caño', 'inundacion', 'inundación', 'cañeria', 'desague', 'baño', 'bomba', 'pileta', 'filtracion'],
+  'Plomería': ['tubo', 'agua', 'gotera', 'fuga', 'grifo', 'lavaplatos', 'inodoro', 'caño', 'inundacion', 'inundación', 'cañeria', 'cañería', 'desague', 'desagüe', 'baño', 'bomba', 'pileta', 'filtracion', 'filtración', 'labado', 'lavado', 'lavabo', 'lavatorio', 'sanitario', 'sifon', 'sifón', 'roto', 'rompio', 'rompió', 'quebro', 'quebró', 'cañeria'],
   'Electricidad': ['luz', 'enchufe', 'corto', 'cable', 'cortocircuito', 'corriente', 'toma', 'llave', 'termica', 'térmica', 'tablero', 'apagon', 'foco', 'iluminacion', 'lampara', 'chispa', 'electrocutado'],
   'Pintura': ['pintar', 'pared', 'techo', 'fachada', 'rodillo', 'brocha', 'humedad', 'color', 'acabado', 'pintor', 'barniz', 'pintura', 'descacarado', 'latex'],
   'Climatización': ['aire', 'acondicionado', 'clima', 'frio', 'frío', 'calor', 'gotea', 'enfria', 'enfría', 'split', 'gas', 'compresor', 'ventilador', 'climatizador'],
@@ -67,7 +66,7 @@ function calcularCoincidenciaSemanticaIA(solicitudCliente: string, descripcionPr
       const subFrase = tokensCliente.slice(i, i + len).join(' ');
       if (descLower.includes(subFrase)) {
         maxFraseScore = 0.98;
-        motivoEncontrado = ` Coincidencia exacta: "${subFrase}"`;
+        motivoEncontrado = `Coincidencia exacta: "${subFrase}"`;
         break;
       }
     }
@@ -88,7 +87,7 @@ function calcularCoincidenciaSemanticaIA(solicitudCliente: string, descripcionPr
 
   if (!motivoEncontrado) {
     if (palabrasCoincidentes.length > 0) {
-      motivoEncontrado = ` Especializado en: "${palabrasCoincidentes.join(', ')}"`;
+      motivoEncontrado = `Especializado en: "${palabrasCoincidentes.join(', ')}"`;
     } else {
       motivoEncontrado = 'Especialista en la categoría';
       scoreSemantico = 0.35;
@@ -147,8 +146,8 @@ export async function POST(request: Request) {
     // Validación de sentido básica local (para fallback rápido o falta de API Key)
     const textTrimmed = descripcion.trim();
     const wordsList = textTrimmed.split(/\s+/).filter(Boolean);
-    const containsGenericRequest = textTrimmed.toLowerCase().match(/(necesito|busco|quiero|repar|instal|compra|arregl|urgente|servici|ayuda|resma|papel|aire|tengo|dañado|roto|averia|problema)/);
-    
+    const containsGenericRequest = textTrimmed.toLowerCase().match(/(necesito|busco|quiero|repar|instal|compra|arregl|urgente|servici|ayuda|resma|papel|aire|tengo|dañado|roto|averia|problema|labado|lavabo|lavado)/);
+
     let totalKeywordsCount = 0;
     for (const palabras of Object.values(CATEGORIAS_BASE)) {
       for (const palabra of palabras) {
@@ -157,23 +156,21 @@ export async function POST(request: Request) {
         }
       }
     }
-    const tieneSentidoLocal = textTrimmed.length >= 8 && wordsList.length >= 2 && (totalKeywordsCount > 0 || containsGenericRequest);
-
-    // El filtro local se ejecutará si la llamada a Gemini falla o si no hay API Key disponible.
+    const tieneSentidoLocal = textTrimmed.length >= 5 && (totalKeywordsCount > 0 || containsGenericRequest);
 
     if (GEMINI_API_KEY) {
       try {
         const prompt = `Analiza la siguiente descripción de un servicio solicitado por un cliente o empresa.
-Determina si la descripción tiene sentido y es una solicitud real de servicio, insumo o trabajo técnico (por ejemplo, "tengo un fga de gua" o "necesito 20 resmas de papel" o "limpieza de mi oficina" sí tienen sentido; mientras que "asdfasdf", "12345", "hola" o palabras sueltas sin petición de servicio NO tienen sentido).
+Determina si la descripción tiene sentido y es una solicitud real de servicio, insumo o trabajo técnico (por ejemplo, "se rompio un labado", "tengo un fga de gua", "necesito 20 resmas de papel" o "limpieza de mi oficina" SÍ tienen sentido; mientras que "asdfasdf", "12345", "hola" o palabras sueltas sin petición de servicio NO tienen sentido).
 
 Si la descripción tiene sentido:
 - Establece "tieneSentido" como true.
-- Corrige cualquier error gramatical, ortográfico o de tipeo en la descripción (por ejemplo, si dice "tengo un fga de gua" corrígelo a "Tengo una fuga de agua").
+- Corrige cualquier error gramatical, ortográfico o de tipeo en la descripción (por ejemplo, si dice "se rompio un labado" corrígelo a "Se rompió un lavabo").
 - Clasifica el servicio en una de las siguientes categorías válidas EXACTAS:
 ${Object.keys(CATEGORIAS_BASE).map(c => `- "${c}"`).join('\n')}
 
 Nota de clasificación especial y guías por categoría:
-- "Plomería": Fugas de agua, goteras, tuberías, cañerías, grifos, inodoros, lavaplatos, desatoro de drenajes, bombas de agua, filtraciones, sanitarios.
+- "Plomería": Fugas de agua, goteras, tuberías, cañerías, grifos, lavabos, lavados, lavatorios, lavaplatos, desatoro de drenajes, bombas de agua, filtraciones, sanitarios, sifones. Si el cliente dice "se rompio un labado", "se rompió el lavado/lavabo/lavatorio" o similares, la categoría EXACTA es "Plomería".
 - "Electricidad": Cortocircuitos, enchufes, interruptores, cableado, térmicas, tableros eléctricos, apagones, bombillas/focos, chispas, instalaciones eléctricas.
 - "Pintura": Pintado de interiores/exteriores, paredes, techos, fachadas, rodillos, brochas, humedad en paredes, empapelado, látex, barniz.
 - "Climatización": Aire acondicionado, calefacción, ventilación, mantenimiento de splits, recarga de gas, limpieza de filtros.
@@ -190,8 +187,8 @@ Nota de clasificación especial y guías por categoría:
 - "Albañilería & Construcción": Trabajos de albañilería/albañil, colocación de cerámica, baldosas o azulejos, mezcla de cemento, reparación de pisos/contrapisos, revoque de paredes, levantar muros de ladrillo, columnas, losas y obras de construcción en general.
 
 - Determina la urgencia del servicio como "Normal" o "Alta" según la gravedad o palabras clave de urgencia descritas.
-- Detecta con granularidad el subservicio exacto requerido (por ejemplo: "Instalación de grifo", "Reparación de cortocircuito", "Mantenimiento preventivo de aire split", "Reparación de pantalla iPhone", etc.).
-- Elabora un pre-diagnóstico técnico preliminar y automatizado muy corto sobre la causa probable o solución recomendada en base a la descripción provista (por ejemplo: "Posible desgaste del empaque o daño en la rosca", "Sobrecarga del interruptor termomagnético secundario", "Filtros obstruidos por polvo o falta de gas refrigerante", "Fisura en panel LCD táctil externo", etc.).
+- Detecta con granularidad el subservicio exacto requerido (por ejemplo: "Reparación/reemplazo de lavabo", "Reparación de cortocircuito", "Mantenimiento de aire split", etc.).
+- Elabora un pre-diagnóstico técnico preliminar y automatizado muy corto (por ejemplo: "Posible fisura en tramo del sifón o lavabo", "Sobrecarga en la línea eléctrica", etc.).
 
 Si la descripción NO tiene sentido, es incoherente o spam:
 - Establece "tieneSentido" como false.
@@ -199,10 +196,12 @@ Si la descripción NO tiene sentido, es incoherente o spam:
 
 Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura (no envíes Markdown block, solo el objeto JSON como texto plano):
 {
-  "tieneSentido": true o false,
+  "tieneSentido": true,
   "categoria": "Nombre de la categoría clasificada o null",
+  "subservicio": "Subservicio exacto detectado o null",
+  "prediagnostico": "Pre-diagnóstico técnico breve o null",
   "urgencia": "Normal" o "Alta" o null,
-  "descripcionCorregida": "La descripción corregida o null"
+  "descripcionCorregida": "La descripción corregida con ortografía limpia o null"
 }
 
 Descripción del servicio: "${descripcion}"`;

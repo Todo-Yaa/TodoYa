@@ -514,13 +514,12 @@ export default function SolicitarScreen() {
 
       mediaRecorder.onstop = async () => {
         if (shouldSaveRef.current) {
-          // Si ya capturamos transcripción en vivo por Web Speech API, la usamos directamente
+          // Si ya capturamos transcripción en vivo por Web Speech API, la usamos directamente en el cuadro de texto
           const textFromLive = liveTranscriptRef.current;
           if (textFromLive && textFromLive.trim().length > 1) {
             setInputText(textFromLive);
             setShowVoiceModal(false);
             setVoiceErrorMsg('');
-            processNLP(textFromLive);
             return;
           }
 
@@ -547,7 +546,6 @@ export default function SolicitarScreen() {
                 setInputText(data.text);
                 setShowVoiceModal(false);
                 setVoiceErrorMsg('');
-                processNLP(data.text);
               } else {
                 setVoiceErrorMsg('No se escuchó claramente. Intenta hablar más cerca del micrófono.');
                 setTimeout(() => setShowVoiceModal(false), 2500);

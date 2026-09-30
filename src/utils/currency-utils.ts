@@ -137,20 +137,37 @@ export function adaptPriceText(text: string, cityOrLocation?: string | null): st
   const config = getCurrencyConfig(cityOrLocation);
 
   if (config.code === 'PEN') {
-    // Si la moneda es Perú, reemplaza referencias "Bs." / "BOB" / "bov" / "Bs" por "S/."
-    return text.replace(/(?:Desde\s+)?(?:Bs\.|BOB|bov|Bs)\s*(\d+(?:\.\d+)?)/gi, (match, numStr) => {
+    // 1. Reemplazar prefijos "Bs. 80", "Bs 80", "BOB 80"
+    let result = text.replace(/(?:Desde\s+)?(?:Bs\.|BOB|bov|Bs)\s*(\d+(?:\.\d+)?)/gi, (match, numStr) => {
       const isDesde = /desde/i.test(match);
       const num = parseFloat(numStr);
       const pen = convertBobToPen(num);
       return `${isDesde ? 'Desde ' : ''}S/. ${pen}`;
     });
+
+    // 2. Reemplazar sufijos "80 Bs.", "80Bs", "80 BOB"
+    result = result.replace(/(\d+(?:\.\d+)?)\s*(?:Bs\.|BOB|bov|Bs)/gi, (_match, numStr) => {
+      const num = parseFloat(numStr);
+      const pen = convertBobToPen(num);
+      return `S/. ${pen}`;
+    });
+
+    return result;
   } else {
-    // Si la moneda es Bolivia, reemplaza referencias "S/." por "Bs."
-    return text.replace(/(?:Desde\s+)?(?:S\/\.)\s*(\d+(?:\.\d+)?)/gi, (match, numStr) => {
+    // Moneda Bolivia (BOB / Bs.)
+    let result = text.replace(/(?:Desde\s+)?(?:S\/\.)\s*(\d+(?:\.\d+)?)/gi, (match, numStr) => {
       const isDesde = /desde/i.test(match);
       const num = parseFloat(numStr);
       const bob = convertPenToBob(num);
       return `${isDesde ? 'Desde ' : ''}Bs. ${bob}`;
     });
+
+    result = result.replace(/(\d+(?:\.\d+)?)\s*(?:S\/\.)/gi, (_match, numStr) => {
+      const num = parseFloat(numStr);
+      const bob = convertPenToBob(num);
+      return `${bob} Bs.`;
+    });
+
+    return result;
   }
 }

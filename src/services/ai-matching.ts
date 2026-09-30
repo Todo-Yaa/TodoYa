@@ -109,7 +109,7 @@ export const analizarTextoNLP = (descripcion: string) => {
 
   // Diccionarios de palabras clave para "Todas las Probabilidades" (Sistema de Puntaje)
   const categoriasBase = {
-    'Plomería': ['tubo', 'tuberia', 'tuberías', 'gas', 'agua', 'gotera', 'fuga', 'grifo', 'lavaplatos', 'inodoro', 'caño', 'inundacion', 'inundación', 'cañeria', 'desague', 'baño', 'bomba', 'pileta', 'filtracion', 'calefon', 'terma'],
+    'Plomería': ['tubo', 'tuberia', 'tuberías', 'gas', 'agua', 'gotera', 'fuga', 'grifo', 'lavaplatos', 'inodoro', 'caño', 'inundacion', 'inundación', 'cañeria', 'cañería', 'desague', 'desagüe', 'baño', 'bomba', 'pileta', 'filtracion', 'filtración', 'calefon', 'terma', 'labado', 'lavado', 'lavabo', 'lavatorio', 'sanitario', 'sifon', 'sifón', 'roto', 'rompio', 'rompió', 'quebro', 'quebró'],
     'Electricidad': ['luz', 'enchufe', 'corto', 'cable', 'cortocircuito', 'corriente', 'toma', 'llave', 'termica', 'térmica', 'tablero', 'apagon', 'foco', 'iluminacion', 'lampara', 'chispa', 'electrocutado', 'trifasico', 'trifásico'],
     'Pintura': ['pintar', 'pared', 'techo', 'fachada', 'rodillo', 'brocha', 'humedad', 'color', 'acabado', 'pintor', 'barniz', 'pintura', 'descacarado', 'latex'],
     'Climatización': ['aire', 'acondicionado', 'clima', 'frio', 'frío', 'calor', 'gotea', 'enfria', 'enfría', 'split', 'gas', 'compresor', 'ventilador', 'climatizador'],
