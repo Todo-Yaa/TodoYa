@@ -2,7 +2,7 @@ import { checkApiRateLimit } from '../../utils/rate-limiter';
 import { sanitizeText } from '../../utils/security';
 
 export async function POST(request: Request) {
-  const rateLimitError = checkApiRateLimit(request, 20, 60000);
+  const rateLimitError = checkApiRateLimit(request, 30, 60000);
   if (rateLimitError) return rateLimitError;
 
   try {
@@ -18,13 +18,16 @@ export async function POST(request: Request) {
       return Response.json({ error: 'La API Key de Gemini no está configurada' }, { status: 500 });
     }
 
-    // Limpiar mimeType (ej: "audio/webm;codecs=opus" -> "audio/webm") para la API de Gemini
-    const cleanMimeType = (mimeType || 'audio/webm').split(';')[0];
-    console.log(`[Transcribe API] Enviando audio a Gemini para transcripción (${cleanMimeType})`);
+    // Normalización de mimeType para la API de Gemini
+    let cleanMime = (mimeType || 'audio/webm').split(';')[0].trim().toLowerCase();
+    if (cleanMime === 'audio/m4a') cleanMime = 'audio/mp4';
+    if (cleanMime === 'audio/mp3') cleanMime = 'audio/mpeg';
 
-    const prompt = "Transcribe el audio de forma exacta en español. No agregues comentarios, explicaciones, saludos, ni etiquetas de texto. Devuelve únicamente el texto transcrito, respetando puntuación y ortografía.";
+    console.log(`[Transcribe API] Enviando audio a Gemini para transcripción (${cleanMime})`);
 
-    const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'];
+    const prompt = "Escucha atentamente y transcribe exactamente las palabras habladas en español. Si el audio contiene ruido ambiental o volumen bajo, enfócate en captar la intención y palabras principales. Responde ÚNICAMENTE con la transcripción exacta en texto plano, sin comillas, sin formato markdown, sin saludos ni explicaciones.";
+
+    const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
     let lastError = '';
     let data: any = null;
 
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
               parts: [
                 {
                   inlineData: {
-                    mimeType: cleanMimeType,
+                    mimeType: cleanMime,
                     data: audio
                   }
                 },
@@ -68,7 +71,9 @@ export async function POST(request: Request) {
     }
 
     let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    text = sanitizeText(text.trim());
+    // Limpiar comillas iniciales/finales y saltos de línea innecesarios
+    text = text.trim().replace(/^["'«`]+|["'»`]+$/g, '').trim();
+    text = sanitizeText(text);
 
     console.log(`[Transcribe API] Transcripción completada: "${text}"`);
     return Response.json({ text });

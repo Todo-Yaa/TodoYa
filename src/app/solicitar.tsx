@@ -379,12 +379,14 @@ export default function SolicitarScreen() {
     outputRange: ['0deg', '360deg']
   });
 
-  // Voice input (Speech-to-Text) states
+  // Voice input (Speech-to-Text) states & real-time recognition
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [voicePulse, setVoicePulse] = useState(1);
   const [voiceErrorMsg, setVoiceErrorMsg] = useState('');
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [audioVolume, setAudioVolume] = useState(0);
 
   const mediaRecorderRef = useRef<any>(null);
   const audioChunksRef = useRef<any[]>([]);
@@ -392,122 +394,216 @@ export default function SolicitarScreen() {
   const voiceIntervalRef = useRef<any>(null);
   const shouldSaveRef = useRef<boolean>(false);
 
-  // Captura y reconocimiento real de voz (Speech-to-Text)
+  const speechRecognitionRef = useRef<any>(null);
+  const audioContextRef = useRef<any>(null);
+  const analyserRef = useRef<any>(null);
+  const animFrameRef = useRef<any>(null);
+  const liveTranscriptRef = useRef('');
+
+  useEffect(() => {
+    liveTranscriptRef.current = liveTranscript;
+  }, [liveTranscript]);
+
+  // Captura y reconocimiento real de voz (Speech-to-Text) con alta sensibilidad
   const iniciarGrabacionVoz = () => {
+    setLiveTranscript('');
+    setVoiceErrorMsg('');
+    setVoicePulse(1);
+    setAudioVolume(10);
+    setShowVoiceModal(true);
+    setIsRecording(true);
+    shouldSaveRef.current = false;
+
+    // 1. Intentar iniciar Web Speech Recognition API nativa en tiempo real (instantánea)
+    try {
+      const SpeechRecognition = typeof window !== 'undefined' ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) : null;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'es-PE';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event: any) => {
+          let currentText = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            currentText += event.results[i][0].transcript;
+          }
+          if (currentText.trim()) {
+            setLiveTranscript(currentText.trim());
+          }
+        };
+
+        recognition.onerror = (err: any) => {
+          console.warn('[SpeechRecognition] Warn nativo:', err);
+        };
+
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      }
+    } catch (e) {
+      console.warn('[SpeechRecognition] No disponible en este navegador:', e);
+    }
+
+    // 2. Acceder al micrófono con procesamiento de sonido de alta calidad y cancelación de ruido
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn('[Speech] API de grabación de audio no soportada en este entorno.');
-      setVoiceErrorMsg(' Grabación de audio no soportada en este dispositivo.');
-      setShowVoiceModal(true);
-      setTimeout(() => setShowVoiceModal(false), 3000);
+      setVoiceErrorMsg('Grabación de audio no soportada en este dispositivo.');
       return;
     }
 
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then((stream) => {
-        audioStreamRef.current = stream;
-        audioChunksRef.current = [];
-        shouldSaveRef.current = false;
+    navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 44100
+      }
+    })
+    .then((stream) => {
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
 
-        // Determinar mejor mimeType soportado
-        let mimeType = 'audio/webm';
-        if (typeof MediaRecorder !== 'undefined') {
-          if (MediaRecorder.isTypeSupported('audio/webm')) {
-            mimeType = 'audio/webm';
-          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-            mimeType = 'audio/mp4';
-          } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-            mimeType = 'audio/ogg';
-          } else if (MediaRecorder.isTypeSupported('audio/wav')) {
-            mimeType = 'audio/wav';
-          } else {
-            mimeType = '';
-          }
-        }
+      // 3. Crear Analyser de Volumen en tiempo real para las ondas de voz
+      try {
+        const AudioCtx = typeof window !== 'undefined' ? (window.AudioContext || (window as any).webkitAudioContext) : null;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          audioContextRef.current = ctx;
+          const source = ctx.createMediaStreamSource(stream);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 64;
+          source.connect(analyser);
+          analyserRef.current = analyser;
 
-        const options = mimeType ? { mimeType } : undefined;
-        const mediaRecorder = new MediaRecorder(stream, options);
-        mediaRecorderRef.current = mediaRecorder;
-
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
-
-        mediaRecorder.onstop = async () => {
-          if (shouldSaveRef.current) {
-            setIsTranscribing(true);
-            setVoiceErrorMsg('Transcribiendo tu voz con IA...');
-            const finalMimeType = mimeType || mediaRecorder.mimeType || 'audio/webm';
-            const audioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
-
-            const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
-            reader.onloadend = async () => {
-              const base64Audio = (reader.result as string).split(',')[1];
-              try {
-                const res = await fetch('/api/transcribe', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ audio: base64Audio, mimeType: finalMimeType })
-                });
-
-                if (!res.ok) {
-                  throw new Error('Error al procesar transcripción');
-                }
-
-                const data = await res.json();
-                if (data.text && data.text.trim()) {
-                  setInputText(data.text);
-                  setShowVoiceModal(false);
-                  setVoiceErrorMsg('');
-                  processNLP(data.text);
-                } else {
-                  setVoiceErrorMsg(' No se detectó ninguna voz en el audio.');
-                  setTimeout(() => {
-                    setShowVoiceModal(false);
-                  }, 2500);
-                }
-              } catch (err) {
-                console.error('[Speech] Error transcribiendo:', err);
-                setVoiceErrorMsg(' Error al transcribir el audio.');
-                setTimeout(() => {
-                  setShowVoiceModal(false);
-                }, 2500);
-              } finally {
-                setIsTranscribing(false);
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          const updateVolume = () => {
+            if (analyserRef.current) {
+              analyserRef.current.getByteFrequencyData(dataArray);
+              let sum = 0;
+              for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
               }
-            };
-          } else {
+              const avg = sum / dataArray.length;
+              const vol = Math.min(100, Math.round((avg / 128) * 100));
+              setAudioVolume(vol);
+              animFrameRef.current = requestAnimationFrame(updateVolume);
+            }
+          };
+          updateVolume();
+        }
+      } catch (e) {
+        console.warn('[AudioContext] Volume meter error:', e);
+      }
+
+      // 4. Configurar MediaRecorder como respaldador con timeslice de 250ms
+      let mimeType = 'audio/webm';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+        else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+        else if (MediaRecorder.isTypeSupported('audio/ogg')) mimeType = 'audio/ogg';
+        else if (MediaRecorder.isTypeSupported('audio/wav')) mimeType = 'audio/wav';
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        if (shouldSaveRef.current) {
+          // Si ya capturamos transcripción en vivo por Web Speech API, la usamos directamente
+          const textFromLive = liveTranscriptRef.current;
+          if (textFromLive && textFromLive.trim().length > 1) {
+            setInputText(textFromLive);
             setShowVoiceModal(false);
             setVoiceErrorMsg('');
+            processNLP(textFromLive);
+            return;
           }
-        };
 
-        setShowVoiceModal(true);
-        setVoicePulse(1);
-        setVoiceErrorMsg('');
-        setIsRecording(true);
+          setIsTranscribing(true);
+          setVoiceErrorMsg('Transcribiendo tu voz con Gemini IA...');
+          const finalMimeType = mimeType || mediaRecorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
 
-        if (voiceIntervalRef.current) clearInterval(voiceIntervalRef.current);
-        voiceIntervalRef.current = setInterval(() => {
-          setVoicePulse(p => (p === 1 ? 1.3 : 1));
-        }, 600);
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            const base64Audio = (reader.result as string).split(',')[1];
+            try {
+              const res = await fetch('/api/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audio: base64Audio, mimeType: finalMimeType })
+              });
 
-        mediaRecorder.start();
-      })
-      .catch((err) => {
-        console.error('[Speech] Error al acceder al micrófono o permisos denegados:', err);
-        setShowVoiceModal(true);
-        setVoiceErrorMsg(' Permiso de micrófono denegado. Habilita el acceso en el navegador.');
-        setTimeout(() => {
+              if (!res.ok) throw new Error('Error en API transcripción');
+
+              const data = await res.json();
+              if (data.text && data.text.trim()) {
+                setInputText(data.text);
+                setShowVoiceModal(false);
+                setVoiceErrorMsg('');
+                processNLP(data.text);
+              } else {
+                setVoiceErrorMsg('No se escuchó claramente. Intenta hablar más cerca del micrófono.');
+                setTimeout(() => setShowVoiceModal(false), 2500);
+              }
+            } catch (err) {
+              console.error('[Speech] Error transcripción:', err);
+              setVoiceErrorMsg('Error al transcribir el audio.');
+              setTimeout(() => setShowVoiceModal(false), 2500);
+            } finally {
+              setIsTranscribing(false);
+            }
+          };
+        } else {
           setShowVoiceModal(false);
-        }, 3000);
-      });
+          setVoiceErrorMsg('');
+        }
+      };
+
+      if (voiceIntervalRef.current) clearInterval(voiceIntervalRef.current);
+      voiceIntervalRef.current = setInterval(() => {
+        setVoicePulse(p => (p === 1 ? 1.25 : 1));
+      }, 500);
+
+      // Iniciar captura continua cada 250ms
+      mediaRecorder.start(250);
+    })
+    .catch((err) => {
+      console.error('[Speech] Permiso de micrófono denegado:', err);
+      setVoiceErrorMsg('Permiso de micrófono denegado. Permite el acceso para hablar.');
+      setTimeout(() => setShowVoiceModal(false), 3000);
+    });
   };
 
   const detenerGrabacionVoz = (save: boolean) => {
     shouldSaveRef.current = save;
+
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (e) {}
+      speechRecognitionRef.current = null;
+    }
+
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      try {
+        audioContextRef.current.close();
+      } catch (e) {}
+      audioContextRef.current = null;
+    }
+
     if (voiceIntervalRef.current) {
       clearInterval(voiceIntervalRef.current);
       voiceIntervalRef.current = null;
@@ -1419,20 +1515,31 @@ export default function SolicitarScreen() {
             </View>
 
             <Text style={styles.voiceTitle}>
-              {isTranscribing ? 'Transcribiendo...' : 'Escuchando...'}
+              {isTranscribing ? 'Transcribiendo...' : 'Escuchando tu voz...'}
             </Text>
-            <Text style={styles.voiceSubtitle}>
-              {voiceErrorMsg || (isBusiness 
-                ? "Describe los insumos o servicios que requiere tu empresa..." 
-                : "Describe el problema o servicio técnico que necesitas en casa...")}
-            </Text>
+            
+            {/* Cuadro de Transcripción en Vivo */}
+            {liveTranscript ? (
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: 12, width: '100%', marginVertical: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', textAlign: 'center', lineHeight: 20 }}>
+                  "{liveTranscript}"
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.voiceSubtitle}>
+                {voiceErrorMsg || (isBusiness 
+                  ? "Describe los insumos o servicios que requiere tu empresa..." 
+                  : "Habla con claridad describiendo lo que necesitas...")}
+              </Text>
+            )}
 
+            {/* Ondas reactivas al volumen real de la voz (AudioContext) */}
             <View style={styles.voiceWaveContainer}>
-              <View style={[styles.voiceWaveBar, { height: 12 * voicePulse, backgroundColor: isBusiness ? '#818cf8' : '#FFB400' }]} />
-              <View style={[styles.voiceWaveBar, { height: 28 * (voicePulse === 1 ? 1.2 : 0.7), backgroundColor: isBusiness ? '#6366f1' : '#FFC107' }]} />
-              <View style={[styles.voiceWaveBar, { height: 38 * voicePulse, backgroundColor: isBusiness ? '#4f46e5' : '#FFD54F' }]} />
-              <View style={[styles.voiceWaveBar, { height: 20 * (voicePulse === 1 ? 0.8 : 1.3), backgroundColor: isBusiness ? '#6366f1' : '#FFC107' }]} />
-              <View style={[styles.voiceWaveBar, { height: 10 * voicePulse, backgroundColor: isBusiness ? '#818cf8' : '#FFB400' }]} />
+              <View style={[styles.voiceWaveBar, { height: Math.max(10, Math.min(45, (audioVolume * 0.4))), backgroundColor: isBusiness ? '#818cf8' : '#FFB400' }]} />
+              <View style={[styles.voiceWaveBar, { height: Math.max(14, Math.min(55, (audioVolume * 0.7))), backgroundColor: isBusiness ? '#6366f1' : '#FFC107' }]} />
+              <View style={[styles.voiceWaveBar, { height: Math.max(18, Math.min(65, (audioVolume * 1.0))), backgroundColor: isBusiness ? '#4f46e5' : '#FFD54F' }]} />
+              <View style={[styles.voiceWaveBar, { height: Math.max(14, Math.min(55, (audioVolume * 0.7))), backgroundColor: isBusiness ? '#6366f1' : '#FFC107' }]} />
+              <View style={[styles.voiceWaveBar, { height: Math.max(10, Math.min(45, (audioVolume * 0.4))), backgroundColor: isBusiness ? '#818cf8' : '#FFB400' }]} />
             </View>
 
             {/* Botones de acción o indicador de transcripción */}
