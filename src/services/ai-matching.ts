@@ -8,11 +8,12 @@ export const PROVEEDORES_MOCK = [
   { id: 'p6', nombre: 'Luis Gómez', especialidad: 'Mecánico', rating: 4.8, experiencia: 5, lat: -17.785, lng: -63.185, descripcion: 'Mecánico automotriz a domicilio. Diagnóstico de motor y frenos.' },
   { id: 'p7', nombre: 'Mario Roca', especialidad: 'Cerrajero', rating: 4.9, experiencia: 7, lat: -17.782, lng: -63.179, descripcion: 'Apertura de chapas de alta seguridad, candados y duplicado de llaves.' },
   { id: 'p8', nombre: 'Pedro Silva', especialidad: 'Carpintero', rating: 4.7, experiencia: 6, lat: -17.788, lng: -63.181, descripcion: 'Carpintería en general, restauración de muebles y puertas de madera.' },
-  { id: 'p9', nombre: 'Julio Vera', especialidad: 'Técnico de laptop-celulares', rating: 4.9, experiencia: 8, lat: -17.778, lng: -63.186, descripcion: 'Reparación de celulares y laptops. Cambio de pantalla táctil y batería.' },
+  { id: 'p9', nombre: 'Nefi Store', especialidad: 'Técnico de laptop-celulares', rating: 4.9, experiencia: 6, lat: -17.778, lng: -63.186, descripcion: 'Reparación y mantenimiento especializado de laptops, computadoras e impresoras corporativas.' },
   { id: 'p10', nombre: 'Elena Paz', especialidad: 'Sastrería', rating: 4.8, experiencia: 12, lat: -17.781, lng: -63.189, descripcion: 'Arreglos de costura, entalles, cambio de cierres y prendas a medida.' },
-  { id: 'p11', nombre: 'Pensionado Doña Flor', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 5, lat: -17.781, lng: -63.189, descripcion: 'Almuerzos completos, catering corporativo y viandas semanales.' },
-  { id: 'p12', nombre: 'Pensionado El Buen Sabor', especialidad: 'Viandas y Pensiones', rating: 4.8, experiencia: 3, lat: -17.785, lng: -63.169, descripcion: 'Comida criolla y pensiones ejecutivas para oficinas.' },
-  { id: 'p13', nombre: 'José Mamani', especialidad: 'Albañilería & Construcción', rating: 4.9, experiencia: 15, lat: -17.785, lng: -63.180, descripcion: 'Colocación de cerámica, azulejos, revoques, pisos y refacciones generales.' }
+  { id: 'p11', nombre: 'Don Tito El Crocante Criollo', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 7, lat: -17.781, lng: -63.189, descripcion: 'Empresa de buffet corporativo, catering criollo, banquetes de chicharrón crocante y viandas ejecutivas.' },
+  { id: 'p12', nombre: 'Pastelería Punto Mágico', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 4, lat: -17.785, lng: -63.169, descripcion: 'Pastelería fina, catering dulce, tortas corporativas personalizadas y bocaditos salados para eventos de empresa.' },
+  { id: 'p13', nombre: 'Decoración Florideco', especialidad: 'Decoración & Eventos', rating: 4.9, experiencia: 5, lat: -17.765, lng: -63.178, descripcion: 'Especialistas en decoración corporativa, ambientación de eventos de empresa, arcos florales, globos y arreglos.' },
+  { id: 'p14', nombre: 'José Mamani', especialidad: 'Albañilería & Construcción', rating: 4.9, experiencia: 15, lat: -17.785, lng: -63.180, descripcion: 'Colocación de cerámica, azulejos, revoques, pisos y refacciones generales.' }
 ];
 
 /**
@@ -114,15 +115,15 @@ export const analizarTextoNLP = (descripcion: string) => {
     'Pintura': ['pintar', 'pared', 'techo', 'fachada', 'rodillo', 'brocha', 'humedad', 'color', 'acabado', 'pintor', 'barniz', 'pintura', 'descacarado', 'latex'],
     'Climatización': ['aire', 'acondicionado', 'clima', 'frio', 'frío', 'calor', 'gotea', 'enfria', 'enfría', 'split', 'gas', 'compresor', 'ventilador', 'climatizador'],
     'Mecánico': ['auto', 'carro', 'motor', 'freno', 'mecanico', 'mecánico', 'taller', 'aceite', 'suspension', 'bateria', 'llanta', 'ruido'],
-    'Viandas y Pensiones': ['comida', 'vianda', 'pension', 'pensión', 'almuerzo', 'cena', 'comedor', 'plato', 'menú', 'menu', 'viandas', 'casera', 'sopa', 'segundo', 'pensionado'],
+    'Viandas y Pensiones': ['comida', 'vianda', 'pension', 'pensión', 'almuerzo', 'cena', 'comedor', 'plato', 'menú', 'menu', 'viandas', 'casera', 'sopa', 'segundo', 'pensionado', 'buffet', 'catering', 'banquete', 'crocante', 'tito', 'pasteleria', 'pastelería', 'dulces', 'torta', 'tortas', 'bocaditos', 'postres', 'postre'],
     'Cerrajero': ['llave', 'cerradura', 'chapa', 'candado', 'puerta', 'cerrajero', 'abrir', 'perdi', 'traba', 'seguridad', 'copia'],
     'Carpintero': ['madera', 'mueble', 'silla', 'mesa', 'carpintero', 'puerta', 'cajon', 'estante', 'ropero', 'tablon', 'lijado', 'barniz'],
-    'Técnico de laptop-celulares': ['pantalla', 'bateria', 'celular', 'laptop', 'computadora', 'cargador', 'teclado', 'no prende', 'tecnico', 'técnico', 'pantalla rota', 'iphone', 'android'],
+    'Técnico de laptop-celulares': ['pantalla', 'bateria', 'celular', 'laptop', 'laptops', 'computadora', 'pc', 'cargador', 'teclado', 'no prende', 'tecnico', 'técnico', 'pantalla rota', 'iphone', 'android', 'impresora', 'impresoras', 'toner', 'tinta', 'nefi'],
     'Sastrería': ['ropa', 'sastre', 'sastrería', 'costura', 'pantalon', 'camisa', 'entallar', 'cierre', 'vestido', 'tela', 'doblez', 'aguja', 'botón'],
     'Papelería & Oficina': ['papel', 'resma', 'oficina', 'boligrafo', 'carpeta', 'escritorio', 'impresion', 'impresora', 'tinta', 'toner', 'lapiz', 'cuaderno', 'archivo', 'fotocopia'],
     'Branding & Lettering': ['letrero', 'banner', 'diseño', 'logo', 'vinilo', 'grafica', 'corporeo', 'rotulado', 'marca', 'identidad', 'letras', 'iluminado', 'fachada', 'vidriera', 'vidriero', 'vidrio', 'vidrios', 'blindex'],
-    'Decoración & Eventos': ['decoracion', 'evento', 'globo', 'fiesta', 'aniversario', 'cumpleaños', 'arreglo', 'flores', 'ambientacion', 'salon', 'sillas', 'mesas', 'catering'],
-    'Servicios B2B': ['limpieza', 'mantenimiento', 'empresa', 'corporativo', 'guardia', 'seguridad', 'consultoria', 'asesoria', 'contable', 'fiscal', 'legal'],
+    'Decoración & Eventos': ['decoracion', 'decoración', 'evento', 'eventos', 'globo', 'globos', 'fiesta', 'aniversario', 'cumpleaños', 'arreglo', 'flores', 'florideco', 'ambientacion', 'ambientación', 'salon', 'salón', 'sillas', 'mesas', 'catering'],
+    'Servicios B2B': ['limpieza', 'mantenimiento', 'empresa', 'corporativo', 'guardia', 'seguridad', 'consultoria', 'asesoria', 'contable', 'fiscal', 'legal', 'aspersud'],
     'Albañilería & Construcción': ['albañil', 'albañileria', 'albañilería', 'cemento', 'ladrillo', 'ceramica', 'cerámica', 'piso', 'pared', 'columna', 'revoque', 'construccion', 'construcción', 'obra', 'losa', 'mezcla', 'azulejo', 'baldosa', 'contrapiso']
   };
 

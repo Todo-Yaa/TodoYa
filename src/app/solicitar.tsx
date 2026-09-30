@@ -55,8 +55,9 @@ const CANDIDATOS_DATABASE: Record<string, CandidateProvider[]> = {
     { name: "Luis Gómez", lat: -17.7850, lng: -63.1850, service: "Mecánico", rating: "4.8 ★", price: "Bs. 150", experience: "Más de 3 años", description: "Mecánico automotriz a domicilio", distance: "1.2 km" }
   ],
   'Viandas y Pensiones': [
-    { name: "Pensionado Doña Flor", lat: -17.7810, lng: -63.1890, service: "Viandas y Pensiones", rating: "4.9 ★", price: "Bs. 25", experience: "Más de 3 años", description: "Almuerzos completos y viandas a domicilio", distance: "1.1 km" },
-    { name: "Pensionado El Buen Sabor", lat: -17.7850, lng: -63.1690, service: "Viandas y Pensiones", rating: "4.8 ★", price: "Bs. 22", experience: "1 a 3 años", description: "Comida criolla y pensiones ejecutivas", distance: "1.4 km" }
+    { name: "Don Tito El Crocante Criollo", lat: -17.7810, lng: -63.1890, service: "Viandas y Pensiones", rating: "4.9 ★", price: "Bs. 180", experience: "Más de 5 años", description: "Empresa de buffet, catering criollo y banquetes corporativos", distance: "0.8 km" },
+    { name: "Pastelería Punto Mágico", lat: -17.7850, lng: -63.1690, service: "Viandas y Pensiones", rating: "4.9 ★", price: "Bs. 120", experience: "Más de 3 años", description: "Pastelería fina, catering dulce y bocaditos para eventos", distance: "1.2 km" },
+    { name: "Pensionado Doña Flor", lat: -17.7780, lng: -63.1750, service: "Viandas y Pensiones", rating: "4.8 ★", price: "Bs. 25", experience: "Más de 3 años", description: "Almuerzos ejecutivos y viandas a domicilio", distance: "1.5 km" }
   ],
   'Cerrajero': [
     { name: "Mario Roca", lat: -17.7820, lng: -63.1790, service: "Cerrajero", rating: "4.9 ★", price: "Bs. 80", experience: "Más de 3 años", description: "Cerrajero residencial de emergencia", distance: "0.5 km" }
@@ -65,26 +66,29 @@ const CANDIDATOS_DATABASE: Record<string, CandidateProvider[]> = {
     { name: "Pedro Silva", lat: -17.7880, lng: -63.1810, service: "Carpintero", rating: "4.7 ★", price: "Bs. 130", experience: "Más de 3 años", description: "Carpintería fina y reparación", distance: "2.0 km" }
   ],
   'Técnico de laptop-celulares': [
-    { name: "Julio Vera", lat: -17.7780, lng: -63.1860, service: "Técnico de laptop-celulares", rating: "4.9 ★", price: "Bs. 100", experience: "Más de 3 años", description: "Reparación de celulares y laptops", distance: "1.8 km" }
+    { name: "Nefi Store", lat: -17.7780, lng: -63.1860, service: "Técnico de laptop-celulares", rating: "4.9 ★", price: "Bs. 120", experience: "Más de 5 años", description: "Reparación de laptops, impresoras y mantenimiento técnico corporativo", distance: "1.0 km" },
+    { name: "Julio Vera", lat: -17.7820, lng: -63.1750, service: "Técnico de laptop-celulares", rating: "4.8 ★", price: "Bs. 100", experience: "Más de 3 años", description: "Reparación de celulares y laptops", distance: "1.8 km" }
   ],
   'Sastrería': [
     { name: "Elena Paz", lat: -17.7810, lng: -63.1890, service: "Sastrería", rating: "4.8 ★", price: "Bs. 60", experience: "Más de 3 años", description: "Ajustes, costura y confección", distance: "1.1 km" }
   ],
   'Papelería & Oficina': [
-    { name: "Librería Alfa Insumos", lat: -17.7910, lng: -63.1790, service: "Papelería & Oficina", rating: "4.9 ★", price: "Bs. 320", experience: "Más de 3 años", description: "Papelería e insumos por mayor para oficinas", distance: "0.9 km" },
-    { name: "Imprenta Beta B2B", lat: -17.7710, lng: -63.1890, service: "Papelería & Oficina", rating: "4.8 ★", price: "Bs. 350", experience: "Más de 3 años", description: "Servicios gráficos y material corporativo", distance: "1.5 km" }
+    { name: "Nefi Store", lat: -17.7780, lng: -63.1860, service: "Papelería & Oficina", rating: "4.9 ★", price: "Bs. 250", experience: "Más de 5 años", description: "Tóner, tintas, insumos y reparación de impresoras", distance: "1.0 km" },
+    { name: "Librería Aspersud Insumos", lat: -17.7910, lng: -63.1790, service: "Papelería & Oficina", rating: "4.9 ★", price: "Bs. 320", experience: "Más de 3 años", description: "Papelería e insumos por mayor para oficinas", distance: "0.9 km" }
   ],
   'Branding & Lettering': [
-    { name: "Gráfica Beta", lat: -17.7710, lng: -63.1890, service: "Branding & Lettering", rating: "4.8 ★", price: "Bs. 450", experience: "Más de 3 años", description: "Especialistas en letreros y vitrinas B2B", distance: "1.5 km" },
+    { name: "Decoración Florideco", lat: -17.7650, lng: -63.1780, service: "Branding & Lettering", rating: "4.9 ★", price: "Bs. 650", experience: "Más de 5 años", description: "Letreros, branding y ambientación corporativa de marcas", distance: "1.1 km" },
     { name: "Branding Express", lat: -17.7800, lng: -63.1990, service: "Branding & Lettering", rating: "4.7 ★", price: "Bs. 500", experience: "1 a 3 años", description: "Identidad visual y papelería corporativa", distance: "1.8 km" }
   ],
   'Decoración & Eventos': [
-    { name: "Eventos Premium", lat: -17.7650, lng: -63.1780, service: "Decoración & Eventos", rating: "4.9 ★", price: "Bs. 850", experience: "Más de 3 años", description: "Globos y decoración corporativa", distance: "2.1 km" },
-    { name: "DecoOficina", lat: -17.7920, lng: -63.1890, service: "Decoración & Eventos", rating: "4.6 ★", price: "Bs. 950", experience: "1 a 3 años", description: "Ambientación de espacios de trabajo", distance: "1.2 km" }
+    { name: "Decoración Florideco", lat: -17.7650, lng: -63.1780, service: "Decoración & Eventos", rating: "4.9 ★", price: "Bs. 850", experience: "Más de 5 años", description: "Decoración corporativa, ambientación de eventos y arcos florales/globos", distance: "1.1 km" },
+    { name: "Eventos Premium", lat: -17.7920, lng: -63.1890, service: "Decoración & Eventos", rating: "4.8 ★", price: "Bs. 950", experience: "Más de 3 años", description: "Ambientación de espacios de trabajo", distance: "2.1 km" }
   ],
   'Servicios B2B': [
-    { name: "Servicios Integrales Alfa", lat: -17.7820, lng: -63.1780, service: "Servicios B2B", rating: "4.7 ★", price: "Bs. 300", experience: "Más de 3 años", description: "Limpieza y mantenimiento de oficinas", distance: "0.8 km" },
-    { name: "Imprenta y Gráfica Beta", lat: -17.7710, lng: -63.1890, service: "Servicios B2B", rating: "4.8 ★", price: "Bs. 400", experience: "Más de 3 años", description: "Soluciones de impresión y papelería", distance: "1.5 km" }
+    { name: "Nefi Store", lat: -17.7780, lng: -63.1860, service: "Servicios B2B", rating: "4.9 ★", price: "Bs. 250", experience: "Más de 5 años", description: "Mantenimiento e impresión B2B (Laptops e impresoras)", distance: "1.0 km" },
+    { name: "Decoración Florideco", lat: -17.7650, lng: -63.1780, service: "Servicios B2B", rating: "4.9 ★", price: "Bs. 850", experience: "Más de 5 años", description: "Decoración de eventos corporativos y ferias", distance: "1.1 km" },
+    { name: "Don Tito El Crocante Criollo", lat: -17.7810, lng: -63.1890, service: "Servicios B2B", rating: "4.9 ★", price: "Bs. 500", experience: "Más de 5 años", description: "Servicio de buffet y catering corporativo de empresa", distance: "0.8 km" },
+    { name: "Pastelería Punto Mágico", lat: -17.7850, lng: -63.1690, service: "Servicios B2B", rating: "4.9 ★", price: "Bs. 300", experience: "Más de 3 años", description: "Catering dulce y bocaditos corporativos", distance: "1.2 km" }
   ]
 };
 

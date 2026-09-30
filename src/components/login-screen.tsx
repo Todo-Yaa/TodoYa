@@ -1339,7 +1339,7 @@ export default function LoginScreen() {
                     disabled={cargando}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.demoBtnText}>Empresa (Alfa)</Text>
+                    <Text style={styles.demoBtnText}>Empresa (Aspersud)</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.demoBtn}
@@ -1349,7 +1349,7 @@ export default function LoginScreen() {
                     disabled={cargando}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.demoBtnText}>Empresa PRO (Beta)</Text>
+                    <Text style={styles.demoBtnText}>Empresa PRO (Nefi Store)</Text>
                   </TouchableOpacity>
                 </View>
               </View>
