@@ -8,7 +8,7 @@ import { matchProviders } from '../services/ai-matching';
 import NotificationTray from '../components/notification-tray';
 
 export default function HomeScreen() {
-  const { userRole, userName, activeUser, orders, addOrder, notificationsList, markAllNotificationsRead, clearAllNotifications, lastKnownCity, triggerLocationCheck } = useUser();
+  const { userRole, userName, activeUser, orders, addOrder, notificationsList, markAllNotificationsRead, clearAllNotifications, lastKnownCity, triggerLocationCheck, formatPrice, adaptPrice } = useUser();
 
   useEffect(() => {
     triggerLocationCheck().catch(() => {});
@@ -44,7 +44,8 @@ export default function HomeScreen() {
     try {
       const res = await matchProviders(descToUse + ' (urgencia extrema)', -17.784, -63.180);
       const category = res.nlpAnalysis.categoriaDetectada || 'General';
-      const price = res.precioSugerido || 'Bs. 150';
+      const rawPrice = res.precioSugerido || 'Bs. 150';
+      const price = adaptPrice ? adaptPrice(rawPrice) : rawPrice;
       const correctedDesc = res.nlpAnalysis.correctedDescription || descToUse;
       
       const title = correctedDesc.length > 25 ? correctedDesc.substring(0, 25) + '...' : correctedDesc;
@@ -207,17 +208,17 @@ export default function HomeScreen() {
         
         <View style={styles.servicesGrid}>
           {[
-            { icon: "hammer-outline", label: "Plomería", price: "Desde Bs. 80" },
-            { icon: "flash-outline", label: "Electricidad", price: "Desde Bs. 60" },
-            { icon: "brush-outline", label: "Pintura", price: "Desde Bs. 120" },
-            { icon: "snow-outline", label: "AC / Clima", price: "Desde Bs. 150" },
-            { icon: "car-outline", label: "Mecánico", price: "Desde Bs. 150" },
-            { icon: "restaurant-outline", label: "Viandas y Pensiones", price: "Desde Bs. 25" },
+            { icon: "hammer-outline", label: "Plomería", basePrice: 80 },
+            { icon: "flash-outline", label: "Electricidad", basePrice: 60 },
+            { icon: "brush-outline", label: "Pintura", basePrice: 120 },
+            { icon: "snow-outline", label: "AC / Clima", basePrice: 150 },
+            { icon: "car-outline", label: "Mecánico", basePrice: 150 },
+            { icon: "restaurant-outline", label: "Viandas y Pensiones", basePrice: 25 },
           ].map((service, i) => (
             <TouchableOpacity key={i} style={styles.serviceCard} onPress={() => router.push('/solicitar')} activeOpacity={0.7}>
               <Ionicons name={service.icon as any} size={48} color="#2F2F2F" />
               <Text style={styles.serviceLabel}>{service.label}</Text>
-              <Text style={styles.servicePrice}>{service.price}</Text>
+              <Text style={styles.servicePrice}>{formatPrice ? formatPrice(service.basePrice, 'Desde ') : `Desde Bs. ${service.basePrice}`}</Text>
             </TouchableOpacity>
           ))}
         </View>

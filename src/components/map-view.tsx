@@ -1,6 +1,7 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
+import { useUser } from '../context/user-context';
 
 // Importación dinámica de react-native-maps en nativo para evitar crasheos en web
 let MapViewNative: any = null;
@@ -32,10 +33,10 @@ interface MapViewProps {
 }
 
 const defaultProviders: MapProvider[] = [
-  { name: "Juan Ríos", lat: -17.7725, lng: -63.1930, service: "Plomero 🔧", rating: "4.9 ★", price: "S/. 80" },
-  { name: "Carlos Mamani", lat: -17.7950, lng: -63.1650, service: "Electricista ⚡", rating: "4.7 ★", price: "S/. 60" },
-  { name: "María López", lat: -17.7610, lng: -63.1720, service: "Pintora 🎨", rating: "4.8 ★", price: "S/. 120" },
-  { name: "Andrés Silva", lat: -17.7890, lng: -63.2050, service: "AC / Aire ❄️", rating: "4.9 ★", price: "S/. 150" }
+  { name: "Juan Ríos", lat: -17.7725, lng: -63.1930, service: "Plomero 🔧", rating: "4.9 ★", price: "Bs. 80" },
+  { name: "Carlos Mamani", lat: -17.7950, lng: -63.1650, service: "Electricista ⚡", rating: "4.7 ★", price: "Bs. 60" },
+  { name: "María López", lat: -17.7610, lng: -63.1720, service: "Pintora 🎨", rating: "4.8 ★", price: "Bs. 120" },
+  { name: "Andrés Silva", lat: -17.7890, lng: -63.2050, service: "AC / Aire ❄️", rating: "4.9 ★", price: "Bs. 150" }
 ];
 
 const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: number }) => {
@@ -157,7 +158,12 @@ const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: n
 };
 
 export default function MapView({ providersList }: MapViewProps) {
-  const activeList = providersList || defaultProviders;
+  const { adaptPrice } = useUser();
+  const rawList = providersList || defaultProviders;
+  const activeList = rawList.map(p => ({
+    ...p,
+    price: adaptPrice ? adaptPrice(p.price) : p.price
+  }));
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {

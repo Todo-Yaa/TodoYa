@@ -14,7 +14,7 @@ interface PlanUpsellModalProps {
 }
 
 export default function PlanUpsellModal({ visible: externalVisible, onClose: externalClose }: PlanUpsellModalProps) {
-  const { activeUser, userRole, planId } = useUser();
+  const { activeUser, userRole, planId, currencySymbol } = useUser();
   const isB2B = activeUser?.tipoEntidad === 'empresa' || userRole === 'business';
   const isProvider = userRole === 'provider';
 
@@ -142,6 +142,7 @@ export default function PlanUpsellModal({ visible: externalVisible, onClose: ext
     'Ecuador': 'USD$'
   };
   const getCurrencySymbol = () => {
+    if (currencySymbol) return currencySymbol;
     if (activeUser?.codigoPais && CURRENCY_BY_PREFIX[activeUser.codigoPais]) {
       return CURRENCY_BY_PREFIX[activeUser.codigoPais];
     }

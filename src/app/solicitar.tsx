@@ -96,7 +96,7 @@ const getCandidates = (cat: string) => {
 
 export default function SolicitarScreen() {
   const { t } = useTranslation();
-  const { addOrder, userRole, triggerLocationCheck, activeUser, simulationState, simulationStep, setSimulationStep, getB2BTrialStatus } = useUser();
+  const { addOrder, userRole, triggerLocationCheck, activeUser, simulationState, simulationStep, setSimulationStep, getB2BTrialStatus, adaptPrice, currencySymbol } = useUser();
   const isBusiness = userRole === 'business';
   const [inputText, setInputText] = useState('');
   const scanTimeoutRef = useRef<any>(null);
@@ -589,7 +589,8 @@ export default function SolicitarScreen() {
       setSubservicio(sub);
       setPrediagnostico(diag);
       setUrgencia(urg);
-      setPrecio(res.precioSugerido);
+      const suggestedPrice = adaptPrice ? adaptPrice(res.precioSugerido) : res.precioSugerido;
+      setPrecio(suggestedPrice);
       setCorrectedText(corrected);
 
       // 2. Mapear los proveedores obtenidos al formato del estado de la pantalla
@@ -599,7 +600,7 @@ export default function SolicitarScreen() {
         lng: p.lng,
         service: p.especialidad,
         rating: `${p.rating} ★`,
-        price: urg === 'Alta' ? 'Bs. 180' : 'Bs. 120', // precio base estimado
+        price: adaptPrice ? adaptPrice(urg === 'Alta' ? 'Bs. 180' : 'Bs. 120') : (urg === 'Alta' ? 'Bs. 180' : 'Bs. 120'),
         experience: `${p.experiencia} años`,
         description: p.descripcion,
         distance: `${p.distanciaKm} km`,
@@ -609,7 +610,10 @@ export default function SolicitarScreen() {
 
       // Si no devolvió nada (por ejemplo, categorías B2B no cargadas en la BD temporal), usar fallback estático
       if (mapped.length === 0) {
-        mapped = getCandidates(cat);
+        mapped = getCandidates(cat).map(c => ({
+          ...c,
+          price: adaptPrice ? adaptPrice(c.price) : c.price
+        }));
       }
 
       setCandidatos(mapped);
@@ -958,9 +962,9 @@ export default function SolicitarScreen() {
                   
                   {isBusiness && (
                     <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12 }}>
-                      <Text style={[styles.inputLabel, { marginTop: 0, color: '#4f46e5' }]}>Tu presupuesto objetivo (Bs.):</Text>
+                      <Text style={[styles.inputLabel, { marginTop: 0, color: '#4f46e5' }]}>Tu presupuesto objetivo ({currencySymbol || 'Bs.'}):</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#818cf8', borderRadius: 10, paddingHorizontal: 12, height: 44, marginTop: 4 }}>
-                        <Text style={{ fontSize: 15, color: '#4f46e5', marginRight: 4, fontWeight: '600' }}>Bs.</Text>
+                        <Text style={{ fontSize: 15, color: '#4f46e5', marginRight: 4, fontWeight: '600' }}>{currencySymbol || 'Bs.'}</Text>
                         <TextInput
                           style={{ flex: 1, fontSize: 15, color: '#1e293b', fontWeight: '600', outlineStyle: 'none' } as any}
                           value={presupuestoInput}

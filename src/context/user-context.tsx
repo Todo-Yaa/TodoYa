@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import { uploadImage } from '../utils/image-uploader';
 import { esPedidoTarifaAlta, getProviderScore } from '../services/scoring';
+import { getCurrencyConfig, formatPriceForLocation, adaptPriceText } from '../utils/currency-utils';
 
 // Definición de roles de usuario disponibles: cliente, proveedor o empresa (B2B)
 export type UserRole = 'client' | 'provider' | 'business';
@@ -110,7 +111,14 @@ interface UserContextType {
   reportarProveedor: (pedidoId: number | undefined, reportadoNombre: string, motivo: string, descripcion: string) => Promise<boolean>;
   banearProveedor: (correoOTelefono: string, baneado: boolean) => Promise<boolean>;
   lastKnownCity: string | null;
+  setLastKnownCity: (city: string | null) => void;
   detectedCity: string | null;
+  detectedCountry: string | null;
+  currencySymbol: string;
+  currencyCode: string;
+  currencyName: string;
+  formatPrice: (baseAmountBob: number, prefix?: string) => string;
+  adaptPrice: (text: string) => string;
   showLocationChangeModal: boolean;
   locationChangeFrom: string | null;
   locationChangeTo: string | null;
@@ -226,6 +234,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // Estados para ubicación real y detección de cambio de ciudad
   const [lastKnownCity, setLastKnownCity] = useState<string | null>(null);
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
+  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
   const [showLocationChangeModal, setShowLocationChangeModal] = useState<boolean>(false);
   const [locationChangeFrom, setLocationChangeFrom] = useState<string | null>(null);
   const [locationChangeTo, setLocationChangeTo] = useState<string | null>(null);
@@ -266,9 +275,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
       });
 
       let city = '';
+      let country = '';
       if (geocode && geocode.length > 0) {
         const item = geocode[0];
         city = item.city || item.subregion || item.region || item.district || '';
+        country = item.country || '';
+      }
+      if (country) {
+        setDetectedCountry(country);
       }
 
       // Normalización e identificación de la ciudad
@@ -2329,7 +2343,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
       reportarProveedor,
       banearProveedor,
       lastKnownCity,
+      setLastKnownCity,
       detectedCity,
+      detectedCountry,
+      currencySymbol: getCurrencyConfig(lastKnownCity || detectedCity, detectedCountry, activeUser?.codigoPais).symbol,
+      currencyCode: getCurrencyConfig(lastKnownCity || detectedCity, detectedCountry, activeUser?.codigoPais).code,
+      currencyName: getCurrencyConfig(lastKnownCity || detectedCity, detectedCountry, activeUser?.codigoPais).name,
+      formatPrice: (baseAmountBob: number, prefix: string = '') => formatPriceForLocation(baseAmountBob, lastKnownCity || detectedCity || detectedCountry, prefix),
+      adaptPrice: (text: string) => adaptPriceText(text, lastKnownCity || detectedCity || detectedCountry),
       showLocationChangeModal,
       locationChangeFrom,
       locationChangeTo,
