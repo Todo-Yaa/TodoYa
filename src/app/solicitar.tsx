@@ -36,41 +36,41 @@ interface CandidateProvider {
 
 const CANDIDATOS_DATABASE: Record<string, CandidateProvider[]> = {
   'Plomería': [
-    { name: "Juan Ríos", lat: -17.7725, lng: -63.1930, service: "Plomería", rating: "4.9 ★", price: "Bs. 90", experience: "Más de 3 años", description: "Plomero certificado residencial", distance: "1.7 km" },
-    { name: "Andrés López", lat: -17.7880, lng: -63.1790, service: "Plomería", rating: "4.7 ★", price: "Bs. 110", experience: "1 a 3 años", description: "Experto en detección de fugas", distance: "0.6 km" }
+    { name: "Juan Ríos", lat: -17.7725, lng: -63.1930, service: "Plomería", rating: "4.9 ★", price: "Bs. 90", experience: "Más de 3 años", description: "Plomero certificado egresado de SENATI en Instalaciones Sanitarias y Gas. Especialista en fugas y grifería.", distance: "1.7 km" },
+    { name: "Andrés López", lat: -17.7880, lng: -63.1790, service: "Plomería", rating: "4.7 ★", price: "Bs. 110", experience: "1 a 3 años", description: "Técnico plomero egresado de FUNVAL. Experto en detección de fugas y mantenimiento de cañerías.", distance: "0.6 km" }
   ],
   'Electricidad': [
-    { name: "Carlos Mamani", lat: -17.7950, lng: -63.1650, service: "Electricidad", rating: "4.8 ★", price: "Bs. 70", experience: "Más de 3 años", description: "Técnico electricista domiciliario", distance: "2.3 km" },
-    { name: "Fernando Ruiz", lat: -17.7810, lng: -63.1920, service: "Electricidad", rating: "4.6 ★", price: "Bs. 60", experience: "1 a 3 años", description: "Instalaciones y cortocircuitos", distance: "1.1 km" }
+    { name: "Carlos Mamani", lat: -17.7950, lng: -63.1650, service: "Electricidad", rating: "4.8 ★", price: "Bs. 70", experience: "Más de 3 años", description: "Técnico electricista egresado de SENATI en Electrotecnia Industrial. Cableados, tableros y cortocircuitos.", distance: "2.3 km" },
+    { name: "Fernando Ruiz", lat: -17.7810, lng: -63.1920, service: "Electricidad", rating: "4.6 ★", price: "Bs. 60", experience: "1 a 3 años", description: "Electricista egresado de FUNVAL. Instalaciones domiciliarias seguras y reparación de tomas.", distance: "1.1 km" }
   ],
   'Pintura': [
-    { name: "María López", lat: -17.7610, lng: -63.1720, service: "Pintura", rating: "4.8 ★", price: "Bs. 130", experience: "Más de 3 años", description: "Pintura en interiores y exteriores", distance: "2.7 km" },
-    { name: "José Vargas", lat: -17.7850, lng: -63.1690, service: "Pintura", rating: "4.9 ★", price: "Bs. 120", experience: "Más de 3 años", description: "Acabados premium y texturas", distance: "1.4 km" }
+    { name: "María López", lat: -17.7610, lng: -63.1720, service: "Pintura", rating: "4.8 ★", price: "Bs. 130", experience: "Más de 3 años", description: "Pintora especialista en acabados egresada de FUNVAL. Pintura de interiores, exteriores e impermeabilización.", distance: "2.7 km" },
+    { name: "José Vargas", lat: -17.7850, lng: -63.1690, service: "Pintura", rating: "4.9 ★", price: "Bs. 120", experience: "Más de 3 años", description: "Técnico pintor egresado de SENATI. Especialista en texturados, empapelados y acabados de primera.", distance: "1.4 km" }
   ],
   'Climatización': [
-    { name: "Andrés Silva", lat: -17.7890, lng: -63.2050, service: "Climatización", rating: "4.9 ★", price: "Bs. 160", experience: "Más de 3 años", description: "Instalación y mantenimiento de AC split", distance: "2.5 km" },
-    { name: "Ramiro Paz", lat: -17.7780, lng: -63.1750, service: "Climatización", rating: "4.7 ★", price: "Bs. 140", experience: "1 a 3 años", description: "Limpieza profunda y carga de gas", distance: "0.9 km" }
+    { name: "Andrés Silva", lat: -17.7890, lng: -63.2050, service: "Climatización", rating: "4.9 ★", price: "Bs. 160", experience: "Más de 3 años", description: "Técnico en Refrigeración y Climatización egresado de SENATI. Mantenimiento y recarga de gas para AC split.", distance: "2.5 km" },
+    { name: "Ramiro Paz", lat: -17.7780, lng: -63.1750, service: "Climatización", rating: "4.7 ★", price: "Bs. 140", experience: "1 a 3 años", description: "Técnico de climatización egresado de FUNVAL. Limpieza profunda y reparación de equipos split.", distance: "0.9 km" }
   ],
   'Mecánico': [
-    { name: "Luis Gómez", lat: -17.7850, lng: -63.1850, service: "Mecánico", rating: "4.8 ★", price: "Bs. 150", experience: "Más de 3 años", description: "Mecánico automotriz a domicilio", distance: "1.2 km" }
+    { name: "Luis Gómez", lat: -17.7850, lng: -63.1850, service: "Mecánico", rating: "4.8 ★", price: "Bs. 150", experience: "Más de 3 años", description: "Mecánico automotriz a domicilio egresado de SENATI en Mecánica de Mantenimiento. Diagnóstico de motor y frenos.", distance: "1.2 km" }
   ],
   'Viandas y Pensiones': [
     { name: "Don Tito El Crocante Criollo", lat: -17.7810, lng: -63.1890, service: "Viandas y Pensiones", rating: "4.9 ★", price: "Bs. 180", experience: "Más de 5 años", description: "Empresa de buffet, catering criollo y banquetes corporativos", distance: "0.8 km" },
     { name: "Pastelería Punto Mágico", lat: -17.7850, lng: -63.1690, service: "Viandas y Pensiones", rating: "4.9 ★", price: "Bs. 120", experience: "Más de 3 años", description: "Pastelería fina, catering dulce y bocaditos para eventos", distance: "1.2 km" },
-    { name: "Pensionado Doña Flor", lat: -17.7780, lng: -63.1750, service: "Viandas y Pensiones", rating: "4.8 ★", price: "Bs. 25", experience: "Más de 3 años", description: "Almuerzos ejecutivos y viandas a domicilio", distance: "1.5 km" }
+    { name: "Pensionado Doña Flor", lat: -17.7780, lng: -63.1750, service: "Viandas y Pensiones", rating: "4.8 ★", price: "Bs. 25", experience: "Más de 3 años", description: "Chef ejecutiva egresada de FUNVAL. Almuerzos ejecutivos y viandas saludables a domicilio.", distance: "1.5 km" }
   ],
   'Cerrajero': [
-    { name: "Mario Roca", lat: -17.7820, lng: -63.1790, service: "Cerrajero", rating: "4.9 ★", price: "Bs. 80", experience: "Más de 3 años", description: "Cerrajero residencial de emergencia", distance: "0.5 km" }
+    { name: "Mario Roca", lat: -17.7820, lng: -63.1790, service: "Cerrajero", rating: "4.9 ★", price: "Bs. 80", experience: "Más de 3 años", description: "Técnico cerrajero de emergencia egresado de FUNVAL. Apertura de chapas de seguridad y duplicado de llaves.", distance: "0.5 km" }
   ],
   'Carpintero': [
-    { name: "Pedro Silva", lat: -17.7880, lng: -63.1810, service: "Carpintero", rating: "4.7 ★", price: "Bs. 130", experience: "Más de 3 años", description: "Carpintería fina y reparación", distance: "2.0 km" }
+    { name: "Pedro Silva", lat: -17.7880, lng: -63.1810, service: "Carpintero", rating: "4.7 ★", price: "Bs. 130", experience: "Más de 3 años", description: "Carpintero ebanista egresado de SENATI en Procesamiento de Madera. Fabricación y reparación de muebles.", distance: "2.0 km" }
   ],
   'Técnico de laptop-celulares': [
     { name: "Nefi Store", lat: -17.7780, lng: -63.1860, service: "Técnico de laptop-celulares", rating: "4.9 ★", price: "Bs. 120", experience: "Más de 5 años", description: "Reparación de laptops, impresoras y mantenimiento técnico corporativo", distance: "1.0 km" },
-    { name: "Julio Vera", lat: -17.7820, lng: -63.1750, service: "Técnico de laptop-celulares", rating: "4.8 ★", price: "Bs. 100", experience: "Más de 3 años", description: "Reparación de celulares y laptops", distance: "1.8 km" }
+    { name: "Julio Vera", lat: -17.7820, lng: -63.1750, service: "Técnico de laptop-celulares", rating: "4.8 ★", price: "Bs. 100", experience: "Más de 3 años", description: "Técnico en Soporte de Hardware egresado de SENATI. Reparación de celulares, laptops y cambio de pantallas.", distance: "1.8 km" }
   ],
   'Sastrería': [
-    { name: "Elena Paz", lat: -17.7810, lng: -63.1890, service: "Sastrería", rating: "4.8 ★", price: "Bs. 60", experience: "Más de 3 años", description: "Ajustes, costura y confección", distance: "1.1 km" }
+    { name: "Elena Paz", lat: -17.7810, lng: -63.1890, service: "Sastrería", rating: "4.8 ★", price: "Bs. 60", experience: "Más de 3 años", description: "Egresada de FUNVAL en Confección Textil y Sastrería. Arreglos de costura, entalles y prendas a medida.", distance: "1.1 km" }
   ],
   'Papelería & Oficina': [
     { name: "Nefi Store", lat: -17.7780, lng: -63.1860, service: "Papelería & Oficina", rating: "4.9 ★", price: "Bs. 250", experience: "Más de 5 años", description: "Tóner, tintas, insumos y reparación de impresoras", distance: "1.0 km" },
@@ -78,11 +78,11 @@ const CANDIDATOS_DATABASE: Record<string, CandidateProvider[]> = {
   ],
   'Branding & Lettering': [
     { name: "Decoración Florideco", lat: -17.7650, lng: -63.1780, service: "Branding & Lettering", rating: "4.9 ★", price: "Bs. 650", experience: "Más de 5 años", description: "Letreros, branding y ambientación corporativa de marcas", distance: "1.1 km" },
-    { name: "Branding Express", lat: -17.7800, lng: -63.1990, service: "Branding & Lettering", rating: "4.7 ★", price: "Bs. 500", experience: "1 a 3 años", description: "Identidad visual y papelería corporativa", distance: "1.8 km" }
+    { name: "Branding Express", lat: -17.7800, lng: -63.1990, service: "Branding & Lettering", rating: "4.7 ★", price: "Bs. 500", experience: "1 a 3 años", description: "Diseñador gráfico egresado de SENATI. Identidad visual y papelería corporativa.", distance: "1.8 km" }
   ],
   'Decoración & Eventos': [
     { name: "Decoración Florideco", lat: -17.7650, lng: -63.1780, service: "Decoración & Eventos", rating: "4.9 ★", price: "Bs. 850", experience: "Más de 5 años", description: "Decoración corporativa, ambientación de eventos y arcos florales/globos", distance: "1.1 km" },
-    { name: "Eventos Premium", lat: -17.7920, lng: -63.1890, service: "Decoración & Eventos", rating: "4.8 ★", price: "Bs. 950", experience: "Más de 3 años", description: "Ambientación de espacios de trabajo", distance: "2.1 km" }
+    { name: "Eventos Premium", lat: -17.7920, lng: -63.1890, service: "Decoración & Eventos", rating: "4.8 ★", price: "Bs. 950", experience: "Más de 3 años", description: "Decoradora egresada de FUNVAL en Gestión de Eventos. Ambientación de espacios de trabajo.", distance: "2.1 km" }
   ],
   'Servicios B2B': [
     { name: "Nefi Store", lat: -17.7780, lng: -63.1860, service: "Servicios B2B", rating: "4.9 ★", price: "Bs. 250", experience: "Más de 5 años", description: "Mantenimiento e impresión B2B (Laptops e impresoras)", distance: "1.0 km" },
@@ -94,8 +94,8 @@ const CANDIDATOS_DATABASE: Record<string, CandidateProvider[]> = {
 
 const getCandidates = (cat: string) => {
   return CANDIDATOS_DATABASE[cat] || [
-    { name: "Juan Ríos", lat: -17.7725, lng: -63.1930, service: cat, rating: "4.9 ★", price: "Bs. 80", experience: "Más de 3 años", description: "Servicios generales de confianza", distance: "1.7 km" },
-    { name: "María López", lat: -17.7610, lng: -63.1720, service: cat, rating: "4.8 ★", price: "Bs. 120", experience: "Más de 3 años", description: "Servicios premium", distance: "2.7 km" }
+    { name: "Juan Ríos", lat: -17.7725, lng: -63.1930, service: cat, rating: "4.9 ★", price: "Bs. 80", experience: "Más de 3 años", description: "Plomero certificado egresado de SENATI en Instalaciones Sanitarias.", distance: "1.7 km" },
+    { name: "María López", lat: -17.7610, lng: -63.1720, service: cat, rating: "4.8 ★", price: "Bs. 120", experience: "Más de 3 años", description: "Especialista egresada de FUNVAL en Servicios Generales.", distance: "2.7 km" }
   ];
 };
 

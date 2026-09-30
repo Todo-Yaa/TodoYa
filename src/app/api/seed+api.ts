@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         proveedorConfigurado: true,
         serviciosOfrecidos: ['Plomería'],
         anosExperiencia: 'Más de 3 años',
-        descripcionProveedor: 'Plomero certificado con 5 años de experiencia residencial.',
+        descripcionProveedor: 'Plomero certificado egresado de SENATI en Instalaciones Sanitarias y Gas. Especialista en fugas, tuberías y mantenimiento.',
         monedas: 24,
         kycVerificado: true,
         kycDetalles: 'Documento verificado',

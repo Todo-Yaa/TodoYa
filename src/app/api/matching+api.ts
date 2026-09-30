@@ -7,20 +7,20 @@ import { puntosAEstrellas, puedeAccederTarifaAlta } from '../../services/scoring
 
 // Datos de prueba locales para la simulación del Matching si no hay base de datos real
 const PROVEEDORES_MOCK = [
-  { id: 'p1', nombre: 'Juan Pérez', especialidad: 'Plomería', rating: 4.8, experiencia: 5, lat: -17.783, lng: -63.182, descripcion: 'Especialista en fugas de agua, grifos y cañerías.' },
-  { id: 'p2', nombre: 'Carlos Gómez', especialidad: 'Electricidad', rating: 4.9, experiencia: 8, lat: -17.781, lng: -63.178, descripcion: 'Instalaciones eléctricas, cortocircuitos y mantenimiento.' },
-  { id: 'p3', nombre: 'Ana Mendoza', especialidad: 'Plomería', rating: 4.2, experiencia: 2, lat: -17.786, lng: -63.185, descripcion: 'Mantenimiento preventivo e instalación de sanitarios.' },
-  { id: 'p4', nombre: 'Luis Choque', especialidad: 'Pintura', rating: 4.7, experiencia: 10, lat: -17.788, lng: -63.175, descripcion: 'Pintura de interiores y exteriores, texturados.' },
-  { id: 'p5', nombre: 'María Rodríguez', especialidad: 'Climatización', rating: 4.9, experiencia: 6, lat: -17.779, lng: -63.188, descripcion: 'Reparación y mantenimiento de aire acondicionado.' },
-  { id: 'p6', nombre: 'Luis Gómez', especialidad: 'Mecánico', rating: 4.8, experiencia: 5, lat: -17.785, lng: -63.185, descripcion: 'Mecánico automotriz a domicilio. Diagnóstico y reparación.' },
-  { id: 'p7', nombre: 'Mario Roca', especialidad: 'Cerrajero', rating: 4.9, experiencia: 7, lat: -17.782, lng: -63.179, descripcion: 'Apertura de chapas, duplicados de llaves y cerrajería de emergencia.' },
-  { id: 'p8', nombre: 'Pedro Silva', especialidad: 'Carpintero', rating: 4.7, experiencia: 6, lat: -17.788, lng: -63.181, descripcion: 'Carpintería en general, restauración y armado de muebles.' },
+  { id: 'p1', nombre: 'Juan Pérez', especialidad: 'Plomería', rating: 4.8, experiencia: 5, lat: -17.783, lng: -63.182, descripcion: 'Plomero egresado de SENATI en Instalaciones Sanitarias y Gas. Especialista en fugas, grifos y cañerías.' },
+  { id: 'p2', nombre: 'Carlos Gómez', especialidad: 'Electricidad', rating: 4.9, experiencia: 8, lat: -17.781, lng: -63.178, descripcion: 'Técnico electricista egresado de SENATI en Electrotecnia Industrial. Instalaciones, cortocircuitos y mantenimiento.' },
+  { id: 'p3', nombre: 'Ana Mendoza', especialidad: 'Plomería', rating: 4.2, experiencia: 2, lat: -17.786, lng: -63.185, descripcion: 'Técnica plomera egresada de FUNVAL. Mantenimiento preventivo e instalación de sanitarios.' },
+  { id: 'p4', nombre: 'Luis Choque', especialidad: 'Pintura', rating: 4.7, experiencia: 10, lat: -17.788, lng: -63.175, descripcion: 'Pintor egresado de FUNVAL. Pintura de interiores y exteriores, texturados.' },
+  { id: 'p5', nombre: 'María Rodríguez', especialidad: 'Climatización', rating: 4.9, experiencia: 6, lat: -17.779, lng: -63.188, descripcion: 'Técnica en Refrigeración egresada de SENATI. Reparación y mantenimiento de aire acondicionado.' },
+  { id: 'p6', nombre: 'Luis Gómez', especialidad: 'Mecánico', rating: 4.8, experiencia: 5, lat: -17.785, lng: -63.185, descripcion: 'Mecánico automotriz a domicilio egresado de SENATI en Mecánica de Mantenimiento. Diagnóstico y reparación.' },
+  { id: 'p7', nombre: 'Mario Roca', especialidad: 'Cerrajero', rating: 4.9, experiencia: 7, lat: -17.782, lng: -63.179, descripcion: 'Técnico cerrajero egresado de FUNVAL. Apertura de chapas, duplicados de llaves y cerrajería de emergencia.' },
+  { id: 'p8', nombre: 'Pedro Silva', especialidad: 'Carpintero', rating: 4.7, experiencia: 6, lat: -17.788, lng: -63.181, descripcion: 'Carpintero ebanista egresado de SENATI en Procesamiento de Madera. Restauración y armado de muebles.' },
   { id: 'p9', nombre: 'Nefi Store', especialidad: 'Técnico de laptop-celulares', rating: 4.9, experiencia: 6, lat: -17.778, lng: -63.186, descripcion: 'Reparación y mantenimiento técnico de laptops, computadoras e impresoras corporativas.' },
-  { id: 'p10', nombre: 'Elena Paz', especialidad: 'Sastrería', rating: 4.8, experiencia: 12, lat: -17.781, lng: -63.189, descripcion: 'Arreglos de costura, entalles, confección a medida y bastas.' },
+  { id: 'p10', nombre: 'Elena Paz', especialidad: 'Sastrería', rating: 4.8, experiencia: 12, lat: -17.781, lng: -63.189, descripcion: 'Egresada de FUNVAL en Confección Textil y Sastrería. Arreglos de costura, entalles y prendas a medida.' },
   { id: 'p11', nombre: 'Don Tito El Crocante Criollo', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 7, lat: -17.781, lng: -63.189, descripcion: 'Empresa de buffet corporativo, catering criollo, banquetes de chicharrón crocante y viandas ejecutivas.' },
   { id: 'p12', nombre: 'Pastelería Punto Mágico', especialidad: 'Viandas y Pensiones', rating: 4.9, experiencia: 4, lat: -17.785, lng: -63.169, descripcion: 'Pastelería fina, catering dulce, tortas corporativas personalizadas y bocaditos salados para eventos de empresa.' },
   { id: 'p13', nombre: 'Decoración Florideco', especialidad: 'Decoración & Eventos', rating: 4.9, experiencia: 5, lat: -17.765, lng: -63.178, descripcion: 'Especialistas en decoración corporativa, ambientación de eventos de empresa, arcos florales, globos y arreglos.' },
-  { id: 'p14', nombre: 'José Mamani', especialidad: 'Albañilería & Construcción', rating: 4.9, experiencia: 15, lat: -17.785, lng: -63.180, descripcion: 'Colocación de cerámica, revoques, construcción y refacciones en general.' },
+  { id: 'p14', nombre: 'José Mamani', especialidad: 'Albañilería & Construcción', rating: 4.9, experiencia: 15, lat: -17.785, lng: -63.180, descripcion: 'Maestro albañil egresado de SENATI en Construcción Civil. Colocación de cerámica, revoques y refacciones.' }
 ];
 
 // Diccionarios de palabras clave para "Todas las Probabilidades" (Sistema de Puntaje)
