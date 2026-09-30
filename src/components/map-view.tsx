@@ -131,7 +131,7 @@ const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: n
     const map = L.map('map', { 
       zoomControl: false,
       attributionControl: false
-    }).setView(center, 13);
+    }).setView(center, 16);
  
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -148,7 +148,7 @@ const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: n
       fillOpacity: 0.12,
       weight: 2,
       dashArray: '5, 5',
-      radius: 5000
+      radius: 500
     }).addTo(map);
 
     if (navigator.geolocation) {
@@ -157,7 +157,7 @@ const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: n
           const realLat = pos.coords.latitude;
           const realLng = pos.coords.longitude;
           const realCenter = [realLat, realLng];
-          map.setView(realCenter, 14);
+          map.setView(realCenter, 16);
           userMarker.setLatLng(realCenter);
           circle.setLatLng(realCenter);
         }
@@ -210,10 +210,10 @@ export default function MapView({ providersList }: MapViewProps) {
   const center = gpsLocation || getCityCenter();
 
   const getDynamicDefaultProviders = (centerCoords: { lat: number; lng: number }): MapProvider[] => [
-    { name: "Juan Ríos", lat: centerCoords.lat + 0.008, lng: centerCoords.lng - 0.009, service: "Plomero 🔧", rating: "4.9 ★", price: "Bs. 80" },
-    { name: "Carlos Mamani", lat: centerCoords.lat - 0.011, lng: centerCoords.lng + 0.014, service: "Electricista ⚡", rating: "4.7 ★", price: "Bs. 60" },
-    { name: "María López", lat: centerCoords.lat + 0.015, lng: centerCoords.lng + 0.008, service: "Pintora 🎨", rating: "4.8 ★", price: "Bs. 120" },
-    { name: "Andrés Silva", lat: centerCoords.lat - 0.006, lng: centerCoords.lng - 0.018, service: "AC / Aire ❄️", rating: "4.9 ★", price: "Bs. 150" }
+    { name: "Juan Ríos", lat: centerCoords.lat + 0.0018, lng: centerCoords.lng - 0.0021, service: "Plomero 🔧", rating: "4.9 ★", price: "Bs. 80" },
+    { name: "Carlos Mamani", lat: centerCoords.lat - 0.0022, lng: centerCoords.lng + 0.0025, service: "Electricista ⚡", rating: "4.7 ★", price: "Bs. 60" },
+    { name: "María López", lat: centerCoords.lat + 0.0031, lng: centerCoords.lng + 0.0016, service: "Pintora 🎨", rating: "4.8 ★", price: "Bs. 120" },
+    { name: "Andrés Silva", lat: centerCoords.lat - 0.0014, lng: centerCoords.lng - 0.0032, service: "AC / Aire ❄️", rating: "4.9 ★", price: "Bs. 150" }
   ];
 
   const rawList = providersList || getDynamicDefaultProviders(center);
@@ -258,10 +258,10 @@ export default function MapView({ providersList }: MapViewProps) {
             pinColor="#FFB400"
           />
 
-          {/* Radio de cobertura de 5 km */}
+          {/* Radio de cobertura de 0.5 km (500m) */}
           <CircleNative
             center={{ latitude: center.lat, longitude: center.lng }}
-            radius={5000}
+            radius={500}
             strokeWidth={2}
             strokeColor="#FFB400"
             fillColor="rgba(255, 180, 0, 0.12)"

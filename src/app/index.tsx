@@ -224,7 +224,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Mapa */}
-        <Text style={styles.sectionTitle}>Proveedores cercanos (Radio de 5 km)</Text>
+        <Text style={styles.sectionTitle}>Proveedores cercanos (Radio de 0.5 km)</Text>
         <View style={styles.mapPlaceholder}>
           <MapView />
         </View>
