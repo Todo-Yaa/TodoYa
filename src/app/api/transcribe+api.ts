@@ -18,37 +18,55 @@ export async function POST(request: Request) {
       return Response.json({ error: 'La API Key de Gemini no está configurada' }, { status: 500 });
     }
 
-    console.log(`[Transcribe API] Enviando audio a Gemini para transcripción (${mimeType || 'audio/webm'})`);
+    // Limpiar mimeType (ej: "audio/webm;codecs=opus" -> "audio/webm") para la API de Gemini
+    const cleanMimeType = (mimeType || 'audio/webm').split(';')[0];
+    console.log(`[Transcribe API] Enviando audio a Gemini para transcripción (${cleanMimeType})`);
 
     const prompt = "Transcribe el audio de forma exacta en español. No agregues comentarios, explicaciones, saludos, ni etiquetas de texto. Devuelve únicamente el texto transcrito, respetando puntuación y ortografía.";
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              inlineData: {
-                mimeType: mimeType || 'audio/webm',
-                data: audio
-              }
-            },
-            {
-              text: prompt
-            }
-          ]
-        }]
-      })
-    });
+    const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'];
+    let lastError = '';
+    let data: any = null;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Transcribe API] Error de Gemini API:', response.status, errorText);
-      return Response.json({ error: `Error de Gemini API: ${response.status}`, details: errorText }, { status: 502 });
+    for (const model of modelsToTry) {
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: cleanMimeType,
+                    data: audio
+                  }
+                },
+                {
+                  text: prompt
+                }
+              ]
+            }]
+          })
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          break;
+        } else {
+          lastError = await response.text();
+          console.warn(`[Transcribe API] Fallo con modelo ${model}:`, response.status, lastError);
+        }
+      } catch (err: any) {
+        lastError = err.message;
+        console.warn(`[Transcribe API] Error llamando a ${model}:`, err);
+      }
     }
 
-    const data = await response.json();
+    if (!data) {
+      return Response.json({ error: 'Error al comunicarse con Gemini API para transcripción', details: lastError }, { status: 502 });
+    }
+
     let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     text = sanitizeText(text.trim());
 
