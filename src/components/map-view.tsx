@@ -150,7 +150,22 @@ const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: n
       dashArray: '5, 5',
       radius: 5000
     }).addTo(map);
- 
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        if (pos && pos.coords) {
+          const realLat = pos.coords.latitude;
+          const realLng = pos.coords.longitude;
+          const realCenter = [realLat, realLng];
+          map.setView(realCenter, 14);
+          userMarker.setLatLng(realCenter);
+          circle.setLatLng(realCenter);
+        }
+      }, function(err) {
+        console.log('GPS positioning fallback:', err);
+      }, { enableHighAccuracy: true, timeout: 8000 });
+    }
+
     ${markersScript}
   </script>
 </body>
@@ -214,6 +229,7 @@ export default function MapView({ providersList }: MapViewProps) {
           srcDoc={generateMapHtml(activeList, center)}
           style={styles.iframe}
           title="Mapa de Proveedores"
+          allow="geolocation"
         />
       </View>
     );
