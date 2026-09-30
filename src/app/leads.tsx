@@ -20,7 +20,10 @@ export default function LeadsScreen() {
     notificationsList,
     markAllNotificationsRead,
     clearAllNotifications,
-    triggerLocationCheck
+    triggerLocationCheck,
+    formatPrice,
+    adaptPrice,
+    currencySymbol
   } = useUser();
   const [refreshing, setRefreshing] = useState(false);
   const [isTrayOpen, setIsTrayOpen] = useState(false);
@@ -48,14 +51,21 @@ export default function LeadsScreen() {
   const userPlan = planId || activeUser?.planId || (currentEntidad === 'empresa' ? 'business_1' : 'provider_1');
 
   const getPlanDetails = (pId: string | null) => {
+    const p150 = formatPrice ? formatPrice(150) : 'Bs. 150';
+    const p300 = formatPrice ? formatPrice(300) : 'Bs. 300';
+    const p500 = formatPrice ? formatPrice(500) : 'Bs. 500';
+    const p50 = formatPrice ? formatPrice(50) : 'Bs. 50';
+    const p120 = formatPrice ? formatPrice(120) : 'Bs. 120';
+    const p200 = formatPrice ? formatPrice(200) : 'Bs. 200';
+
     if (isB2BProvider) {
-      if (pId === 'business_2') return { name: 'Plan Empresa 2 - Pro', price: 'S/. 300/mes', desc: 'Acceso Mixto e Ilimitado' };
-      if (pId === 'business_3') return { name: 'Plan Empresa 3 - Élite', price: 'S/. 500/mes', desc: 'Acceso Nacional Realtime' };
-      return { name: 'Plan Empresa 1 - Básico', price: 'S/. 150/mes', desc: 'Acceso Corporativo B2B' };
+      if (pId === 'business_2') return { name: 'Plan Empresa 2 - Pro', price: `${p300}/mes`, desc: 'Acceso Mixto e Ilimitado' };
+      if (pId === 'business_3') return { name: 'Plan Empresa 3 - Élite', price: `${p500}/mes`, desc: 'Acceso Nacional Realtime' };
+      return { name: 'Plan Empresa 1 - Básico', price: `${p150}/mes`, desc: 'Acceso Corporativo B2B' };
     } else {
-      if (pId === 'provider_2') return { name: 'Plan 2 - Profesional', price: 'S/. 120/mes', desc: 'Residenciales + 3 B2B/mes' };
-      if (pId === 'provider_3') return { name: 'Plan 3 - Élite', price: 'S/. 200/mes', desc: 'Acceso Total Ilimitado' };
-      return { name: 'Plan 1 - Residencial', price: 'S/. 50/mes', desc: 'Acceso Residencial Ilimitado' };
+      if (pId === 'provider_2') return { name: 'Plan 2 - Profesional', price: `${p120}/mes`, desc: 'Residenciales + 3 B2B/mes' };
+      if (pId === 'provider_3') return { name: 'Plan 3 - Élite', price: `${p200}/mes`, desc: 'Acceso Total Ilimitado' };
+      return { name: 'Plan 1 - Residencial', price: `${p50}/mes`, desc: 'Acceso Residencial Ilimitado' };
     }
   };
 
@@ -673,8 +683,8 @@ export default function LeadsScreen() {
                         </View>
                       </View>
                       <View style={styles.packageCardRight}>
-                        <Text style={styles.packagePrice}>S/. {plan.priceBs}</Text>
-                        <Text style={styles.packageNote}>{isActive ? 'Activo' : 'Pagar S/. 1.00'}</Text>
+                        <Text style={styles.packagePrice}>{formatPrice ? formatPrice(plan.priceBs) : `Bs. ${plan.priceBs}`}</Text>
+                        <Text style={styles.packageNote}>{isActive ? 'Activo' : 'Pagar Demo'}</Text>
                       </View>
                     </TouchableOpacity>
                   );

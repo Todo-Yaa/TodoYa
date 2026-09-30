@@ -14,7 +14,7 @@ interface PlanUpsellModalProps {
 }
 
 export default function PlanUpsellModal({ visible: externalVisible, onClose: externalClose }: PlanUpsellModalProps) {
-  const { activeUser, userRole, planId, currencySymbol } = useUser();
+  const { activeUser, userRole, planId, formatPrice } = useUser();
   const isB2B = activeUser?.tipoEntidad === 'empresa' || userRole === 'business';
   const isProvider = userRole === 'provider';
 
@@ -105,7 +105,7 @@ export default function PlanUpsellModal({ visible: externalVisible, onClose: ext
       icon: "earth-outline",
       iconColor: "#818cf8",
       title: "Cobertura Nacional Realtime",
-      desc: "Monitorea licitaciones y proveedores corporativos en todo Bolivia y Perú en tiempo real."
+      desc: "Monitorea licitaciones y proveedores corporativos en todo el país en tiempo real."
     },
     {
       icon: "receipt-outline",
@@ -132,32 +132,11 @@ export default function PlanUpsellModal({ visible: externalVisible, onClose: ext
     ? (planId === 'business_2' ? "Plan Empresa 3 — Élite" : "Plan Empresa 2 — Pro") 
     : (planId === 'provider_2' ? "Plan 3 — Élite" : "Plan 2 — Profesional");
 
-  const CURRENCY_BY_PREFIX: Record<string, string> = {
-    '51': 'S/.', '591': 'Bs.', '57': 'COP$', '56': 'CLP$', '52': 'MXN$',
-    '54': 'ARS$', '593': 'USD$', '598': 'UYU$', '595': 'PYG'
-  };
-  const CURRENCIES_BY_COUNTRY: Record<string, string> = {
-    'Peru': 'S/.', 'Perú': 'S/.', 'Bolivia': 'Bs.', 'Colombia': 'COP$',
-    'Chile': 'CLP$', 'Mexico': 'MXN$', 'México': 'MXN$', 'Argentina': 'ARS$',
-    'Ecuador': 'USD$'
-  };
-  const getCurrencySymbol = () => {
-    if (currencySymbol) return currencySymbol;
-    if (activeUser?.codigoPais && CURRENCY_BY_PREFIX[activeUser.codigoPais]) {
-      return CURRENCY_BY_PREFIX[activeUser.codigoPais];
-    }
-    if (activeUser?.celular) {
-      for (const [prefix, symbol] of Object.entries(CURRENCY_BY_PREFIX)) {
-        if (activeUser.celular.startsWith(`+${prefix}`)) return symbol;
-      }
-    }
-    return 'Bs.';
-  };
-  const symbol = getCurrencySymbol();
+  const rawPriceBob = isB2B 
+    ? (planId === 'business_2' ? 500 : 300) 
+    : (planId === 'provider_2' ? 200 : 120);
 
-  const planPrice = isB2B
-    ? (planId === 'business_2' ? `${symbol} 500 / mes` : `${symbol} 300 / mes`)
-    : (planId === 'provider_2' ? `${symbol} 200 / mes` : `${symbol} 120 / mes`);
+  const planPrice = formatPrice ? `${formatPrice(rawPriceBob)} / mes` : `Bs. ${rawPriceBob} / mes`;
 
   const promoBannerText = isB2B 
     ? "Aumenta la eficiencia en compras corporativas de tu empresa" 
