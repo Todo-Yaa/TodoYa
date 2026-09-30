@@ -32,6 +32,7 @@ export interface UsuarioRegistrado {
   monedas?: number;
   celular?: string;
   codigoPais?: string;
+  celularVerificado?: boolean;
   kycVerificado?: boolean;
   kycDetalles?: string;
   baneado?: boolean;
@@ -92,6 +93,7 @@ interface UserContextType {
   activeUser: UsuarioRegistrado | null; // Usuario activo logueado
   configurarProveedor: (servicios: string[], experiencia: string, descripcion: string, cobertura?: string) => Promise<void>;
   actualizarKyc: (kycVerificado: boolean, kycDetalles: string) => Promise<void>;
+  actualizarTelefono2FA: (celular: string, codigoPais: string) => Promise<boolean>;
   rateOrder: (orderId: number, estrellas: number, etiquetas: string[]) => void;
   isSwitchingRole: boolean; // Indica si se está realizando una transición de rol
   syncOrders: () => Promise<void>; // Fuerza la sincronización de pedidos con la DB
@@ -2274,6 +2276,62 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Actualiza y marca el celular como verificado mediante 2FA (Requerido para logins de Google / LinkedIn)
+   */
+  const actualizarTelefono2FA = async (celular: string, codigoPais: string): Promise<boolean> => {
+    if (!activeUser) return false;
+
+    const updatedUser: UsuarioRegistrado = {
+      ...activeUser,
+      celular: celular.trim(),
+      codigoPais: codigoPais.trim(),
+      celularVerificado: true,
+    };
+
+    setActiveUser(updatedUser);
+    await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
+
+    setUsuariosRegistrados(prev =>
+      prev.map(u =>
+        (u.correoOTelefono || '').trim().toLowerCase() === (activeUser.correoOTelefono || '').trim().toLowerCase()
+          ? updatedUser
+          : u
+      )
+    );
+
+    const savedUsers = await Storage.getItem('todo_ya_registered_users');
+    if (savedUsers) {
+      const parsed = JSON.parse(savedUsers);
+      const updatedList = parsed.map((u: any) =>
+        (u.correoOTelefono || '').trim().toLowerCase() === (activeUser.correoOTelefono || '').trim().toLowerCase()
+          ? updatedUser
+          : u
+      );
+      await Storage.setItem('todo_ya_registered_users', JSON.stringify(updatedList));
+    }
+
+    if (isDbOnline) {
+      try {
+        await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: activeUser.id,
+            correoOTelefono: activeUser.correoOTelefono,
+            celular: celular.trim(),
+            codigoPais: codigoPais.trim(),
+            celularVerificado: true,
+          })
+        });
+      } catch (e) {
+        console.error('Error sincronizando actualización 2FA con Neon:', e);
+      }
+    }
+
+    return true;
+  };
+
+  /**
    * Calcula el estado del Período de Prueba Gratis de 3 Meses (90 Días) para Empresas B2B
    */
   const getB2BTrialStatus = (userTarget?: UsuarioRegistrado | null) => {
@@ -2378,6 +2436,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       stopSimulation,
       actualizarFotoPerfil,
       actualizarDatosPersonales,
+      actualizarTelefono2FA,
       getB2BTrialStatus,
       actualizarKYC,
       activeTenantId,

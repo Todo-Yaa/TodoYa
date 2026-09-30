@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
 import MapView from '../components/map-view';
+import Phone2FAModal from '../components/auth/phone-2fa-modal';
 import { matchProviders } from '../services/ai-matching';
 import * as Location from 'expo-location';
 import { sanitizeText, sanitizePromptInput } from '../utils/security';
@@ -187,6 +188,10 @@ export default function SolicitarScreen() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
   const [isFocused, setIsFocused] = useState(false);
+
+  // Modal 2FA de Verificación de Celular para Logins Sociales
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [pendingTextFor2FA, setPendingTextFor2FA] = useState('');
 
   // Estados para la búsqueda en tiempo real y flujo B2B
   const [faseBusqueda, setFaseBusqueda] = useState<'input' | 'scanning' | 'offers' | 'expired' | 'chat'>('input');
@@ -547,6 +552,20 @@ export default function SolicitarScreen() {
         onConfirm: () => {}
       });
       setShowConfirmModal(true);
+      return;
+    }
+
+    // 🔒 REGLA OBLIGATORIA: Logins Sociales (Google/LinkedIn) o usuarios sin celular verificado no pueden solicitar sin 2FA
+    const requiere2FA = activeUser && (
+      activeUser.tipoProveedor === 'google' ||
+      activeUser.tipoProveedor === 'linkedin' ||
+      !activeUser.celular ||
+      !activeUser.celularVerificado
+    );
+
+    if (requiere2FA) {
+      setPendingTextFor2FA(targetText);
+      setShow2FAModal(true);
       return;
     }
 
@@ -1366,6 +1385,20 @@ export default function SolicitarScreen() {
           </View>
         </View>
       )}
+
+      {/* Modal 2FA Verificación Telefónica (Google / LinkedIn) */}
+      <Phone2FAModal
+        visible={show2FAModal}
+        onClose={() => setShow2FAModal(false)}
+        onVerified={() => {
+          setShow2FAModal(false);
+          if (pendingTextFor2FA) {
+            const txt = pendingTextFor2FA;
+            setPendingTextFor2FA('');
+            processNLP(txt);
+          }
+        }}
+      />
 
       {/* Modal de Entrada de Voz (Speech-to-Text) */}
       {showVoiceModal && (

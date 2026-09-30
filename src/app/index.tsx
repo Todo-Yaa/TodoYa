@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator, Image } from 'react-native';
 import { router } from 'expo-router';
 import MapView from '../components/map-view';
+import Phone2FAModal from '../components/auth/phone-2fa-modal';
 import { useUser } from '../context/user-context';
 import { matchProviders } from '../services/ai-matching';
 import NotificationTray from '../components/notification-tray';
@@ -18,6 +19,9 @@ export default function HomeScreen() {
   const [panicDesc, setPanicDesc] = useState('');
   const [isPanicLoading, setIsPanicLoading] = useState(false);
   const [isTrayOpen, setIsTrayOpen] = useState(false);
+
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [pendingPanicDesc, setPendingPanicDesc] = useState('');
 
   // Filtramos pedidos de esta empresa
   const businessOrders = orders.filter(o => 
@@ -39,6 +43,19 @@ export default function HomeScreen() {
   const executePanicAction = async (quickDesc?: string) => {
     const descToUse = quickDesc || panicDesc;
     if (!descToUse.trim()) return;
+
+    const requiere2FA = activeUser && (
+      activeUser.tipoProveedor === 'google' ||
+      activeUser.tipoProveedor === 'linkedin' ||
+      !activeUser.celular ||
+      !activeUser.celularVerificado
+    );
+
+    if (requiere2FA) {
+      setPendingPanicDesc(descToUse);
+      setShow2FAModal(true);
+      return;
+    }
     
     setIsPanicLoading(true);
     try {
@@ -298,6 +315,18 @@ export default function HomeScreen() {
         onMarkAllAsRead={markAllNotificationsRead}
         onClearAll={clearAllNotifications}
         isDarkTheme={false}
+      />
+      <Phone2FAModal
+        visible={show2FAModal}
+        onClose={() => setShow2FAModal(false)}
+        onVerified={() => {
+          setShow2FAModal(false);
+          if (pendingPanicDesc) {
+            const desc = pendingPanicDesc;
+            setPendingPanicDesc('');
+            executePanicAction(desc);
+          }
+        }}
       />
     </View>
   );

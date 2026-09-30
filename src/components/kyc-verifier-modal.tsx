@@ -33,55 +33,59 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
   const [capturandoDoc, setCapturandoDoc] = useState(false);
   const [capturandoSelfie, setCapturandoSelfie] = useState(false);
 
-  const capturarDocumento = async (source: 'camera' | 'gallery' = 'camera') => {
+  const capturarDocumentoConCamara = async () => {
     setCapturandoDoc(true);
     try {
-      let pickerResult;
-      if (source === 'camera') {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          alert('Se requiere permiso de acceso a la cámara para la verificación.');
-          setCapturandoDoc(false);
-          return;
-        }
-        pickerResult = await ImagePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [16, 10],
-          quality: 0.7,
-          base64: true,
-        });
-      } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          alert('Se requiere permiso de acceso a la galería para la verificación.');
-          setCapturandoDoc(false);
-          return;
-        }
-        pickerResult = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [16, 10],
-          quality: 0.7,
-          base64: true,
-        });
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Se requiere permiso de acceso a la cámara para fotografiar tu documento.');
+        setCapturandoDoc(false);
+        return;
       }
+      const pickerResult = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [16, 10],
+        quality: 0.8,
+        base64: true,
+      });
 
       if (!pickerResult.canceled && pickerResult.assets?.[0]?.base64) {
         setDocumentoBase64(pickerResult.assets[0].base64);
       }
     } catch (e) {
-      console.warn('ImagePicker error:', e);
+      console.warn('Error capturando documento con cámara:', e);
     } finally {
       setCapturandoDoc(false);
     }
   };
 
-  const capturarSelfieSimulada = async () => {
+  const capturarSelfieConCamara = async () => {
     setCapturandoSelfie(true);
-    await delay(1000);
-    setCapturandoSelfie(false);
-    setSelfieSubida(true);
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Se requiere permiso de acceso a la cámara para tomar tu selfie de verificación.');
+        setCapturandoSelfie(false);
+        return;
+      }
+      const pickerResult = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        cameraType: ImagePicker.CameraType.front,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!pickerResult.canceled && pickerResult.assets?.[0]?.base64) {
+        setSelfieSubida(true);
+      }
+    } catch (e) {
+      console.warn('Error tomando selfie con cámara:', e);
+    } finally {
+      setCapturandoSelfie(false);
+    }
   };
 
   const animateProgress = (toValue: number, duration: number) => {
@@ -318,26 +322,20 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
                   {capturandoDoc ? (
                     <ActivityIndicator size="small" color="#FFB400" />
                   ) : (
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      <TouchableOpacity 
-                        style={[styles.scanBtn, documentoBase64 ? styles.scanBtnActive : null]} 
-                        onPress={() => capturarDocumento('camera')}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="camera" size={14} color={documentoBase64 ? "#475569" : "#1a1a1a"} />
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.scanBtn, documentoBase64 ? styles.scanBtnActive : null]} 
-                        onPress={() => capturarDocumento('gallery')}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="images" size={14} color={documentoBase64 ? "#475569" : "#1a1a1a"} />
-                      </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity 
+                      style={[styles.scanBtn, { flexDirection: 'row', gap: 6, paddingHorizontal: 10 }, documentoBase64 ? styles.scanBtnActive : null]} 
+                      onPress={capturarDocumentoConCamara}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="camera" size={16} color={documentoBase64 ? "#475569" : "#1a1a1a"} />
+                      <Text style={[styles.scanBtnText, documentoBase64 && styles.scanBtnTextActive]}>
+                        {documentoBase64 ? 'Repetir' : 'Abrir Cámara'}
+                      </Text>
+                    </TouchableOpacity>
                   )}
                 </View>
 
-                {/* Paso B: Selfie */}
+                {/* Paso B: Selfie con Cámara */}
                 <View style={styles.verificationStepRow}>
                   <View style={[styles.stepStatusIcon, selfieSubida ? styles.statusSuccessBg : styles.statusPendingBg]}>
                     <Ionicons 
@@ -349,7 +347,7 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
                   <View style={{ flex: 1 }}>
                     <Text style={styles.stepItemTitle}>Foto de tu Rostro (Selfie)</Text>
                     <Text style={styles.stepItemDesc}>
-                      {selfieSubida ? 'Selfie de rostro lista' : 'Tómate una selfie con buena luz'}
+                      {selfieSubida ? 'Selfie capturada con cámara' : 'Abre tu cámara frontal y tómate la selfie'}
                     </Text>
                   </View>
 
@@ -357,12 +355,13 @@ export default function KYCVerifierModal({ visible, onVerified, onClose, userNam
                     <ActivityIndicator size="small" color="#FFB400" />
                   ) : (
                     <TouchableOpacity 
-                      style={[styles.scanBtn, selfieSubida && styles.scanBtnActive]} 
-                      onPress={capturarSelfieSimulada}
+                      style={[styles.scanBtn, { flexDirection: 'row', gap: 6, paddingHorizontal: 10 }, selfieSubida && styles.scanBtnActive]} 
+                      onPress={capturarSelfieConCamara}
                       activeOpacity={0.7}
                     >
+                      <Ionicons name="person-circle-outline" size={16} color={selfieSubida ? "#475569" : "#1a1a1a"} />
                       <Text style={[styles.scanBtnText, selfieSubida && styles.scanBtnTextActive]}>
-                        {selfieSubida ? 'Listo' : 'Selfie'}
+                        {selfieSubida ? 'Repetir' : 'Abrir Cámara'}
                       </Text>
                     </TouchableOpacity>
                   )}
