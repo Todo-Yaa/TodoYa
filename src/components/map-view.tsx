@@ -133,8 +133,9 @@ const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: n
       attributionControl: false
     }).setView(center, 13);
  
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
  
     const userMarker = L.marker(center).addTo(map)
@@ -158,12 +159,7 @@ const generateMapHtml = (providers: MapProvider[], center: { lat: number; lng: n
 };
 
 export default function MapView({ providersList }: MapViewProps) {
-  const { adaptPrice } = useUser();
-  const rawList = providersList || defaultProviders;
-  const activeList = rawList.map(p => ({
-    ...p,
-    price: adaptPrice ? adaptPrice(p.price) : p.price
-  }));
+  const { adaptPrice, lastKnownCity } = useUser();
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
@@ -172,10 +168,12 @@ export default function MapView({ providersList }: MapViewProps) {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
           const loc = await Location.getCurrentPositionAsync({});
-          setGpsLocation({
-            lat: loc.coords.latitude,
-            lng: loc.coords.longitude
-          });
+          if (loc?.coords?.latitude && loc?.coords?.longitude) {
+            setGpsLocation({
+              lat: loc.coords.latitude,
+              lng: loc.coords.longitude
+            });
+          }
         }
       } catch (err) {
         console.warn('[MapView] Error al obtener GPS en tiempo real:', err);
@@ -183,8 +181,31 @@ export default function MapView({ providersList }: MapViewProps) {
     })();
   }, []);
 
-  const defaultCenter = { lat: -17.7833, lng: -63.1821 }; // Santa Cruz de la Sierra
-  const center = gpsLocation || defaultCenter;
+  const getCityCenter = () => {
+    const cityLower = (lastKnownCity || '').toLowerCase();
+    if (cityLower.includes('arequipa')) {
+      return { lat: -16.4090, lng: -71.5375 };
+    }
+    if (cityLower.includes('lima') || cityLower.includes('callao') || cityLower.includes('peru') || cityLower.includes('perú')) {
+      return { lat: -12.0464, lng: -77.0428 };
+    }
+    return { lat: -17.7833, lng: -63.1821 }; // Santa Cruz de la Sierra
+  };
+
+  const center = gpsLocation || getCityCenter();
+
+  const getDynamicDefaultProviders = (centerCoords: { lat: number; lng: number }): MapProvider[] => [
+    { name: "Juan Ríos", lat: centerCoords.lat + 0.008, lng: centerCoords.lng - 0.009, service: "Plomero 🔧", rating: "4.9 ★", price: "Bs. 80" },
+    { name: "Carlos Mamani", lat: centerCoords.lat - 0.011, lng: centerCoords.lng + 0.014, service: "Electricista ⚡", rating: "4.7 ★", price: "Bs. 60" },
+    { name: "María López", lat: centerCoords.lat + 0.015, lng: centerCoords.lng + 0.008, service: "Pintora 🎨", rating: "4.8 ★", price: "Bs. 120" },
+    { name: "Andrés Silva", lat: centerCoords.lat - 0.006, lng: centerCoords.lng - 0.018, service: "AC / Aire ❄️", rating: "4.9 ★", price: "Bs. 150" }
+  ];
+
+  const rawList = providersList || getDynamicDefaultProviders(center);
+  const activeList = rawList.map(p => ({
+    ...p,
+    price: adaptPrice ? adaptPrice(p.price) : p.price
+  }));
 
   if (Platform.OS === ('web' as any)) {
     return (
