@@ -784,7 +784,7 @@ export default function SolicitarScreen() {
           
           return {
             ...pro,
-            price: `Bs. ${finalPrice}`,
+            price: adaptPrice ? adaptPrice(`Bs. ${finalPrice}`) : `Bs. ${finalPrice}`,
             priceValue: finalPrice,
             isCounterOffer: isCounter,
             originalPriceValue: baseBudget,
@@ -833,7 +833,7 @@ export default function SolicitarScreen() {
       
       const priceMsg = pro.isCounterOffer 
         ? `mi contraoferta de ${pro.price}` 
-        : `tu presupuesto propuesto de Bs. ${presupuestoInput}`;
+        : `tu presupuesto propuesto de ${adaptPrice ? adaptPrice(`Bs. ${presupuestoInput}`) : `Bs. ${presupuestoInput}`}`;
         
       setChatMessages([
         {

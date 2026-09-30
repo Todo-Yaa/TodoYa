@@ -137,35 +137,39 @@ export function adaptPriceText(text: string, cityOrLocation?: string | null): st
   const config = getCurrencyConfig(cityOrLocation);
 
   if (config.code === 'PEN') {
-    // 1. Reemplazar prefijos "Bs. 80", "Bs 80", "BOB 80"
-    let result = text.replace(/(?:Desde\s+)?(?:Bs\.|BOB|bov|Bs)\s*(\d+(?:\.\d+)?)/gi, (match, numStr) => {
+    // 1. Reemplazar prefijos "Bs. 5,000", "Bs. 80", "Bs 80", "BOB 80"
+    let result = text.replace(/(?:Desde\s+)?(?:Bs\.|BOB|bov|Bs)\s*(\d+(?:[.,]\d+)?)/gi, (match, numStr) => {
       const isDesde = /desde/i.test(match);
-      const num = parseFloat(numStr);
+      const cleanNumStr = numStr.replace(/,/g, '');
+      const num = parseFloat(cleanNumStr);
       const pen = convertBobToPen(num);
-      return `${isDesde ? 'Desde ' : ''}S/. ${pen}`;
+      return `${isDesde ? 'Desde ' : ''}S/. ${pen.toLocaleString('en-US')}`;
     });
 
-    // 2. Reemplazar sufijos "80 Bs.", "80Bs", "80 BOB"
-    result = result.replace(/(\d+(?:\.\d+)?)\s*(?:Bs\.|BOB|bov|Bs)/gi, (_match, numStr) => {
-      const num = parseFloat(numStr);
+    // 2. Reemplazar sufijos "5,000 Bs.", "80 Bs.", "80Bs", "80 BOB"
+    result = result.replace(/(\d+(?:[.,]\d+)?)\s*(?:Bs\.|BOB|bov|Bs)/gi, (_match, numStr) => {
+      const cleanNumStr = numStr.replace(/,/g, '');
+      const num = parseFloat(cleanNumStr);
       const pen = convertBobToPen(num);
-      return `S/. ${pen}`;
+      return `S/. ${pen.toLocaleString('en-US')}`;
     });
 
     return result;
   } else {
     // Moneda Bolivia (BOB / Bs.)
-    let result = text.replace(/(?:Desde\s+)?(?:S\/\.)\s*(\d+(?:\.\d+)?)/gi, (match, numStr) => {
+    let result = text.replace(/(?:Desde\s+)?(?:S\/\.)\s*(\d+(?:[.,]\d+)?)/gi, (match, numStr) => {
       const isDesde = /desde/i.test(match);
-      const num = parseFloat(numStr);
+      const cleanNumStr = numStr.replace(/,/g, '');
+      const num = parseFloat(cleanNumStr);
       const bob = convertPenToBob(num);
-      return `${isDesde ? 'Desde ' : ''}Bs. ${bob}`;
+      return `${isDesde ? 'Desde ' : ''}Bs. ${bob.toLocaleString('en-US')}`;
     });
 
-    result = result.replace(/(\d+(?:\.\d+)?)\s*(?:S\/\.)/gi, (_match, numStr) => {
-      const num = parseFloat(numStr);
+    result = result.replace(/(\d+(?:[.,]\d+)?)\s*(?:S\/\.)/gi, (_match, numStr) => {
+      const cleanNumStr = numStr.replace(/,/g, '');
+      const num = parseFloat(cleanNumStr);
       const bob = convertPenToBob(num);
-      return `${bob} Bs.`;
+      return `${bob.toLocaleString('en-US')} Bs.`;
     });
 
     return result;

@@ -23,7 +23,8 @@ export default function LeadsScreen() {
     triggerLocationCheck,
     formatPrice,
     adaptPrice,
-    currencySymbol
+    currencySymbol,
+    currencyCode
   } = useUser();
   const [refreshing, setRefreshing] = useState(false);
   const [isTrayOpen, setIsTrayOpen] = useState(false);
@@ -445,7 +446,7 @@ export default function LeadsScreen() {
                   {isB2B && <Ionicons name="business" size={16} color="#6366f1" style={{ marginRight: 6 }} />}
                   {lead.titulo}
                 </Text>
-                <Text style={[styles.precio, isB2B && { color: '#6366f1' }]}>{lead.precio}</Text>
+                <Text style={[styles.precio, isB2B && { color: '#6366f1' }]}>{adaptPrice ? adaptPrice(lead.precio) : lead.precio}</Text>
               </View>
 
               <Text style={styles.descriptionText} numberOfLines={2}>
@@ -527,7 +528,7 @@ export default function LeadsScreen() {
                   styles.historyItemAmount,
                   { color: t.tipo === 'recarga' ? '#2e7d32' : '#c62828', fontWeight: 'bold' }
                 ]}>
-                  {t.tipo === 'recarga' ? '+' : '-'} Bs. {t.monto_monedas}
+                  {t.tipo === 'recarga' ? '+' : '-'} {adaptPrice ? adaptPrice(`Bs. ${t.monto_monedas}`) : `Bs. ${t.monto_monedas}`}
                 </Text>
               </View>
             ))
@@ -545,44 +546,47 @@ export default function LeadsScreen() {
                     <View style={styles.pulseDot} />
                     <Text style={styles.pulseText}>CONEXIÓN NACIONAL ACTIVA</Text>
                   </View>
-                  <Text style={styles.nationalSubtitle}>Monitoreando licitaciones en todo Bolivia en vivo</Text>
+                  <Text style={styles.nationalSubtitle}>Monitoreando licitaciones en todo {currencyCode === 'PEN' ? 'Perú' : 'Bolivia'} en vivo</Text>
                 </View>
                 {[
-                  { id: 101, ciudad: 'La Paz', cliente: 'Banco Mercantil S.A.', servicio: 'Servicios B2B', desc: 'Auditoría gráfica corporativa anual', precio: 'Bs. 5,000' },
-                  { id: 102, ciudad: 'Santa Cruz', cliente: 'Hotel Camino Real', servicio: 'Decoración & Eventos', desc: 'Decoración con globos helio para convención', precio: 'Bs. 3,500' },
-                  { id: 103, ciudad: 'Cochabamba', cliente: 'Fábrica PIL Andina', servicio: 'Papelería & Oficina', desc: '200 cajas de papel membretado oficial', precio: 'Bs. 8,200' },
-                ].map((nl) => (
-                  <View key={nl.id} style={styles.nationalLeadItem}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={styles.nationalLeadCity}>{nl.ciudad} · {nl.cliente}</Text>
-                      <Text style={styles.nationalLeadPrice}>{nl.precio}</Text>
+                  { id: 101, ciudad: currencyCode === 'PEN' ? 'Lima' : 'La Paz', cliente: currencyCode === 'PEN' ? 'Banco de Crédito BCP S.A.' : 'Banco Mercantil S.A.', servicio: 'Servicios B2B', desc: 'Auditoría gráfica corporativa anual', precio: 'Bs. 5,000' },
+                  { id: 102, ciudad: currencyCode === 'PEN' ? 'Arequipa' : 'Santa Cruz', cliente: currencyCode === 'PEN' ? 'Hotel Costa del Sol' : 'Hotel Camino Real', servicio: 'Decoración & Eventos', desc: 'Decoración con globos helio para convención', precio: 'Bs. 3,500' },
+                  { id: 103, ciudad: currencyCode === 'PEN' ? 'Trujillo' : 'Cochabamba', cliente: currencyCode === 'PEN' ? 'Corporación Gloria S.A.' : 'Fábrica PIL Andina', servicio: 'Papelería & Oficina', desc: '200 cajas de papel membretado oficial', precio: 'Bs. 8,200' },
+                ].map((nl) => {
+                  const displayPrice = adaptPrice ? adaptPrice(nl.precio) : nl.precio;
+                  return (
+                    <View key={nl.id} style={styles.nationalLeadItem}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={styles.nationalLeadCity}>{nl.ciudad} · {nl.cliente}</Text>
+                        <Text style={styles.nationalLeadPrice}>{displayPrice}</Text>
+                      </View>
+                      <Text style={styles.nationalLeadTitle}>{nl.servicio}: {nl.desc}</Text>
+                      <TouchableOpacity
+                        style={styles.nationalApplyBtn}
+                        onPress={() => {
+                          setConfirmConfig({
+                            title: '¡Postulación Nacional!',
+                            message: `¿Deseas enviar una propuesta comercial inmediata a "${nl.cliente}" en ${nl.ciudad} por un valor de ${displayPrice}?`,
+                            singleButton: false,
+                            onConfirm: () => {
+                              showNotification('Propuesta Enviada', `Tu propuesta ha sido enviada con éxito al cliente en ${nl.ciudad}.`, 'success');
+                            }
+                          });
+                          setShowConfirmModal(true);
+                        }}
+                      >
+                        <Text style={styles.nationalApplyText}>Enviar Propuesta Inmediata</Text>
+                      </TouchableOpacity>
                     </View>
-                    <Text style={styles.nationalLeadTitle}>{nl.servicio}: {nl.desc}</Text>
-                    <TouchableOpacity
-                      style={styles.nationalApplyBtn}
-                      onPress={() => {
-                        setConfirmConfig({
-                          title: '¡Postulación Nacional!',
-                          message: `¿Deseas enviar una propuesta comercial inmediata a "${nl.cliente}" en ${nl.ciudad} por un valor de ${nl.precio}?`,
-                          singleButton: false,
-                          onConfirm: () => {
-                            showNotification('Propuesta Enviada', `Tu propuesta ha sido enviada con éxito al cliente en ${nl.ciudad}.`, 'success');
-                          }
-                        });
-                        setShowConfirmModal(true);
-                      }}
-                    >
-                      <Text style={styles.nationalApplyText}>Enviar Propuesta Inmediata</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             ) : (
               <View style={styles.nationalLockedCard}>
                 <Ionicons name="lock-closed" size={40} color="#94a3b8" />
                 <Text style={styles.nationalLockedTitle}>Cartera Nacional Bloqueada</Text>
                 <Text style={styles.nationalLockedDesc}>
-                  Accede a una cartera nacional de clientes empresa y/o persona natural en todo Bolivia (La Paz, Cochabamba, Santa Cruz) en tiempo real.
+                  Accede a una cartera nacional de clientes empresa y/o persona natural en todo {currencyCode === 'PEN' ? 'Perú (Lima, Arequipa, Trujillo)' : 'Bolivia (La Paz, Cochabamba, Santa Cruz)'} en tiempo real.
                 </Text>
                 <TouchableOpacity
                   style={styles.nationalUpgradeBtn}
