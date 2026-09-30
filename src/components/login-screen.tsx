@@ -1282,30 +1282,26 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Botón de Despliegue Sutil de Opciones de Prueba y Simulaciones (Abajo de Gmail / LinkedIn) */}
-        <View style={{ marginTop: 22, alignItems: "center", width: "100%" }}>
+        {/* Flecha sutil y discreta para desplegar opciones de prueba (Abajo de Gmail / LinkedIn) */}
+        <View style={{ marginTop: 18, alignItems: "center", width: "100%" }}>
           <TouchableOpacity
             style={{
-              flexDirection: "row",
+              paddingVertical: 6,
+              paddingHorizontal: 12,
+              borderRadius: 16,
               alignItems: "center",
               justifyContent: "center",
-              gap: 6,
-              paddingVertical: 8,
-              paddingHorizontal: 14,
-              borderRadius: 20,
-              backgroundColor: "rgba(241, 245, 249, 0.6)",
+              flexDirection: "row",
+              gap: 4,
+              opacity: 0.5,
             }}
             onPress={() => setMostrarOpcionesPrueba(!mostrarOpcionesPrueba)}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
+            hitSlop={{ top: 10, bottom: 10, left: 15, right: 15 }}
           >
-            <Text style={{ fontSize: 11, color: "#94a3b8", fontWeight: "600" }}>
-              {mostrarOpcionesPrueba
-                ? "Ocultar accesos de prueba"
-                : "Pruebas y simulaciones de demo"}
-            </Text>
             <Ionicons
               name={mostrarOpcionesPrueba ? "chevron-up" : "chevron-down"}
-              size={14}
+              size={18}
               color="#94a3b8"
             />
           </TouchableOpacity>
