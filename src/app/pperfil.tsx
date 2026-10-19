@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Modal, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
+import { getBusinessContextId, getBusinessCategories, getBusinessProviderSettings, saveBusinessProviderSettings, type BusinessProviderSettings, type BusinessProviderCategory } from '../services/auth/business-provider';
+import { getProfessionalSettings, type ProfessionalSettings } from '../services/auth/professional-profile';
 
 // Configura los enlaces de tus redes sociales aquí:
 const FACEBOOK_LINK = 'https://www.instagram.com/todoo__ya';
@@ -17,7 +19,55 @@ const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
  */
 export default function PperfilScreen() {
   const { t, i18n } = useTranslation();
+  const [serverProfile, setServerProfile] = useState<ProfessionalSettings | null>(null);
   const { toggleRole, coins, planId, subscribeToPlan, orders, logout, activeUser, deleteAccount, triggerLocationCheck } = useUser();
+  useEffect(() => {
+    if (!activeUser || activeUser.tipoEntidad === 'empresa') {
+      setServerProfile(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    getProfessionalSettings()
+      .then((profile) => {
+        if (!cancelled) setServerProfile(profile);
+      })
+      .catch(() => {
+        if (!cancelled) setServerProfile(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUser?.correoOTelefono, activeUser?.tipoEntidad]);
+  const [businessProvider, setBusinessProvider] = useState<BusinessProviderSettings | null>(null);
+  const [businessCategories, setBusinessCategories] = useState<BusinessProviderCategory[]>([]);
+  const [editingBusiness, setEditingBusiness] = useState(false);
+  const [editingBio, setEditingBio] = useState('');
+  const [editingCoverage, setEditingCoverage] = useState<'LOCAL'|'NATIONAL'>('LOCAL');
+  const [editingIds, setEditingIds] = useState<string[]>([]);
+  const [providerSaving, setProviderSaving] = useState(false);
+  const [providerError, setProviderError] = useState('');
+  useEffect(() => {
+    if (activeUser?.tipoEntidad !== 'empresa') return;
+    void (async () => {
+      try {
+        const [id, cats] = await Promise.all([getBusinessContextId(), getBusinessCategories()]);
+        setBusinessCategories(cats);
+        setBusinessProvider(await getBusinessProviderSettings(id));
+      } catch (e) { setProviderError(e instanceof Error ? e.message : 'No se pudo cargar el perfil empresarial'); }
+    })();
+  }, [activeUser?.tipoEntidad]);
+  const saveProviderEdit = async () => {
+    setProviderSaving(true); setProviderError('');
+    try {
+      const id = await getBusinessContextId();
+      const result = await saveBusinessProviderSettings(id, { bio: editingBio, coverage: editingCoverage, categoryIds: editingIds });
+      setBusinessProvider(result); setEditingBusiness(false);
+    } catch (e) { setProviderError(e instanceof Error ? e.message : 'No se pudo actualizar'); }
+    finally { setProviderSaving(false); }
+  };
 
   useEffect(() => {
     triggerLocationCheck().catch(() => {});
@@ -81,12 +131,12 @@ export default function PperfilScreen() {
     : (userPlan === 'business_2' || userPlan === 'business_3');
 
   const professionText = isB2BProvider
-    ? `Empresa Proveedora de ${activeUser?.serviciosOfrecidos?.join(', ') || activeUser?.rubro || 'Branding & Lettering'} · Cobertura: ${activeUser?.coberturaB2B || 'Nacional'}`
-    : `${activeUser?.serviciosOfrecidos?.join(', ') || 'Plomería'} · Experiencia: ${activeUser?.anosExperiencia || 'Más de 3 años'}`;
+    ? `Empresa Proveedora de ${businessProvider?.categories.map(x => x.name).join(', ') || 'Sin categorías'} · Cobertura: ${businessProvider?.coverage === 'NATIONAL' ? 'Nacional' : 'Local'}`
+    : `${serverProfile?.trades.map(t => t.name).join(', ') || 'Sin especialidades'} · Experiencia: ${serverProfile?.experienceLevel === 'LESS_THAN_ONE_YEAR' ? 'Menos de 1 año' : serverProfile?.experienceLevel === 'ONE_TO_THREE_YEARS' ? '1 a 3 años' : serverProfile?.experienceLevel === 'MORE_THAN_THREE_YEARS' ? 'Más de 3 años' : 'Sin configurar'}`;
 
   // Filtra y calcula los trabajos activos asignados al perfil del proveedor
   const myJobs = orders.filter(o => o.proveedor === providerName);
-  const trabajosCount = 15 + myJobs.length; // 15 trabajos preexistentes simulados + los nuevos postulados
+  const trabajosCount = 0; // Pendiente conectar el conteo del backend
 
   // Calcular ingresos del mes dinámicamente
   const completedJobs = myJobs.filter(o => o.estado === 'Completado');
@@ -98,15 +148,13 @@ export default function PperfilScreen() {
     }
     return acc + priceVal;
   }, 0);
-  const totalEarnings = 2800 + dynamicEarnings;
+  const totalEarnings = 0; // Sin conciliación financiera, no simular ingresos
 
   // Calcular calificación promedio dinámicamente
   const ratedJobs = myJobs.filter(o => o.estado === 'Completado' && o.calificado);
-  let averageRating = 4.9;
-  if (ratedJobs.length > 0) {
-    const sum = ratedJobs.reduce((acc, o) => acc + (o.calificacionEstrellas || 5), 0);
-    averageRating = parseFloat((sum / ratedJobs.length).toFixed(1));
-  }
+  let averageRating = 0;
+  // Sin reseñas persistidas en el servidor, evitar promedios derivados de pedidos locales.
+  void ratedJobs;
 
   return (
     <View style={styles.container}>
@@ -190,18 +238,44 @@ export default function PperfilScreen() {
         </Text>
         <View style={styles.infoCard}>
           <View style={styles.tagsRow}>
-            {(activeUser?.serviciosOfrecidos || (isB2BProvider ? ['Branding & Lettering'] : ['Plomería'])).map((serv) => (
+            {(isB2BProvider ? (businessProvider?.categories.map(x => x.name) || []) : (activeUser?.serviciosOfrecidos || ['Plomería'])).map((serv) => (
               <View key={serv} style={[styles.infoTag, isB2BProvider && { backgroundColor: '#e0e7ff' }]}>
                 <Text style={[styles.infoTagText, isB2BProvider && { color: '#3730a3' }]}>{serv}</Text>
               </View>
             ))}
           </View>
           <Text style={styles.infoText}>
-            {activeUser?.descripcionProveedor || (isB2BProvider
+            {(isB2BProvider ? businessProvider?.bio : activeUser?.descripcionProveedor) || (isB2BProvider
               ? t('profile.default_desc_business')
               : t('profile.default_desc_provider'))}
           </Text>
         </View>
+
+        {isB2BProvider && <View style={{ paddingHorizontal: 20, marginVertical: 12 }}>
+          {!!providerError && <Text style={{ color: '#be123c', marginBottom: 8 }}>{providerError}</Text>}
+          <TouchableOpacity onPress={() => {
+            setEditingBio(businessProvider?.bio ?? ''); setEditingCoverage(businessProvider?.coverage ?? 'LOCAL');
+            setEditingIds(businessProvider?.categoryIds ?? []); setEditingBusiness(true);
+          }} style={{ backgroundColor: '#e0e7ff', borderRadius: 12, padding: 14 }}>
+            <Text style={{ color: '#3730a3', textAlign: 'center', fontWeight: '600' }}>Editar perfil de empresa proveedora</Text>
+          </TouchableOpacity>
+          <Modal visible={editingBusiness} transparent animationType="fade" onRequestClose={() => setEditingBusiness(false)}>
+            <View style={{ flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#0008' }}>
+              <ScrollView style={{ backgroundColor: 'white', borderRadius: 16, padding: 18, maxHeight: '85%' }}>
+                <Text style={{ fontSize: 20, marginBottom: 12 }}>Editar empresa proveedora</Text>
+                <Text>Presentación (mínimo 10 caracteres)</Text>
+                <TextInput multiline value={editingBio} onChangeText={setEditingBio} style={{ borderWidth: 1, borderColor: '#ddd', padding: 10, borderRadius: 8, minHeight: 90 }} />
+                <Text style={{ marginTop: 14 }}>Cobertura</Text>
+                {(['LOCAL', 'NATIONAL'] as const).map(c => <TouchableOpacity key={c} onPress={() => setEditingCoverage(c)} style={{ padding: 10 }}><Text>{editingCoverage === c ? '●' : '○'} {c === 'LOCAL' ? 'Local' : 'Nacional'}</Text></TouchableOpacity>)}
+                <Text style={{ marginTop: 12 }}>Categorías</Text>
+                {businessCategories.map(c => <TouchableOpacity key={c.id} onPress={() => setEditingIds(ids => ids.includes(c.id) ? ids.filter(x => x !== c.id) : [...ids, c.id])} style={{ padding: 9 }}><Text>{editingIds.includes(c.id) ? '☑' : '☐'} {c.name}</Text></TouchableOpacity>)}
+                {!!providerError && <Text style={{ color: '#be123c' }}>{providerError}</Text>}
+                <TouchableOpacity disabled={providerSaving} onPress={() => void saveProviderEdit()} style={{ backgroundColor: '#6366f1', padding: 14, borderRadius: 10, marginTop: 12 }}><Text style={{ textAlign: 'center', color: 'white' }}>{providerSaving ? 'Guardando...' : 'Guardar cambios'}</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setEditingBusiness(false)} style={{ padding: 14 }}><Text style={{ textAlign: 'center' }}>Cancelar</Text></TouchableOpacity>
+              </ScrollView>
+            </View>
+          </Modal>
+        </View>}
 
         {/* Tarjeta de Cambio de Rol a Cliente */}
         <Text style={styles.sectionTitle}>{t('profile.client_mode_title')}</Text>

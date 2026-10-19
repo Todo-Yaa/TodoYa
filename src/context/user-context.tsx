@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import Storage from '../utils/storage';
+import { validPeruRuc } from '../services/auth/ruc';
+import { supabase } from '../services/auth/supabase';
+import { listTrades, saveProfessionalSettings } from '../services/auth/professional-profile';
+import { bootstrapAuthenticatedUser, type ServerIdentity } from '../services/auth/identity';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
@@ -69,8 +73,9 @@ interface UserContextType {
   completeJob: (orderId: number) => void; // Finaliza un trabajo
   resetData: () => void;   // Resetea todos los estados al valor inicial
   isAuthenticated: boolean; // Estado de sesión del usuario
+  authReady: boolean; // Restauración inicial de Supabase concluida
   userName: string;        // Nombre personalizado del usuario activo
-  login: (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole) => Promise<boolean>; // Inicia sesión
+  login: (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole, expectedMode?: 'PERSON' | 'BUSINESS') => Promise<boolean>; // Inicia sesión
   logout: () => void;      // Cierra sesión y limpia la memoria
   deleteAccount: () => Promise<boolean>; // Elimina la cuenta permanentemente
   usuariosRegistrados: UsuarioRegistrado[]; // Lista de todos los usuarios de la base de datos local
@@ -192,6 +197,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [planId, setPlanId] = useState<'provider_1' | 'provider_2' | 'provider_3' | 'business_1' | 'business_2' | 'business_3' | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authReady, setAuthReady] = useState(false);
   const [userName, setUserName] = useState<string>('Luis Alberto M.');
   const [usuariosRegistrados, setUsuariosRegistrados] = useState<UsuarioRegistrado[]>([]);
   const [activeUser, setActiveUser] = useState<UsuarioRegistrado | null>(null);
@@ -373,7 +379,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const syncRes = await fetch('/api/sync', { method: 'POST' });
       if (syncRes.ok) {
         const syncData = await syncRes.json();
-        const total = syncData.synced 
+        const total = syncData.synced
           ? Object.values(syncData.synced as Record<string, number>).reduce((a, b) => a + b, 0)
           : 0;
         if (total > 0) {
@@ -438,255 +444,63 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [isDbOnline]);
 
-  // Efecto inicial: Carga los datos guardados en la memoria persistente al iniciar la app
+  // La sesión anterior (todo_ya_auth) nunca concede autenticación.
+  // Solo Supabase + el bootstrap verificado por NestJS permiten abrir la aplicación.
+  const applyAuthenticatedIdentity = async (result: ServerIdentity) => {
+    const identity = result.identity;
+    const name = [identity.givenNames, identity.paternalSurname].filter(Boolean).join(' ') || identity.email || 'Usuario';
+    const company = result.mode === 'BUSINESS';
+    const perfil: UsuarioRegistrado = {
+      nombre: name,
+      correoOTelefono: identity.email ?? '',
+      rol: company ? 'business' : 'client',
+      tipoProveedor: 'normal',
+      tipoEntidad: company ? 'empresa' : 'natural',
+    };
+    setActiveUser(perfil);
+    setUserName(name);
+    setUserRole(company ? 'business' : 'client');
+    setIsAuthenticated(true);
+  };
   useEffect(() => {
-    async function loadData() {
-      // 1. Verificar si el servidor está respondiendo (Neon.db u offline local_db.json)
-      let online = false;
+    let active = true;
+    const restore = async () => {
       try {
-        const response = await fetch('/api/db-status');
-        if (response.ok) {
-          const statusData = await response.json();
-          if (statusData.status === 'ok') {
-            online = true;
-            setIsDbOnline(true);
-            wasOnlineRef.current = true;
-            console.log(`[UserContext] Conexión establecida con el servidor (Base de datos: ${statusData.database})`);
-            // Si acabamos de conectar con Neon, sembrar si está vacío
-            if (statusData.database === 'connected') {
-              fetch('/api/seed', { method: 'POST' }).catch(() => {});
-            }
-          }
+        // Clear old insecure/local account material, never restore it.
+        await Promise.all([
+          Storage.removeItem('todo_ya_auth'),
+          Storage.removeItem('todo_ya_active_user'),
+          Storage.removeItem('todo_ya_registered_users'),
+        ]);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (!active) return;
+        if (error || !session) {
+          setIsAuthenticated(false);
+          setActiveUser(null);
+          return;
         }
-      } catch (err) {
-        console.warn('[UserContext] Ejecutándose en modo local de dispositivo (offline).');
+        const user = await bootstrapAuthenticatedUser();
+        if (active) await applyAuthenticatedIdentity(user);
+      } catch (error) {
+        // Network/backend failure must not create a fake authenticated session.
+        if (active) { setIsAuthenticated(false); setActiveUser(null); }
+        console.warn('[Auth] No se pudo restaurar la sesión verificada', error);
+      } finally {
+        if (active) setAuthReady(true);
       }
-
-      // Cargar otros valores locales del dispositivo que son fijos de la sesión
-      const savedNotifs = await Storage.getItem('todo_ya_notifications');
-      if (savedNotifs) {
-        try { setNotificationsList(JSON.parse(savedNotifs)); } catch(_) {}
-      }
-
-      const savedRole = await Storage.getItem('todo_ya_role');
-      if (savedRole) setUserRole(savedRole as UserRole);
-
-      const savedCoins = await Storage.getItem('todo_ya_coins');
-      if (savedCoins !== null) setCoins(Number(savedCoins));
-
-      const savedPlan = await Storage.getItem('todo_ya_plan_id');
-      if (savedPlan) setPlanId(savedPlan as any);
-
-      const savedName = await Storage.getItem('todo_ya_username');
-      if (savedName) setUserName(savedName);
-
-      const savedCity = await Storage.getItem('todo_ya_last_known_city');
-      if (savedCity) {
-        setLastKnownCity(savedCity);
-      }
-
-      const savedAuth = await Storage.getItem('todo_ya_auth');
-      if (savedAuth === 'true') {
-        setIsAuthenticated(true);
-        // Verificar ubicación en tiempo real al iniciar sesión de forma diferida
-        setTimeout(() => {
-          triggerLocationCheck().catch(() => {});
-        }, 1200);
-      }
-
-      const savedActiveUser = await Storage.getItem('todo_ya_active_user');
-      if (savedActiveUser) {
-        try {
-          const usuarioActivoParseado = JSON.parse(savedActiveUser);
-          // CORRECCIÓN: Nos aseguramos de sanitizar el rol y el tipo de entidad de la sesión activa
-          // en base a su correo electrónico o datos fiscales para evitar que persista como 'natural' por error.
-          const esEmpresaActiva = usuarioActivoParseado.tipoEntidad === 'empresa' || 
-                                 (usuarioActivoParseado.correoOTelefono || '').toLowerCase().includes('empresa') || 
-                                 !!usuarioActivoParseado.nit;
-          usuarioActivoParseado.tipoEntidad = esEmpresaActiva ? 'empresa' : 'natural';
-          
-          if (!usuarioActivoParseado.planId) {
-            usuarioActivoParseado.planId = esEmpresaActiva ? 'business_1' : 'provider_1';
-          }
-          setPlanId(usuarioActivoParseado.planId);
-          setActiveUser(usuarioActivoParseado);
-        } catch(e) {}
-      }
-
-      // Si la BD está online, sincronizar listas desde el servidor. Si no, usar localStorage
-      if (online) {
-        try {
-          // Obtener pedidos de Neon.db
-          const ordRes = await fetch('/api/orders');
-          if (ordRes.ok) {
-            const ordData = await ordRes.json();
-            if (ordData.status === 'success') {
-              setOrders(ordData.data);
-            }
-          }
-          
-          // Obtener usuarios de Neon.db
-          const usrRes = await fetch('/api/users');
-          if (usrRes.ok) {
-            const usrData = await usrRes.json();
-            if (usrData.status === 'success') {
-              setUsuariosRegistrados(usrData.data);
-              
-              // Migración automática del usuario activo a Neon DB
-              if (savedActiveUser) {
-                let parsedUser: UsuarioRegistrado | null = null;
-                try { parsedUser = JSON.parse(savedActiveUser); } catch(e) {}
-                
-                if (parsedUser && !parsedUser.id) {
-                   const regRes = await fetch('/api/users', {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify(parsedUser)
-                   });
-                   if (regRes.ok) {
-                     const regData = await regRes.json();
-                     if (regData.status === 'success' && regData.user) {
-                       parsedUser.id = regData.user.id;
-                       setActiveUser(parsedUser);
-                       await Storage.setItem('todo_ya_active_user', JSON.stringify(parsedUser));
-                       
-                       // Refrescar billetera tras crear
-                       const wRes = await fetch(`/api/wallet?userId=${parsedUser.id}`);
-                       if (wRes.ok) {
-                         const wData = await wRes.json();
-                         if (wData.status === 'success') setCoins(wData.coins);
-                       }
-                     }
-                   }
-                }
-              }
-            }
-          }
-        } catch (e) {
-          console.error('[UserContext] Error al sincronizar con Neon.db:', e);
-        }
-      } else {
-        // Carga de historial de pedidos local (Offline)
-        const savedOrders = await Storage.getItem('todo_ya_orders');
-        if (savedOrders) {
-          setOrders(JSON.parse(savedOrders));
-        } else {
-          setOrders(initialSeedOrders);
-        }
-
-        // Carga de usuarios registrados locales (Offline)
-        const savedUsers = await Storage.getItem('todo_ya_registered_users');
-        if (savedUsers) {
-          try {
-            const usuariosParseados = JSON.parse(savedUsers);
-            if (Array.isArray(usuariosParseados)) {
-              const usuariosSaneados: UsuarioRegistrado[] = usuariosParseados.map((u: any) => ({
-                nombre: u.nombre || u.name || 'Usuario',
-                correoOTelefono: u.correoOTelefono || u.emailOrPhone || '',
-                rol: u.rol || u.role || 'client',
-                contrasena: u.contrasena || u.password || 'demo1234',
-                tipoProveedor: u.tipoProveedor || u.providerType || 'normal',
-                tipoEntidad: u.tipoEntidad || 'natural',
-                nit: u.nit,
-                correoFacturacion: u.correoFacturacion,
-                rubro: u.rubro,
-                ofreceB2B: u.ofreceB2B,
-                proveedorConfigurado: u.proveedorConfigurado,
-                serviciosOfrecidos: u.serviciosOfrecidos,
-                anosExperiencia: u.anosExperiencia,
-                descripcionProveedor: u.descripcionProveedor,
-                coberturaB2B: u.coberturaB2B,
-                planId: u.planId || (u.tipoEntidad === 'empresa' ? 'business_1' : 'provider_1')
-              }));
-              setUsuariosRegistrados(usuariosSaneados);
-            } else {
-              setUsuariosRegistrados(initialSeedUsers);
-            }
-          } catch (e) {
-            setUsuariosRegistrados(initialSeedUsers);
-          }
-        } else {
-          setUsuariosRegistrados(initialSeedUsers);
-          await Storage.setItem('todo_ya_registered_users', JSON.stringify(initialSeedUsers));
-        }
-      }
-    }
-    loadData();
+    };
+    void restore();
+    return () => { active = false; };
   }, []);
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // OAUTH REAL (Captura de tokens redireccionados en Web)
-  // ─────────────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const handleWebOAuth = async () => {
-        const hash = window.location.hash;
-        const search = window.location.search;
-        
-        // 1. Google OAuth (Implicit Flow returns access_token in URL hash)
-        if (hash && hash.includes('access_token=')) {
-          const params = new URLSearchParams(hash.substring(1));
-          const accessToken = params.get('access_token');
-          if (accessToken) {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-            
-            try {
-              const res = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`);
-              if (res.ok) {
-                const profile = await res.json();
-                const email = profile.email;
-                const name = profile.name || email.split('@')[0];
-                
-                showNotification('🔑 Conexión Google', `Autenticado con éxito como ${name}.`, 'success');
-                await registrarEIniciarSesion(name, email, 'client', 'google');
-                router.replace('/');
-              }
-            } catch (err) {
-              console.error('Error al obtener perfil de Google:', err);
-            }
-          }
-        }
-        
-        // 2. LinkedIn OAuth (Code Flow returns auth code in URL query)
-        if (search && search.includes('code=')) {
-          const params = new URLSearchParams(search);
-          const code = params.get('code');
-          if (code) {
-            window.history.replaceState(null, '', window.location.pathname);
-            
-            try {
-              const res = await fetch('/api/auth-linkedin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code, redirectUri: window.location.origin })
-              });
-              if (res.ok) {
-                const data = await res.json();
-                if (data.status === 'success') {
-                  showNotification('🔑 Conexión LinkedIn', `Autenticado con éxito como ${data.name}.`, 'success');
-                  await registrarEIniciarSesion(data.name, data.email, 'client', 'linkedin');
-                  router.replace('/');
-                } else {
-                  console.warn('Fallo en LinkedIn Auth:', data.message);
-                }
-              }
-            } catch (err) {
-              console.error('Error al intercambiar código de LinkedIn:', err);
-            }
-          }
-        }
-      };
-      
-      handleWebOAuth();
-    }
-  }, [usuariosRegistrados]);
+  // Social OAuth antiguo inhabilitado: se integrará con PKCE verificado de Supabase.
 
   // Polling para Notificaciones Reales sobre Neon DB
   useEffect(() => {
     if (!isAuthenticated) return;
 
     let lastMaxId = 0;
-    
+
     // Inicializar el ID máximo al arrancar
     if (orders.length > 0) {
       lastMaxId = Math.max(...orders.map(o => o.id));
@@ -707,11 +521,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
         // 1. Detección para Proveedores: Nuevas solicitudes publicadas
         if (userRole === 'provider') {
           const newOrders = remoteOrders.filter(o => o.id > lastMaxId && o.estado === 'Buscando proveedor');
-          
+
           if (newOrders.length > 0) {
             // Filtrar si el proveedor configuró servicios
             const providerServices = activeUser?.serviciosOfrecidos || [];
-            
+
             for (const order of newOrders) {
               const matchesService = providerServices.length === 0 || providerServices.includes(order.servicio);
               if (matchesService) {
@@ -761,10 +575,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
                   for (const msg of newMessages) {
                     const msgOrder = remoteOrders.find(o => o.id === msg.orderId);
                     if (msgOrder) {
-                      const isParticipant = 
-                        (userRole === 'provider' && msgOrder.proveedor === userName) || 
+                      const isParticipant =
+                        (userRole === 'provider' && msgOrder.proveedor === userName) ||
                         (userRole !== 'provider' && msgOrder.estado === 'En progreso');
-                      
+
                       if (isParticipant && msg.senderName !== userName && msg.senderName !== 'Tú') {
                         showNotification(
                           `💬 ${msg.senderName}:`,
@@ -801,7 +615,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       let nextRole: UserRole = 'client';
       const isEmpresa = activeUser?.tipoEntidad === 'empresa' || userRole === 'business';
-      
+
       if (isEmpresa) {
         nextRole = userRole === 'business' ? 'provider' : 'business';
       } else {
@@ -819,7 +633,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (nextRole === 'provider') {
         triggerLocationCheck().catch(() => {});
       }
-      
+
       setTimeout(() => {
         setIsSwitchingRole(false);
       }, 500);
@@ -852,11 +666,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
    * Añade un nuevo pedido a la lista local. El rol es de Cliente.
    */
   const addOrder = async (
-    titulo: string, 
-    servicio: string, 
-    description: string, 
-    precio: string, 
-    urgencia: string, 
+    titulo: string,
+    servicio: string,
+    description: string,
+    precio: string,
+    urgencia: string,
     proveedor: string | null = null
   ) => {
     // Si se especificó un proveedor (se aceptó el servicio residencial), cobrar comisión según plan
@@ -883,7 +697,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             const newCoins = Math.max(0, currentCoins - debitCoins);
 
             // Actualizar localmente la lista de usuarios
-            const updatedUsers = usuariosRegistrados.map(u => 
+            const updatedUsers = usuariosRegistrados.map(u =>
               u.nombre === proveedor ? { ...u, monedas: newCoins } : u
             );
             setUsuariosRegistrados(updatedUsers);
@@ -940,12 +754,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          titulo, 
-          servicio, 
-          description, 
-          precio, 
-          urgencia, 
+        body: JSON.stringify({
+          titulo,
+          servicio,
+          description,
+          precio,
+          urgencia,
           proveedor,
           clienteId: activeUser?.id || null, // ✅ FK real al cliente que crea el pedido
         })
@@ -991,10 +805,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (!targetOrder) return false;
 
     // 2. Determinar si el servicio es de tipo B2B
-    const isOrderB2B = 
-      targetOrder.servicio === 'Decoración & Eventos' || 
-      targetOrder.servicio === 'Branding & Lettering' || 
-      targetOrder.servicio === 'Papelería & Oficina' || 
+    const isOrderB2B =
+      targetOrder.servicio === 'Decoración & Eventos' ||
+      targetOrder.servicio === 'Branding & Lettering' ||
+      targetOrder.servicio === 'Papelería & Oficina' ||
       targetOrder.servicio === 'Servicios B2B';
 
     const currentEntidad = activeUser?.tipoEntidad || 'natural';
@@ -1011,10 +825,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
           const now = new Date();
           const b2bCountThisMonth = orders.filter(o => {
             if (o.proveedor !== providerName) return false;
-            const isB2B = 
-              o.servicio === 'Decoración & Eventos' || 
-              o.servicio === 'Branding & Lettering' || 
-              o.servicio === 'Papelería & Oficina' || 
+            const isB2B =
+              o.servicio === 'Decoración & Eventos' ||
+              o.servicio === 'Branding & Lettering' ||
+              o.servicio === 'Papelería & Oficina' ||
               o.servicio === 'Servicios B2B';
             if (!isB2B) return false;
             if (!o.acceptedAt) return false;
@@ -1054,9 +868,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     fetch('/api/orders', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        id: orderId, 
-        action: 'apply', 
+      body: JSON.stringify({
+        id: orderId,
+        action: 'apply',
         providerName,
         proveedorId: finalUserId || null, // ✅ FK real del proveedor
       })
@@ -1067,9 +881,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       fetch('/api/applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          orderId, 
-          proveedorId: finalUserId, 
+        body: JSON.stringify({
+          orderId,
+          proveedorId: finalUserId,
           monedasGastadas: coinsCost,
           notaPersonal: null
         })
@@ -1130,375 +944,82 @@ export function UserProvider({ children }: { children: ReactNode }) {
     Storage.setItem('todo_ya_orders', JSON.stringify(updatedOrders));
   };
 
-  /**
-   * Proceso de Inicio de Sesión
-   */
-  const login = async (telefonoOCorreo: string, contrasena: string, forceRole?: UserRole): Promise<boolean> => {
-    if (!telefonoOCorreo.trim() || !contrasena.trim()) {
+  /** Login real. Nunca consulta /api/users ni compara contraseñas locales. */
+  const login = async (email: string, password: string, _forceRole?: UserRole, expectedMode?: 'PERSON' | 'BUSINESS'): Promise<boolean> => {
+    if (!email.trim().includes('@') || !password) return false;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+      if (error) return false;
+      const verified = await bootstrapAuthenticatedUser(expectedMode);
+      const hasBusinessAccess = verified.identity.ownedContexts.some(c => c.type === 'BUSINESS') || verified.identity.businessMemberships.length > 0;
+      if ((expectedMode && verified.mode !== expectedMode) || (expectedMode === 'BUSINESS' && (!hasBusinessAccess || !verified.availableModes?.includes('BUSINESS')))) {
+        await supabase.auth.signOut();
+        setIsAuthenticated(false);
+        setActiveUser(null);
+        return false;
+      }
+      await applyAuthenticatedIdentity(verified);
+      return true;
+    } catch (error) {
+      console.warn('[Auth] Login no completado', error);
       return false;
     }
-
-    const claveCorreo = telefonoOCorreo.trim().toLowerCase();
-
-    try {
-      const response = await fetch('/api/users');
-      if (response.ok) {
-        const resData = await response.json();
-        if (resData.status === 'success') {
-          const dbUsers: UsuarioRegistrado[] = resData.data;
-          const usuarioEncontrado = dbUsers.find(u => {
-            const correoRegistrado = (u.correoOTelefono || '').toLowerCase();
-            const celularRegistrado = u.celular || '';
-            const celularCompleto = `+${u.codigoPais || ''} ${u.celular || ''}`.trim().toLowerCase();
-            return correoRegistrado === claveCorreo || celularRegistrado === claveCorreo || celularCompleto === claveCorreo;
-          });
-          
-          if (usuarioEncontrado) {
-            if (usuarioEncontrado.baneado) {
-              showNotification('⚠️ Cuenta Suspendida', 'Tu acceso ha sido bloqueado debido a reportes de comportamiento. Escríbenos a soporte@todoya.com', 'warning');
-              return false;
-            }
-            if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
-              return false;
-            }
-            setActiveUser(usuarioEncontrado);
-            setIsAuthenticated(true);
-            setUserName(usuarioEncontrado.nombre);
-            setUserRole(usuarioEncontrado.rol);
-            await Storage.setItem('todo_ya_auth', 'true');
-            await Storage.setItem('todo_ya_username', usuarioEncontrado.nombre);
-            await Storage.setItem('todo_ya_role', usuarioEncontrado.rol);
-            await Storage.setItem('todo_ya_active_user', JSON.stringify(usuarioEncontrado));
-            return true;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[login] Error en autenticación con servidor, reintentando local:', err);
-    }
-
-    const usuarioEncontrado = usuariosRegistrados.find(u => {
-      const correoRegistrado = (u.correoOTelefono || '').toLowerCase();
-      const celularRegistrado = u.celular || '';
-      const celularCompleto = `+${u.codigoPais || ''} ${u.celular || ''}`.trim().toLowerCase();
-      return correoRegistrado === claveCorreo || celularRegistrado === claveCorreo || celularCompleto === claveCorreo;
-    });
-
-    let nombre = '';
-    let rol: UserRole = 'client';
-
-    if (usuarioEncontrado) {
-      if (usuarioEncontrado.baneado) {
-        showNotification('⚠️ Cuenta Suspendida', 'Tu acceso ha sido bloqueado debido a reportes de comportamiento. Escríbenos a soporte@todoya.com', 'warning');
-        return false;
-      }
-      if (usuarioEncontrado.contrasena && usuarioEncontrado.contrasena !== contrasena) {
-        return false;
-      }
-      nombre = usuarioEncontrado.nombre;
-      rol = forceRole || usuarioEncontrado.rol; // Forzar el rol si viene de los botones de prueba de acceso rápido
-      
-      const updatedUser = { ...usuarioEncontrado, rol };
-      setActiveUser(updatedUser);
-      await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
-      
-      // Actualizar también en la lista de usuarios registrados para mantener la consistencia al cambiar de rol en la BD local
-      const listaActualizada = usuariosRegistrados.map(u => 
-        (u.correoOTelefono || '').toLowerCase() === claveCorreo ? updatedUser : u
-      );
-      setUsuariosRegistrados(listaActualizada);
-      await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
-    } else {
-      if (telefonoOCorreo.includes('@')) {
-        const partes = telefonoOCorreo.split('@')[0];
-        nombre = partes.charAt(0).toUpperCase() + partes.slice(1);
-      } else if (telefonoOCorreo.length >= 8) {
-        nombre = `Usuario +591 ${telefonoOCorreo.substring(telefonoOCorreo.length - 8)}`;
-      }
-      nombre = nombre || 'Usuario';
-      
-      // CORRECCIÓN: Detectamos de manera inteligente si el correo de prueba contiene la palabra 'empresa'
-      // para auto-registrarlo como entidad 'empresa' (con rol 'business') en lugar de 'natural' (con rol 'client').
-      const esEmpresaEmail = telefonoOCorreo.trim().toLowerCase().includes('empresa');
-      const rolDefault: UserRole = esEmpresaEmail ? 'business' : 'client';
-      rol = forceRole || rolDefault;
-      
-      const nuevoUsuario: UsuarioRegistrado = {
-        nombre,
-        correoOTelefono: telefonoOCorreo.trim(),
-        rol,
-        tipoProveedor: 'normal',
-        contrasena: contrasena,
-        tipoEntidad: esEmpresaEmail ? 'empresa' : 'natural',
-        planId: esEmpresaEmail ? 'business_1' : 'provider_1'
-      };
-      
-      const listaActualizada = [...usuariosRegistrados, nuevoUsuario];
-      setUsuariosRegistrados(listaActualizada);
-      await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
-      setActiveUser(nuevoUsuario);
-      await Storage.setItem('todo_ya_active_user', JSON.stringify(nuevoUsuario));
-
-      fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevoUsuario)
-      }).catch(err => console.warn('[login] Error al registrar usuario nuevo en servidor:', err));
-    }
-
-    setIsAuthenticated(true);
-    setUserName(usuarioEncontrado ? usuarioEncontrado.nombre : nombre);
-    
-    // CORRECCIÓN: Usamos la variable 'rol' que ya fue procesada con 'forceRole' en lugar del rol persistido 'usuarioEncontrado.rol'.
-    // Esto previene que al usar los botones de acceso rápido de prueba (que fuerzan un rol) se termine cargando el rol de proveedor
-    // guardado previamente en el almacenamiento persistente del usuario.
-    const rolFinal = rol;
-    setUserRole(rolFinal);
-
-    await Storage.setItem('todo_ya_auth', 'true');
-    await Storage.setItem('todo_ya_username', usuarioEncontrado ? usuarioEncontrado.nombre : nombre);
-    await Storage.setItem('todo_ya_role', rolFinal);
-    return true;
   };
 
-  /**
-   * Registro y Login Social por Google o LinkedIn
-   */
+  /** Nunca usar un acceso social simulado para crear sesiones válidas. */
   const registrarEIniciarSesion = async (
-    nombre: string,
-    correoOTelefono: string,
-    rol: UserRole,
-    tipoProveedor: 'google' | 'linkedin' | 'normal',
-    extraData?: Partial<UsuarioRegistrado>
+    _name: string, _email: string, _role: UserRole,
+    _provider: 'google' | 'linkedin' | 'normal', _extra?: Partial<UsuarioRegistrado>
   ): Promise<void> => {
-    const claveCorreo = correoOTelefono.trim().toLowerCase();
-
-    const esEmpresaEmail = correoOTelefono.trim().toLowerCase().includes('empresa');
-    let usuarioFinal: UsuarioRegistrado = {
-      nombre,
-      correoOTelefono: correoOTelefono.trim(),
-      rol,
-      tipoProveedor,
-      contrasena: 'demo1234',
-      tipoEntidad: extraData?.tipoEntidad || (esEmpresaEmail ? 'empresa' : 'natural'),
-      nit: extraData?.nit,
-      correoFacturacion: extraData?.correoFacturacion,
-      rubro: extraData?.rubro,
-      ofreceB2B: extraData?.ofreceB2B || (esEmpresaEmail ? true : undefined),
-      celular: extraData?.celular,
-      codigoPais: extraData?.codigoPais,
-      kycVerificado: extraData?.kycVerificado || false,
-      kycDetalles: extraData?.kycDetalles || ''
-    };
-
-    if (isDbOnline) {
-      try {
-        const res = await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(usuarioFinal)
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === 'success') {
-            usuarioFinal = data.user;
-          }
-        }
-      } catch (err) {
-        console.error('Error registrando login social en Neon.db:', err);
-      }
-    }
-
-    const usuarioExistente = usuariosRegistrados.find(u => {
-      const correoRegistrado = (u.correoOTelefono || '').toLowerCase();
-      return correoRegistrado === claveCorreo;
-    });
-    
-    let listaActualizada = [...usuariosRegistrados];
-    if (!usuarioExistente) {
-      listaActualizada = [...usuariosRegistrados, usuarioFinal];
-      setUsuariosRegistrados(listaActualizada);
-      await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
-    } else {
-      usuarioFinal = {
-        ...usuarioExistente,
-        ...extraData
-      };
-      listaActualizada = usuariosRegistrados.map(u => 
-        (u.correoOTelefono || '').toLowerCase() === claveCorreo ? usuarioFinal : u
-      );
-      setUsuariosRegistrados(listaActualizada);
-      await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
-    }
-
-    setIsAuthenticated(true);
-    setUserName(usuarioFinal.nombre);
-    setUserRole(usuarioFinal.rol);
-    setActiveUser(usuarioFinal);
-
-    // Sincronizar billetera al loguear
-    if (isDbOnline && usuarioFinal.id) {
-      try {
-        const walletRes = await fetch(`/api/wallet?userId=${usuarioFinal.id}`);
-        if (walletRes.ok) {
-          const wData = await walletRes.json();
-          if (wData.status === 'success') {
-            setCoins(wData.coins);
-            await Storage.setItem('todo_ya_coins', String(wData.coins));
-          }
-        }
-      } catch (err) {
-        console.error('Error sincronizando billetera:', err);
-      }
-    }
-
-    await Storage.setItem('todo_ya_auth', 'true');
-    await Storage.setItem('todo_ya_username', usuarioFinal.nombre);
-    await Storage.setItem('todo_ya_role', usuarioFinal.rol);
-    await Storage.setItem('todo_ya_active_user', JSON.stringify(usuarioFinal));
+    throw new Error('OAuth pendiente de integración segura con Supabase');
   };
 
-  /**
-   * Registro manual completo para nuevos usuarios
-   */
+  /** Registro real: Supabase envía correo de confirmación; NO activa sesión local. */
   const registrarUsuario = async (
-    nombre: string,
-    correoOTelefono: string,
-    rol: UserRole,
-    contrasena: string,
-    tipoEntidad: 'natural' | 'empresa',
-    nit?: string,
-    correoFacturacion?: string,
-    rubro?: string,
-    ofreceB2B?: boolean,
-    celular?: string,
-    codigoPais?: string
+    nombre: string, correo: string, _rol: UserRole, contrasena: string,
+    tipoEntidad: 'natural' | 'empresa', nit?: string, correoFacturacion?: string,
+    _rubro?: string, _ofreceB2B?: boolean, celular?: string, codigoPais?: string
   ): Promise<boolean> => {
-    const claveCorreo = correoOTelefono.trim().toLowerCase();
-    
+    if (!correo.trim().includes('@') || contrasena.length < 8) return false;
+    const phone = codigoPais === '51' && /^9\d{8}$/.test(celular ?? '') ? `+51${celular}` : undefined;
+    if (tipoEntidad === 'empresa' && nit?.trim() && !validPeruRuc(nit.trim())) return false;
     try {
-      const response = await fetch('/api/users');
-      if (response.ok) {
-        const resData = await response.json();
-        if (resData.status === 'success') {
-          const dbUsers: UsuarioRegistrado[] = resData.data;
-          const usuarioExistente = dbUsers.find(u => (u.correoOTelefono || '').toLowerCase() === claveCorreo);
-          if (usuarioExistente) return false;
-        }
-      }
-
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, correoOTelefono, rol, contrasena, tipoEntidad, nit, correoFacturacion, rubro, ofreceB2B, celular, codigoPais })
+      const { error } = await supabase.auth.signUp({
+        email: correo.trim().toLowerCase(), password: contrasena,
+        options: { data: {
+          registration_mode: tipoEntidad === 'empresa' ? 'BUSINESS' : 'PERSON',
+          full_name: nombre.trim(), phone,
+          ...(tipoEntidad === 'empresa' ? { business_name: nombre.trim(), ...(nit?.trim() ? { ruc: nit.trim() } : {}), ...(correoFacturacion?.trim() ? { billing_email: correoFacturacion.trim() } : {}) } : {}),
+        } },
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'success') {
-          const registeredUser = data.user;
-          setIsAuthenticated(true);
-          setUserName(nombre);
-          setUserRole(rol);
-          setActiveUser(registeredUser);
-          await Storage.setItem('todo_ya_auth', 'true');
-          await Storage.setItem('todo_ya_username', nombre);
-          await Storage.setItem('todo_ya_role', rol);
-          await Storage.setItem('todo_ya_active_user', JSON.stringify(registeredUser));
-
-          // Sincronizar la lista local y el storage
-          const nuevoUsuarioConClave = { ...registeredUser, contrasena };
-          const listaActualizada = [...usuariosRegistrados, nuevoUsuarioConClave];
-          setUsuariosRegistrados(listaActualizada);
-          await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
-
-          return true;
-        }
-      }
-    } catch (err) {
-      console.warn('[registrarUsuario] Error registrando en servidor, recurriendo a local:', err);
-    }
-
-    const usuarioExistente = usuariosRegistrados.find(u => 
-      (u.correoOTelefono || '').toLowerCase() === claveCorreo
-    );
-
-    if (usuarioExistente) {
+      if (error) { console.warn('[Auth] Supabase rechazó registro', error.message); return false; }
+      // No bootstrap until email confirmation and authenticated login.
+      return true;
+    } catch (error) {
+      console.warn('[Auth] Registro no completado', error);
       return false;
     }
-
-    const nuevoUsuario: UsuarioRegistrado = {
-      nombre,
-      correoOTelefono: correoOTelefono.trim(),
-      rol,
-      contrasena,
-      tipoProveedor: 'normal',
-      tipoEntidad,
-      nit,
-      correoFacturacion,
-      rubro,
-      ofreceB2B,
-      celular,
-      codigoPais,
-      kycVerificado: false,
-      kycDetalles: ''
-    };
-
-    const listaActualizada = [...usuariosRegistrados, nuevoUsuario];
-    setUsuariosRegistrados(listaActualizada);
-    await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
-
-    setIsAuthenticated(true);
-    setUserName(nombre);
-    setUserRole(rol);
-    setActiveUser(nuevoUsuario);
-
-    await Storage.setItem('todo_ya_auth', 'true');
-    await Storage.setItem('todo_ya_username', nombre);
-    await Storage.setItem('todo_ya_role', rol);
-    await Storage.setItem('todo_ya_active_user', JSON.stringify(nuevoUsuario));
-    return true;
   };
 
   /**
    * Cierre de sesión
    */
   const logout = () => {
+    void supabase.auth.signOut();
     setIsAuthenticated(false);
     setUserRole('client');
     setActiveUser(null);
-    Storage.setItem('todo_ya_role', 'client');
-    Storage.removeItem('todo_ya_auth');
-    Storage.removeItem('todo_ya_username');
-    Storage.removeItem('todo_ya_active_user');
+    void Storage.removeItem('todo_ya_auth');
+    void Storage.removeItem('todo_ya_active_user');
+    void Storage.removeItem('todo_ya_registered_users');
   };
 
   /**
    * Eliminación de cuenta permanente
    */
   const deleteAccount = async (): Promise<boolean> => {
-    if (!activeUser?.correoOTelefono) return false;
-    const correoOTelefono = activeUser.correoOTelefono;
-    
-    // 1. Llamar a la API para borrar de la base de datos
-    try {
-      await fetch(`/api/users?correoOTelefono=${encodeURIComponent(correoOTelefono)}`, {
-        method: 'DELETE',
-      });
-    } catch (err) {
-      console.warn('[deleteAccount] Falló la eliminación en servidor:', err);
-    }
-
-    // 2. Limpiar localmente en la lista de usuarios registrados del contexto
-    const claveCorreo = correoOTelefono.toLowerCase();
-    const listaActualizada = usuariosRegistrados.filter(u => 
-      (u.correoOTelefono || '').toLowerCase() !== claveCorreo
-    );
-    setUsuariosRegistrados(listaActualizada);
-    await Storage.setItem('todo_ya_registered_users', JSON.stringify(listaActualizada));
-
-    // 3. Ejecutar logout para limpiar sesión y storage
-    logout();
-    return true;
+    // No authenticated server deletion endpoint has been implemented yet.
+    return false;
   };
 
   /**
@@ -1510,7 +1031,32 @@ export function UserProvider({ children }: { children: ReactNode }) {
     descripcion: string,
     cobertura?: string
   ) => {
-    if (!activeUser) return;
+    if (!activeUser) throw new Error('Inicia sesión para configurar tu perfil');
+    if (activeUser.tipoEntidad === 'natural') {
+      const catalog = await listTrades();
+
+      const selected = servicios.map(value =>
+        catalog.find(t => t.id === value)
+      );
+
+      if (selected.some(t => !t)) {
+        throw new Error(
+          'Una especialidad seleccionada ya no está disponible. Recarga el catálogo.'
+        );
+      }
+      const level = experiencia === 'Menos de 1 año' ? 'LESS_THAN_ONE_YEAR' : experiencia === 'Más de 3 años' ? 'MORE_THAN_THREE_YEARS' : 'ONE_TO_THREE_YEARS';
+      const saved = await saveProfessionalSettings({bio: descripcion, experienceLevel: level, tradeIds: selected.map(t => t!.id)});
+      // No marcar ACTIVE si el servidor exige identidad y consentimiento legal pendientes.
+      if (saved.status !== 'ACTIVE' && __DEV__ !== true) {
+        throw new Error(
+          'Debes completar la activación profesional antes de acceder.'
+        );
+      }
+      const updated: UsuarioRegistrado = {...activeUser, rol: 'provider', proveedorConfigurado: true, serviciosOfrecidos: saved.trades.map(t => t.name), anosExperiencia: experiencia, descripcionProveedor: saved.bio};
+      setActiveUser(updated);
+      setUserRole('provider');
+      return;
+    }
 
     const updatedUser: UsuarioRegistrado = {
       ...activeUser,
@@ -1547,7 +1093,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
 
     const claveCorreo = (activeUser.correoOTelefono || '').toLowerCase();
-    const listaActualizada = usuariosRegistrados.map(u => 
+    const listaActualizada = usuariosRegistrados.map(u =>
       (u.correoOTelefono || '').toLowerCase() === claveCorreo ? updatedUser : u
     );
     setUsuariosRegistrados(listaActualizada);
@@ -1586,7 +1132,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
 
     const claveCorreo = (activeUser.correoOTelefono || '').toLowerCase();
-    const listaActualizada = usuariosRegistrados.map(u => 
+    const listaActualizada = usuariosRegistrados.map(u =>
       (u.correoOTelefono || '').toLowerCase() === claveCorreo ? updatedUser : u
     );
     setUsuariosRegistrados(listaActualizada);
@@ -1652,7 +1198,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           }
 
           // Actualizar la lista local de registrados
-          const listaActualizada = usuariosRegistrados.map(u => 
+          const listaActualizada = usuariosRegistrados.map(u =>
             (u.correoOTelefono || '').toLowerCase() === correoOTelefono.toLowerCase()
               ? { ...u, baneado }
               : u
@@ -1709,7 +1255,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       await Storage.setItem('todo_ya_active_user', JSON.stringify(updatedUser));
 
       // Sincronizar en la lista local de registrados
-      const updatedList = usuariosRegistrados.map(u => 
+      const updatedList = usuariosRegistrados.map(u =>
         (u.correoOTelefono || '').toLowerCase() === (updatedUser.correoOTelefono || '').toLowerCase()
           ? updatedUser
           : u
@@ -1746,11 +1292,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setCoins(24);
     setPlanId(null);
     setOrders(initialSeedOrders);
+    void supabase.auth.signOut();
     setIsAuthenticated(false);
-    setUserName('Luis Alberto M.');
-    setUsuariosRegistrados(initialSeedUsers);
+    setUserName('Usuario');
+    setUsuariosRegistrados([]);
     setActiveUser(null);
-    
+
     Storage.removeItem('todo_ya_role');
     Storage.removeItem('todo_ya_coins');
     Storage.removeItem('todo_ya_plan_id');
@@ -1758,7 +1305,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     Storage.removeItem('todo_ya_auth');
     Storage.removeItem('todo_ya_username');
     Storage.removeItem('todo_ya_active_user');
-    Storage.setItem('todo_ya_registered_users', JSON.stringify(initialSeedUsers));
+    Storage.removeItem('todo_ya_registered_users');
   };
 
   /**
@@ -1801,7 +1348,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setOrders(ordData.data);
           }
         }
-        
+
         // También sincronizamos la billetera
         if (activeUser?.id) {
           const walletRes = await fetch(`/api/wallet?userId=${activeUser.id}`);
@@ -1828,7 +1375,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const startClientSimulation = async () => {
     const correoSimulado = 'cliente_demo@todoya.com';
     const nombreSimulado = 'Carlos Cliente (Simulación)';
-    
+
     let user = usuariosRegistrados.find(u => u.correoOTelefono === correoSimulado);
     if (!user) {
       await registrarUsuario(
@@ -1857,12 +1404,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUsuariosRegistrados(prev => [...prev, newU]);
       await Storage.setItem('todo_ya_registered_users', JSON.stringify([...usuariosRegistrados, newU]));
     }
-    
+
     const exito = await login(correoSimulado, 'demo1234', 'client');
     if (exito) {
       setSimulationState('client');
       setSimulationStep(1);
-      setOrders(prev => prev.filter(o => o.id <= 4)); 
+      setOrders(prev => prev.filter(o => o.id <= 4));
       router.replace('/');
     }
   };
@@ -1870,7 +1417,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const startProviderSimulation = async () => {
     const correoSimulado = 'pedro_demo@todoya.com';
     const nombreSimulado = 'Pedro Proveedor (Simulación)';
-    
+
     let user = usuariosRegistrados.find(u => u.correoOTelefono === correoSimulado);
     if (!user) {
       await registrarUsuario(
@@ -1887,9 +1434,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         '591'
       );
     }
-    
-    const updatedUsers = usuariosRegistrados.map(u => 
-      u.correoOTelefono === correoSimulado 
+
+    const updatedUsers = usuariosRegistrados.map(u =>
+      u.correoOTelefono === correoSimulado
         ? { ...u, proveedorConfigurado: true, serviciosOfrecidos: ['Plomería'], planId: 'provider_2' as const, monedas: 24 }
         : u
     );
@@ -1990,19 +1537,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ 
-      userRole, 
-      toggleRole, 
-      setRole, 
-      coins, 
+    <UserContext.Provider value={{
+      userRole,
+      toggleRole,
+      setRole,
+      coins,
       planId,
       subscribeToPlan,
-      orders, 
-      addOrder, 
-      applyToLead, 
+      orders,
+      addOrder,
+      applyToLead,
       completeJob,
       resetData,
       isAuthenticated,
+      authReady,
       userName,
       login,
       logout,

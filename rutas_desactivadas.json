@@ -1,0 +1,13 @@
+[
+  "src/app/api/reports+api.ts",
+  "src/app/api/applications+api.ts",
+  "src/app/api/chat+api.ts",
+  "src/app/api/db-status+api.ts",
+  "src/app/api/matching+api.ts",
+  "src/app/api/orders+api.ts",
+  "src/app/api/ratings+api.ts",
+  "src/app/api/seed+api.ts",
+  "src/app/api/sync+api.ts",
+  "src/app/api/veripagos+api.ts",
+  "src/app/api/wallet+api.ts"
+]

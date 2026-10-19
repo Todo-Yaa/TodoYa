@@ -43,3 +43,25 @@ example
 /android
 .vercel
 .env*
+
+# Credenciales
+.env
+.env.*
+!.env.example
+
+# Dependencias y compilación
+node_modules/
+.expo/
+dist/
+build/
+web-build/
+
+# Archivos y respaldos locales
+local_db.json
+src.zip
+legacy-disabled/
+respaldo_original_antes_de_aplicar/
+*.log
+
+# Sistema operativo
+.DS_Store

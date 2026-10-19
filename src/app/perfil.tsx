@@ -3,13 +3,15 @@ import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking, Modal, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { listTrades } from '../services/auth/professional-profile';
 
 // Configura los enlaces de tus redes sociales aquí:
-const FACEBOOK_LINK = 'https://www.instagram.com/todoo__ya';
-const INSTAGRAM_LINK = 'https://www.instagram.com/todoo__ya';
 import { useUser } from '../context/user-context';
 import Storage from '../utils/storage';
+import { getBusinessContextId, getBusinessCategories, getBusinessProviderSettings, saveBusinessProviderSettings, type BusinessProviderCategory } from '../services/auth/business-provider';
 import KYCVerifierModal from '../components/kyc-verifier-modal';
+import { getBusinessSettings, saveBusinessSettings, type BusinessSettings } from '../services/auth/business-profile';
+import { getPersonalSettings, savePersonalSettings, type PersonalSettings } from '../services/auth/personal-profile';
 
 
 /**
@@ -21,6 +23,63 @@ export default function PerfilScreen() {
   const { t, i18n } = useTranslation();
   const { toggleRole, logout, deleteAccount, userName, userRole, setRole, activeUser, configurarProveedor, actualizarKyc, banearProveedor, usuariosRegistrados, lastKnownCity, triggerLocationCheck } = useUser();
   const isBusiness = userRole === 'business';
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null);
+  const [businessDraft, setBusinessDraft] = useState<BusinessSettings | null>(null);
+  const [businessBusy, setBusinessBusy] = useState(false);
+  const [businessError, setBusinessError] = useState('');
+  const [businessEditVisible, setBusinessEditVisible] = useState(false);
+  const loadBusiness = async () => {
+    if (!isBusiness) return;
+    setBusinessBusy(true);
+    try { setBusinessSettings(await getBusinessSettings()); setBusinessError(''); }
+    catch (e) { setBusinessError(e instanceof Error ? e.message : 'No se pudo consultar la empresa'); }
+    finally { setBusinessBusy(false); }
+  };
+  useEffect(() => { if (isBusiness) void loadBusiness(); }, [isBusiness, activeUser?.correoOTelefono]);
+  const saveBusiness = async () => {
+    if (!businessDraft) return;
+    if (!businessDraft.tradeName.trim()) { setBusinessError('El nombre comercial es obligatorio'); return; }
+    setBusinessBusy(true);
+    try {
+      const saved = await saveBusinessSettings(businessDraft);
+      setBusinessSettings(saved); setBusinessEditVisible(false); setBusinessError('');
+    } catch (e) { setBusinessError(e instanceof Error ? e.message : 'No se pudo guardar la empresa'); }
+    finally { setBusinessBusy(false); }
+  };
+  const [personalSettings, setPersonalSettings] = useState<PersonalSettings | null>(null);
+  const [personalDraft, setPersonalDraft] = useState<PersonalSettings | null>(null);
+  const [personalLoading, setPersonalLoading] = useState(false);
+  const [personalSaving, setPersonalSaving] = useState(false);
+  const [personalError, setPersonalError] = useState('');
+  const [editPersonalVisible, setEditPersonalVisible] = useState(false);
+  const loadPersonal = async () => {
+    if (isBusiness) return;
+    setPersonalLoading(true);
+    try {
+      const data = await getPersonalSettings();
+      setPersonalSettings(data);
+      setPersonalError('');
+    } catch (error) { setPersonalError(error instanceof Error ? error.message : 'No se pudo cargar el perfil'); }
+    finally { setPersonalLoading(false); }
+  };
+  useEffect(() => { if (!isBusiness) void loadPersonal(); }, [isBusiness, activeUser?.correoOTelefono]);
+  const savePersonal = async () => {
+    if (!personalDraft) return;
+    if (!personalDraft.firstName.trim() || !personalDraft.lastName.trim()) {
+      setPersonalError('El nombre y apellido son obligatorios'); return;
+    }
+    setPersonalSaving(true);
+    try {
+      const updated = await savePersonalSettings(personalDraft);
+      setPersonalSettings(updated);
+      setEditPersonalVisible(false);
+      setPersonalError('');
+      // La identidad local de sesión no se utiliza para autorización.
+      await loadPersonal();
+    } catch (error) { setPersonalError(error instanceof Error ? error.message : 'No fue posible guardar los cambios'); }
+    finally { setPersonalSaving(false); }
+  };
+
 
   useEffect(() => {
     triggerLocationCheck().catch(() => {});
@@ -33,8 +92,26 @@ export default function PerfilScreen() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([]);
+  const [professionalTrades, setProfessionalTrades] = useState<{id:string;code:string;name:string}[]>([]);
+  const [tradesLoading, setTradesLoading] = useState(false);
   const [experiencia, setExperiencia] = useState('1 a 3 años');
   const [cobertura, setCobertura] = useState('Local');
+  const [businessCategories, setBusinessCategories] = useState<BusinessProviderCategory[]>([]);
+  const [savingBusinessProvider, setSavingBusinessProvider] = useState(false);
+  const [savingProfessional, setSavingProfessional] = useState(false);
+  useEffect(() => {
+    if (!isBusiness) return;
+    void getBusinessCategories().then(setBusinessCategories).catch(() => {});
+  }, [isBusiness]);
+
+  useEffect(() => {
+  if (isBusiness || !activeUser) return;
+  let cancelled = false;
+  setTradesLoading(true);
+  listTrades().then(data => { if (!cancelled) { setProfessionalTrades(data); setErrorOnboarding(''); } }).catch(() => { if (!cancelled) setErrorOnboarding('No se pudieron cargar las especialidades. Inténtalo nuevamente.'); }).finally(() => { if (!cancelled) setTradesLoading(false); });
+  return () => { cancelled = true; };
+  }, [isBusiness, activeUser?.correoOTelefono]);
+
   const [descripcion, setDescripcion] = useState('');
   const [errorOnboarding, setErrorOnboarding] = useState('');
   const [showKYCModal, setShowKYCModal] = useState(false);
@@ -64,7 +141,7 @@ export default function PerfilScreen() {
   const handleKYCVerified = async (detalles: string) => {
     // 1. Actualizar KYC del usuario en base de datos y context
     await actualizarKyc(true, detalles);
-    
+
     // 2. Si ya está configurado como proveedor, cambiar rol de inmediato. Si no, iniciar onboarding de proveedor
     if (activeUser?.proveedorConfigurado) {
       setRole('provider');
@@ -95,12 +172,39 @@ export default function PerfilScreen() {
 
     setErrorOnboarding('');
     const isEmpresa = activeUser?.tipoEntidad === 'empresa';
-    await configurarProveedor(
-      serviciosSeleccionados,
-      isEmpresa ? '' : experiencia,
-      descripcion.trim(),
-      isEmpresa ? cobertura : undefined
-    );
+    if (isEmpresa) {
+      setSavingBusinessProvider(true);
+      try {
+        const businessContextId = await getBusinessContextId();
+        const categoryIds = serviciosSeleccionados;
+        if (categoryIds.some(id => !businessCategories.some(cat => cat.id === id))) throw new Error('Las categorías deben existir en PostgreSQL. Recarga el catálogo.');
+        const saved = await saveBusinessProviderSettings(businessContextId, {
+          bio: descripcion.trim(), coverage: cobertura === 'Nacional' ? 'NATIONAL' : 'LOCAL', categoryIds: categoryIds as string[],
+        });
+        if (saved.contextStatus !== 'ACTIVE') {
+          setErrorOnboarding('Información guardada. El perfil proveedor está pendiente de activación y consentimiento.');
+          return;
+        }
+      } catch (error) {
+        setErrorOnboarding(error instanceof Error ? error.message : 'No se pudo guardar el perfil empresarial');
+        return;
+      } finally { setSavingBusinessProvider(false); }
+    }
+    if (!isEmpresa) {
+      setSavingProfessional(true);
+      try {
+        await configurarProveedor(serviciosSeleccionados, experiencia, descripcion.trim());
+      } catch (error) {
+        setErrorOnboarding(error instanceof Error ? error.message : 'No se pudo guardar el perfil profesional.');
+        return;
+      } finally {
+        setSavingProfessional(false);
+      }
+    } else {
+      // El perfil empresarial ya se guardó en NestJS. No ejecutar la ruta
+      // heredada de configurarProveedor, que solo actualiza el estado local.
+      setRole('provider');
+    }
     setShowOnboarding(false);
     setServiciosSeleccionados([]);
     setDescripcion('');
@@ -145,8 +249,8 @@ export default function PerfilScreen() {
   };
 
   // Calcula dinámicamente las iniciales del nombre de usuario para el Avatar
-  const avatarInitials = userName 
-    ? userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+  const avatarInitials = userName
+    ? userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
     : 'CO';
 
   return (
@@ -164,34 +268,34 @@ export default function PerfilScreen() {
           <View style={[styles.avatarBig, isBusiness && { backgroundColor: '#6366f1' }]}>
             <Text style={[styles.avatarTextBig, isBusiness && { color: '#fff' }]}>{avatarInitials}</Text>
           </View>
-          <Text style={styles.name}>{userName}</Text>
+          <Text style={styles.name}>{(isBusiness ? businessSettings?.tradeName : (personalSettings && [personalSettings.firstName, personalSettings.lastName].filter(Boolean).join(' '))) || userName}</Text>
           <Text style={styles.veracity}>
             {isBusiness ? 'Reputación B2B comercial: ' : 'Índice de veracidad: '}
-            <Text style={{ color: '#2F2F2F', fontWeight: '600' }}>99%</Text>
+            <Text style={{ color: '#2F2F2F', fontWeight: '600' }}>{'—'}</Text>
           </Text>
-          
+
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{isBusiness ? '5' : '12'}</Text>
+              <Text style={styles.statNumber}>{'0'}</Text>
               <Text style={styles.statLabel}>{isBusiness ? 'Pedidos B2B' : 'Servicios'}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>4.9 ★</Text>
+              <Text style={styles.statNumber}>{'—'}</Text>
               <Text style={styles.statLabel}>Calificación</Text>
             </View>
           </View>
 
           {/* Redes Sociales */}
           <View style={styles.socialRow}>
-            <TouchableOpacity 
-              onPress={() => Linking.openURL(FACEBOOK_LINK)} 
+            <TouchableOpacity
+              onPress={() => { const url = isBusiness ? businessSettings?.facebookUrl : personalSettings?.facebookUrl; if (url) void Linking.openURL(url); }}
               style={styles.socialIconBtn}
               activeOpacity={0.7}
             >
               <Ionicons name="logo-facebook" size={22} color={isBusiness ? '#818cf8' : '#3b5998'} />
             </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => Linking.openURL(INSTAGRAM_LINK)} 
+            <TouchableOpacity
+              onPress={() => { const url = isBusiness ? businessSettings?.instagramUrl : personalSettings?.instagramUrl; if (url) void Linking.openURL(url); }}
               style={styles.socialIconBtn}
               activeOpacity={0.7}
             >
@@ -221,12 +325,12 @@ export default function PerfilScreen() {
               const isSelfBusiness = item.role === 'business';
               const isSelfProvider = item.role === 'provider';
               return (
-                <TouchableOpacity 
-                  key={index} 
+                <TouchableOpacity
+                  key={index}
                   style={[
                     styles.roleOptionCard,
                     isActive && (
-                      isSelfBusiness ? styles.activeBusinessCard : 
+                      isSelfBusiness ? styles.activeBusinessCard :
                       (isSelfProvider ? styles.activeProviderCard : styles.activeClientCard)
                     )
                   ]}
@@ -235,10 +339,12 @@ export default function PerfilScreen() {
                       if (activeUser?.tipoEntidad === 'natural' && !activeUser?.kycVerificado) {
                         // Obligar verificación KYC si es persona natural no verificada
                         setShowKYCModal(true);
-                      } else if (activeUser?.proveedorConfigurado) {
+                      } else if (activeUser?.proveedorConfigurado && activeUser?.tipoEntidad !== 'empresa') {
                         setRole('provider');
                         router.replace('/leads');
                       } else {
+                        setServiciosSeleccionados([]);
+                        setErrorOnboarding('');
                         setOnboardingStep(1);
                         setShowOnboarding(true);
                       }
@@ -249,10 +355,10 @@ export default function PerfilScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons 
-                    name={item.icon as any} 
-                    size={20} 
-                    color={isActive ? '#fff' : '#666'} 
+                  <Ionicons
+                    name={item.icon as any}
+                    size={20}
+                    color={isActive ? '#fff' : '#666'}
                   />
                   <Text style={[styles.roleOptionLabel, isActive && { color: '#fff', fontWeight: 'bold' }]}>
                     {item.label}
@@ -270,11 +376,17 @@ export default function PerfilScreen() {
         <View style={styles.accountCard}>
           {isBusiness ? (
             <>
+              <TouchableOpacity style={styles.accountRow} onPress={() => { if (businessSettings) { setBusinessDraft({ ...businessSettings }); setBusinessError(''); setBusinessEditVisible(true); } }}>
+                <Ionicons name="create-outline" size={24} color="#6366f1" />
+                <Text style={styles.accountText}>{businessBusy ? 'Cargando empresa…' : 'Editar datos de la empresa'}</Text>
+                <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+              </TouchableOpacity>
+              {!!businessError && <Text style={{ color: '#dc2626', padding: 12 }}>{businessError}</Text>}
               <View style={styles.accountRow}>
                 <Ionicons name="business-outline" size={24} color="#666" />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, color: '#888' }}>Razón Social</Text>
-                  <Text style={styles.accountText}>{activeUser?.nombre || userName}</Text>
+                  <Text style={styles.accountText}>{businessSettings?.legalName || 'Sin razón social registrada'}</Text>
                 </View>
               </View>
 
@@ -282,7 +394,7 @@ export default function PerfilScreen() {
                 <Ionicons name="document-text-outline" size={24} color="#666" />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, color: '#888' }}>NIT / Registro</Text>
-                  <Text style={styles.accountText}>{activeUser?.nit || '481920028 (Verificado)'}</Text>
+                  <Text style={styles.accountText}>{businessSettings?.taxId || 'Sin registro fiscal'}</Text>
                 </View>
               </View>
 
@@ -290,7 +402,7 @@ export default function PerfilScreen() {
                 <Ionicons name="receipt-outline" size={24} color="#666" />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, color: '#888' }}>Facturación Electrónica</Text>
-                  <Text style={styles.accountText}>{activeUser?.correoFacturacion || 'facturas@alfa.corp.bo'}</Text>
+                  <Text style={styles.accountText}>{businessSettings?.billingEmail || 'Sin correo de facturación'}</Text>
                 </View>
               </View>
 
@@ -298,21 +410,26 @@ export default function PerfilScreen() {
                 <Ionicons name="pie-chart-outline" size={24} color="#666" />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, color: '#888' }}>Rubro de la Empresa</Text>
-                  <Text style={styles.accountText}>{activeUser?.rubro || 'Papelería'}</Text>
+                  <Text style={styles.accountText}>{businessSettings?.industryLabel || businessSettings?.activityType || 'Sin rubro registrado'}</Text>
                 </View>
               </View>
             </>
           ) : (
             <>
+              <TouchableOpacity style={styles.accountRow} onPress={() => { if (personalSettings) { setPersonalDraft({ ...personalSettings }); setPersonalError(''); setEditPersonalVisible(true); } }}>
+                <Ionicons name="create-outline" size={24} color="#FFB400" />
+                <View style={{ flex: 1 }}><Text style={styles.accountText}>{personalSettings ? [personalSettings.firstName, personalSettings.lastName].filter(Boolean).join(' ') : userName}</Text><Text style={{ fontSize: 11, color: '#888' }}>Editar datos de cuenta {personalLoading ? '· Cargando…' : ''}</Text></View>
+                <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+              </TouchableOpacity>
               <TouchableOpacity style={styles.accountRow} activeOpacity={0.7} onPress={() => triggerLocationCheck(true)}>
                 <Ionicons name="location-outline" size={24} color="#666" />
-                <Text style={styles.accountText}>{lastKnownCity || 'Santa Cruz de la Sierra'}</Text>
+                <Text style={styles.accountText}>{personalSettings?.city || 'Sin ciudad registrada'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.accountRow} activeOpacity={0.7}>
                 <Ionicons name="call-outline" size={24} color="#666" />
                 <Text style={styles.accountText}>
-                  {activeUser?.codigoPais ? `+${activeUser.codigoPais} ${activeUser.celular}` : (activeUser?.correoOTelefono || '+591 7XXX XXXX')}
+                  {personalSettings?.phone || 'Sin teléfono registrado'}
                 </Text>
               </TouchableOpacity>
             </>
@@ -343,15 +460,24 @@ export default function PerfilScreen() {
                         backgroundColor: isActive ? (isBusiness ? '#6366f1' : '#FFB400') : '#e2e8f0',
                       }}
                       onPress={async () => {
+                        if (!isBusiness && personalSettings) {
+                          try {
+                            const updated = await savePersonalSettings({ ...personalSettings, languageCode: lang.code });
+                            setPersonalSettings(updated);
+                          } catch (error) {
+                            setPersonalError(error instanceof Error ? error.message : 'No se pudo guardar el idioma');
+                            return;
+                          }
+                        }
                         await i18n.changeLanguage(lang.code);
                         await Storage.setItem('user-language', lang.code);
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text style={{ 
-                        fontSize: 10, 
-                        fontWeight: 'bold', 
-                        color: isActive ? (isBusiness ? '#fff' : '#2F2F2F') : '#475569' 
+                      <Text style={{
+                        fontSize: 10,
+                        fontWeight: 'bold',
+                        color: isActive ? (isBusiness ? '#fff' : '#2F2F2F') : '#475569'
                       }}>
                         {lang.name}
                       </Text>
@@ -363,7 +489,7 @@ export default function PerfilScreen() {
           </View>
 
           {/* Panel de Control de Denuncias (Simulación de Administración) */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.accountRow, { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}
             onPress={() => {
               cargarReportes();
@@ -378,7 +504,7 @@ export default function PerfilScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.accountRow, { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }]}
             onPress={handleLogout}
             activeOpacity={0.7}
@@ -387,7 +513,7 @@ export default function PerfilScreen() {
             <Text style={[styles.accountText, { color: '#e53935' }]}>{t('profile.logout')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.accountRow, { borderBottomWidth: 0 }]}
             onPress={handleDeleteAccount}
             activeOpacity={0.7}
@@ -402,6 +528,74 @@ export default function PerfilScreen() {
         </Text>
       </ScrollView>
 
+      <Modal visible={isBusiness && businessEditVisible} transparent animationType="fade" onRequestClose={() => setBusinessEditVisible(false)}>
+        <View style={styles.adminModalOverlay}>
+          <View style={[styles.adminModalContent, { height: 'auto', maxHeight: '90%', padding: 22 }]}>
+            <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 15 }}>Editar empresa</Text>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {businessDraft && ([
+                ['tradeName', 'Nombre comercial'], ['legalName', 'Razón social'],
+                ['taxCountryCode', 'País tributario (PE, BO...)'], ['taxId', 'RUC / NIT'],
+                ['billingEmail', 'Correo de facturación'], ['industryLabel', 'Rubro comercial'],
+                ['activityType', 'Actividad económica'], ['commercialPhone', 'Teléfono comercial'],
+                ['city', 'Ciudad'], ['facebookUrl', 'Facebook (https://...)'],
+                ['instagramUrl', 'Instagram (https://...)'],
+              ] as const).map(([key, label]) => (
+                <View key={key} style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 12, color: '#475569', marginBottom: 5 }}>{label}</Text>
+                  <TextInput value={businessDraft[key]} onChangeText={v => setBusinessDraft(p => p ? { ...p, [key]: v } : p)}
+                    editable={businessDraft.canEditLegal || !(['legalName', 'taxCountryCode', 'taxId'] as string[]).includes(key)}
+                    autoCapitalize={['billingEmail', 'facebookUrl', 'instagramUrl', 'taxCountryCode'].includes(key) ? 'none' : 'sentences'}
+                    style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, padding: 12, color: '#1e293b' }}/>
+                </View>
+              ))}
+              {!!businessError && <Text style={{ color: '#dc2626', marginBottom: 10 }}>{businessError}</Text>}
+              <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end' }}>
+                <TouchableOpacity onPress={() => setBusinessEditVisible(false)} style={{ padding: 14 }}><Text>Cancelar</Text></TouchableOpacity>
+                <TouchableOpacity disabled={businessBusy} onPress={() => void saveBusiness()} style={{ backgroundColor: '#6366f1', padding: 14, borderRadius: 10 }}>
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>{businessBusy ? 'Guardando…' : 'Guardar'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!isBusiness && editPersonalVisible} transparent animationType="fade" onRequestClose={() => setEditPersonalVisible(false)}>
+        <View style={styles.adminModalOverlay}>
+          <View style={[styles.adminModalContent, { height: 'auto', maxHeight: '90%', padding: 22 }]}>
+            <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 15 }}>Editar mi perfil</Text>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {personalDraft && ([
+                ['firstName', 'Nombres'], ['lastName', 'Apellidos'], ['phone', 'Teléfono'],
+                ['city', 'Ciudad'], ['facebookUrl', 'Facebook (https://...)'],
+                ['instagramUrl', 'Instagram (https://...)'],
+              ] as const).map(([key, label]) => (
+                <View key={key} style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 12, color: '#475569', marginBottom: 5 }}>{label}</Text>
+                  <TextInput value={personalDraft[key]} onChangeText={value => setPersonalDraft(v => v ? { ...v, [key]: value } : v)}
+                    editable={!(personalDraft.nameEditableAfter && new Date(personalDraft.nameEditableAfter) > new Date() && (key === 'firstName' || key === 'lastName'))}
+                    autoCapitalize={key === 'facebookUrl' || key === 'instagramUrl' ? 'none' : 'sentences'}
+                    style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, padding: 12, color: '#1e293b' }}/>
+                </View>
+              ))}
+              {personalDraft?.nameEditableAfter && new Date(personalDraft.nameEditableAfter) > new Date() && (
+                <Text style={{ color: '#64748b', marginBottom: 10 }}>El nombre podrá modificarse después del {new Date(personalDraft.nameEditableAfter).toLocaleDateString()}.</Text>
+              )}
+              {!!personalError && <Text style={{ color: '#dc2626', marginBottom: 10 }}>{personalError}</Text>}
+              <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end' }}>
+                <TouchableOpacity onPress={() => setEditPersonalVisible(false)} style={{ padding: 14 }}><Text>Cancelar</Text></TouchableOpacity>
+                <TouchableOpacity disabled={personalSaving} onPress={() => void savePersonal()} style={{ backgroundColor: '#FFB400', padding: 14, borderRadius: 10 }}>
+                  <Text style={{ fontWeight: '700' }}>{personalSaving ? 'Guardando…' : 'Guardar'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+
+
       {/* Modal de confirmación personalizado (Evita alertas nativas) */}
       {showConfirmModal && (
         <View style={styles.modalOverlay}>
@@ -409,14 +603,14 @@ export default function PerfilScreen() {
             <Text style={styles.modalTitle}>{confirmConfig.title}</Text>
             <Text style={styles.modalMessage}>{confirmConfig.message}</Text>
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalCancelBtn}
                 onPress={() => setShowConfirmModal(false)}
                 activeOpacity={0.7}
               >
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalConfirmBtn}
                 onPress={() => {
                   setShowConfirmModal(false);
@@ -436,7 +630,7 @@ export default function PerfilScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { maxWidth: 440, width: '92%', maxHeight: '90%' }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              
+
               {/* Stepper Header */}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <Text style={[styles.modalTitle, { fontSize: 13, color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase' }]}>
@@ -455,12 +649,12 @@ export default function PerfilScreen() {
 
               {/* Progress Stepper Bar */}
               <View style={{ height: 6, backgroundColor: '#e2e8f0', borderRadius: 3, marginBottom: 20, overflow: 'hidden' }}>
-                <View 
-                  style={{ 
-                    height: '100%', 
-                    width: `${onboardingStep * 33.3}%`, 
-                    backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400' 
-                  }} 
+                <View
+                  style={{
+                    height: '100%',
+                    width: `${onboardingStep * 33.3}%`,
+                    backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400'
+                  }}
                 />
               </View>
 
@@ -481,31 +675,11 @@ export default function PerfilScreen() {
                   </Text>
                   <Text style={styles.fieldLabel}>Categorías disponibles:</Text>
                   <View style={styles.chipsContainer}>
-                    {(activeUser?.tipoEntidad === 'empresa'
-                      ? [
-                          'Papelería & Oficina',
-                          'Decoración & Eventos',
-                          'Branding & Lettering',
-                          'Servicios B2B'
-                        ]
-                      : [
-                          'Plomería',
-                          'Electricidad',
-                          'Pintura',
-                          'Climatización',
-                          'Mecánico',
-                          'Viandas y Pensiones',
-                          'Cerrajero',
-                          'Carpintero',
-                          'Técnico de laptop-celulares',
-                          'Sastrería',
-                          'Albañilería & Construcción'
-                        ]
-                    ).map((serv) => {
-                      const selected = serviciosSeleccionados.includes(serv);
+                    {(activeUser?.tipoEntidad === 'empresa' ? businessCategories : professionalTrades).map((serv) => {
+                      const selected = serviciosSeleccionados.includes(serv.id);
                       return (
                         <TouchableOpacity
-                          key={serv}
+                          key={serv.id}
                           style={[
                             styles.chip,
                             selected && {
@@ -513,7 +687,7 @@ export default function PerfilScreen() {
                               borderColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
                             }
                           ]}
-                          onPress={() => toggleServicio(serv)}
+                          onPress={() => toggleServicio(serv.id)}
                           activeOpacity={0.7}
                         >
                           <Text style={[
@@ -523,7 +697,7 @@ export default function PerfilScreen() {
                               fontWeight: 'bold',
                             }
                           ]}>
-                            {serv}
+                            {serv.name}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -601,7 +775,7 @@ export default function PerfilScreen() {
                       ? 'Escribe una breve presentación de tu negocio para que las empresas conozcan su trayectoria.'
                       : 'Describe brevemente tus principales habilidades. Esta información la verán los clientes.'}
                   </Text>
-                  
+
                   <Text style={styles.fieldLabel}>Presentación (mín. 10 caracteres):</Text>
                   <TextInput
                     style={styles.textArea}
@@ -672,7 +846,8 @@ export default function PerfilScreen() {
                         backgroundColor: activeUser?.tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400',
                       }
                     ]}
-                    onPress={handleSaveOnboarding}
+                    onPress={() => { if (!savingProfessional && !savingBusinessProvider) void handleSaveOnboarding(); }}
+                    disabled={savingProfessional || savingBusinessProvider}
                     activeOpacity={0.7}
                   >
                     <Text style={[
@@ -681,7 +856,7 @@ export default function PerfilScreen() {
                         color: activeUser?.tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F',
                       }
                     ]}>
-                      Guardar y Activar
+                      {savingProfessional || savingBusinessProvider ? "Guardando…" : "Guardar y Activar"}
                     </Text>
                   </TouchableOpacity>
                 )}

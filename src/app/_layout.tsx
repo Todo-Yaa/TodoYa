@@ -94,7 +94,7 @@ function ResponsiveWrapper({ children }: ResponsiveWrapperProps) {
  * Controla la barra de pestañas (bottom navigation) y aplica restricciones de acceso (Auth Guard).
  */
 function NavigationLayout() {
-  const { userRole, isAuthenticated, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification, isDbOnline, isSyncing, triggerSync, activeToast, dismissToast, simulationState, simulationStep, nextSimulationStep, stopSimulation } = useUser();
+  const { userRole, isAuthenticated, authReady, orders, rateOrder, isSwitchingRole, activeUser, notification, clearNotification, isDbOnline, isSyncing, triggerSync, activeToast, dismissToast, simulationState, simulationStep, nextSimulationStep, stopSimulation } = useUser();
   const isClient = userRole === 'client';
   const isBusiness = userRole === 'business';
   const isConsumer = isClient || isBusiness;
@@ -108,42 +108,8 @@ function NavigationLayout() {
     }
   }, [notification]);
 
-  // Registrar token de notificación push si el usuario está autenticado y es nativo
-  useEffect(() => {
-    if (isAuthenticated && activeUser && Platform.OS !== 'web') {
-      (async () => {
-        try {
-          const { status: existingStatus } = await Notifications.getPermissionsAsync();
-          let finalStatus = existingStatus;
-          if (existingStatus !== 'granted') {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-          }
-          if (finalStatus !== 'granted') {
-            console.log('Failed to get push token for push notification!');
-            return;
-          }
-          const tokenData = await Notifications.getExpoPushTokenAsync({
-            projectId: Constants.expoConfig?.extra?.eas?.projectId,
-          });
-          const pushToken = tokenData.data;
-          console.log('[Push] Token obtenido:', pushToken);
-
-          // Actualizar en el servidor (Neon y localStorage)
-          await fetch('/api/users', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              correoOTelefono: activeUser.correoOTelefono,
-              pushToken: pushToken
-            })
-          });
-        } catch (e) {
-          console.warn('[Push] Error al configurar notificaciones push:', e);
-        }
-      })();
-    }
-  }, [isAuthenticated, activeUser]);
+  // Registro de push deshabilitado temporalmente: el antiguo /api/users no verifica identidad.
+  // Se reactivará mediante un endpoint NestJS autenticado en la fase de notificaciones.
 
   // CORRECCIÓN: Unificamos el color y fondo de la barra de pestañas de acuerdo al tipo de entidad del usuario activo.
   // Si el usuario es de tipo 'empresa' (como Corporación Alfa S.A. o Imprenta Beta), se le asignan los tonos B2B (índigo/slate oscuro)
@@ -156,6 +122,9 @@ function NavigationLayout() {
 
   // [AUTH GUARD]: Si el usuario no ha iniciado sesión, se bloquea la navegación de pestañas
   // y se despliega la pantalla de Login a pantalla completa.
+  if (!authReady) {
+    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" /></View>;
+  }
   if (!isAuthenticated) {
     return (
       <ResponsiveWrapper>

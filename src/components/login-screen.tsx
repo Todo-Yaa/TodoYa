@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { useUser, UserRole } from '../context/user-context';
 import { router } from 'expo-router'; // Importar enrutador para redireccionar tras login dinámico
 import KYCVerifierModal from './kyc-verifier-modal';
+import { validPeruRuc } from '../services/auth/ruc';
 
 const PAISES_LATINOS = [
   { nombre: 'Bolivia', codigo: '591', bandera: '🇧🇴' },
@@ -51,7 +52,7 @@ export default function LoginScreen() {
   const [naturalRol, setNaturalRol] = useState<'client' | 'provider'>('client');
 
   // Nuevos campos de celular y país
-  const [codigoPais, setCodigoPais] = useState('591');
+  const [codigoPais, setCodigoPais] = useState('51');
   const [celular, setCelular] = useState('');
   const [correoRegistro, setCorreoRegistro] = useState('');
   const [mostrarPaises, setMostrarPaises] = useState(false);
@@ -103,7 +104,7 @@ export default function LoginScreen() {
     setSmsCountdown(60);
     setPinError('');
     setSmsToastText(`SMS de Todo Ya: Tu código de verificación de doble factor es ${code}.`);
-    
+
     // Auto-ocultar toast de SMS después de 12 segundos
     setTimeout(() => {
       setSmsToastText(prev => prev && prev.includes(code) ? null : prev);
@@ -178,60 +179,26 @@ export default function LoginScreen() {
    * Registra manualmente un nuevo usuario en la app.
    */
   const manejarRegistroManual = async () => {
-    if (!nombreRegistro.trim()) {
-      setConfiguracionModal({
-        titulo: '⚠️ Nombre vacío',
-        mensaje: 'Por favor ingresa tu nombre o razón social.'
-      });
+    if (!nombreRegistro.trim() || !correoRegistro.includes('@') || contrasenaRegistro.length < 8) {
+      setConfiguracionModal({ titulo: 'Datos incompletos', mensaje: 'Ingresa nombre, correo válido y una contraseña de al menos 8 caracteres.' });
       setMostrarModal(true);
       return;
     }
-    if (!correoRegistro.trim() || !correoRegistro.includes('@')) {
-      setConfiguracionModal({
-        titulo: '⚠️ Correo inválido',
-        mensaje: 'Por favor ingresa un correo electrónico de registro válido.'
-      });
+    if (tipoEntidad === 'empresa' && nit.trim() && !validPeruRuc(nit.trim())) {
+      setConfiguracionModal({ titulo: 'RUC inválido', mensaje: 'Si proporcionas un RUC, debe ser peruano y válido. También puedes completarlo más adelante.' });
       setMostrarModal(true);
       return;
     }
-    if (!celular.trim() || celular.length < 7) {
-      setConfiguracionModal({
-        titulo: '⚠️ Celular vacío o corto',
-        mensaje: 'Por favor ingresa tu número de celular (mínimo 7 dígitos).'
-      });
-      setMostrarModal(true);
-      return;
-    }
-    if (!contrasenaRegistro.trim() || contrasenaRegistro.length < 4) {
-      setConfiguracionModal({
-        titulo: '⚠️ Contraseña inválida',
-        mensaje: 'La contraseña debe tener al menos 4 caracteres.'
-      });
-      setMostrarModal(true);
-      return;
-    }
-
-    if (tipoEntidad === 'empresa') {
-      if (!nit.trim()) {
-        setConfiguracionModal({
-          titulo: '⚠️ NIT vacío',
-          mensaje: 'Por favor ingresa el NIT de la empresa.'
-        });
-        setMostrarModal(true);
-        return;
-      }
-      if (!correoFacturacion.trim()) {
-        setConfiguracionModal({
-          titulo: '⚠️ Correo de facturación vacío',
-          mensaje: 'Por favor ingresa tu correo de facturación electrónica.'
-        });
-        setMostrarModal(true);
-        return;
-      }
-    }
-
-    enviarSmsPin();
-    setMostrarModalPIN(true);
+    setCargando(true);
+    const ok = await registrarUsuario(nombreRegistro, correoRegistro, 'client', contrasenaRegistro,
+      tipoEntidad, tipoEntidad === 'empresa' ? nit : undefined,
+      correoFacturacion, rubro, false, celular, codigoPais);
+    setCargando(false);
+    setConfiguracionModal(ok
+      ? { titulo: 'Revisa tu correo', mensaje: 'Enviamos la confirmación a tu correo. Verifica la cuenta y después inicia sesión.' }
+      : { titulo: 'No se pudo completar el registro', mensaje: 'Revisa tus datos e inténtalo nuevamente.' });
+    setMostrarModal(true);
+    if (ok) setEsRegistro(false);
   };
 
   /**
@@ -296,56 +263,32 @@ export default function LoginScreen() {
     }
 
     setCargando(true);
-    // Retraso artificial de 1.2 segundos para simular una consulta a base de datos externa
-    setTimeout(async () => {
-      const exito = await login(correoOTelefono, contrasena);
-      setCargando(false);
+    try {
+      const exito = await login(correoOTelefono, contrasena, undefined, tipoEntidad === 'empresa' ? 'BUSINESS' : 'PERSON');
       if (!exito) {
         setConfiguracionModal({
-          titulo: '❌ Error de Conexión',
-          mensaje: 'Hubo un problema al iniciar sesión. Inténtalo de nuevo.'
+          titulo: 'No se pudo iniciar sesión',
+          mensaje: tipoEntidad === 'empresa'
+            ? 'Verifica tus credenciales y que tu cuenta tenga acceso empresarial. Si te registraste como persona, usa la pestaña Persona.'
+            : 'Verifica tus credenciales y que estés utilizando el acceso de Persona. Si tu cuenta es empresarial, selecciona Empresa.',
         });
         setMostrarModal(true);
       }
-    }, 1200);
+    } catch {
+      setConfiguracionModal({ titulo: 'Conexión no disponible', mensaje: 'No se pudo contactar con el servicio de autenticación. Inténtalo de nuevo.' });
+      setMostrarModal(true);
+    } finally {
+      setCargando(false);
+    }
   };
 
   /**
    * Completa automáticamente los campos del formulario, define el rol forzado para el botón de prueba
    * y realiza el inicio de sesión automático y redirección inmediata para agilizar las pruebas.
    */
-  const manejarAccesoRapido = async (usuarioDemo: string) => {
-    setCorreoOTelefono(usuarioDemo);
-    setContrasena('demo1234');
-    setCargando(true); // Activar indicador de carga para dar feedback visual
-    
-    // Determinar qué rol debe tener el usuario al loguearse mediante el botón de prueba de acceso rápido
-    let forceRole: UserRole = 'client';
-    if (usuarioDemo === 'empresa@todoya.com') {
-      forceRole = 'business';
-    } else if (usuarioDemo === 'juan.rios@todoya.com' || usuarioDemo === 'proveedor_empresa@todoya.com') {
-      forceRole = 'provider';
-    }
-    
-    // Retraso artificial mínimo de 400ms para simular la autenticación y dar feedback
-    setTimeout(async () => {
-      const exito = await login(usuarioDemo, 'demo1234', forceRole);
-      setCargando(false); // Desactivar carga
-      if (exito) {
-        // Redireccionar inmediatamente según el rol forzado para evitar quedarse en pantallas incorrectas
-        if (forceRole === 'provider') {
-          router.replace('/leads');
-        } else {
-          router.replace('/');
-        }
-      } else {
-        setConfiguracionModal({
-          titulo: '❌ Error de Acceso Rápido',
-          mensaje: 'No se pudo iniciar sesión automáticamente con la cuenta de prueba.'
-        });
-        setMostrarModal(true);
-      }
-    }, 400);
+  const manejarAccesoRapido = async (_usuarioDemo: string) => {
+    setConfiguracionModal({ titulo: 'Acceso de demostración no disponible', mensaje: 'Inicia sesión con una cuenta Supabase real.' });
+    setMostrarModal(true);
   };
 
   /**
@@ -355,26 +298,33 @@ export default function LoginScreen() {
    * Inicia el flujo de autenticación social flotante (OAuth Real o Simulado como fallback)
    */
   const iniciarOauth = async (proveedor: 'google' | 'linkedin') => {
+    setConfiguracionModal({ titulo: 'Próximamente', mensaje: 'OAuth social requiere configuración segura de Supabase.' });
+    setMostrarModal(true);
+    return;
+
     const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
     const linkedinClientId = process.env.EXPO_PUBLIC_LINKEDIN_CLIENT_ID;
 
-    // 1. FLUJO DE GOOGLE REAL
+    /*// 1. FLUJO DE GOOGLE REAL
     if (proveedor === 'google' && googleClientId) {
-      const redirectUri = Platform.OS === 'web' 
-        ? window.location.origin 
+      const redirectUri = Platform.OS === 'web'
+        ? window.location.origin
         : 'https://todo-ya.vercel.app';
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=profile%20email`;
-      
+
       if (Platform.OS === 'web') {
         window.location.href = authUrl;
       } else {
         try {
           const WebBrowser = await import('expo-web-browser');
           const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+          // Al evaluar result.type === 'success', TypeScript habilita result.url automáticamente
           if (result.type === 'success' && result.url) {
-            const hashIdx = result.url.indexOf('#');
+            const callbackUrl = result.url;
+            const hashIdx = callbackUrl.indexOf('#');
             if (hashIdx !== -1) {
-              const hash = result.url.substring(hashIdx + 1);
+              const hash = callbackUrl.substring(hashIdx + 1);
               const params = new URLSearchParams(hash);
               const accessToken = params.get('access_token');
               if (accessToken) {
@@ -399,17 +349,19 @@ export default function LoginScreen() {
 
     // 2. FLUJO DE LINKEDIN REAL
     if (proveedor === 'linkedin' && linkedinClientId) {
-      const redirectUri = Platform.OS === 'web' 
-        ? window.location.origin 
+      const redirectUri = Platform.OS === 'web'
+        ? window.location.origin
         : 'https://todo-ya.vercel.app';
       const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${linkedinClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email`;
-      
+
       if (Platform.OS === 'web') {
         window.location.href = authUrl;
       } else {
         try {
           const WebBrowser = await import('expo-web-browser');
           const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+          // Mismo ajuste aquí: verificar primero result.type === 'success'
           if (result.type === 'success' && result.url) {
             const urlObj = new URL(result.url);
             const code = urlObj.searchParams.get('code');
@@ -435,13 +387,52 @@ export default function LoginScreen() {
       }
       return;
     }
+    // 2. FLUJO DE LINKEDIN REAL
+    if (proveedor === 'linkedin' && linkedinClientId) {
+      const redirectUri = Platform.OS === 'web'
+        ? window.location.origin
+        : 'https://todo-ya.vercel.app';
+      const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${linkedinClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email`;
+
+      if (Platform.OS === 'web') {
+        window.location.href = authUrl;
+      } else {
+        try {
+          const WebBrowser = await import('expo-web-browser');
+          const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+          const callbackUrl = (result as { url?: string }).url;
+          if (result.type === 'success' && callbackUrl) {
+            const urlObj = new URL(callbackUrl);
+            const code = urlObj.searchParams.get('code');
+            if (code) {
+              setCargando(true);
+              const res = await fetch('/api/auth-linkedin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, redirectUri })
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                  await registrarEIniciarSesion(data.name, data.email, 'client', 'linkedin');
+                }
+              }
+              setCargando(false);
+            }
+          }
+        } catch (e) {
+          console.warn('Error en LinkedIn Sign-In nativo:', e);
+        }
+      }
+      return;
+    }*/
 
     // 3. FALLBACK DE SIMULACIÓN INTERACTIVA (Si no hay variables de entorno configuradas)
     setConfiguracionModal({
       titulo: `ℹ️ Modo de Simulación de ${proveedor === 'google' ? 'Google' : 'LinkedIn'}`,
-      mensaje: `Estamos mostrando la simulación interactiva porque no has configurado tus credenciales OAuth.\n\nPara habilitar el login real de ${proveedor === 'google' ? 'Google/Gmail' : 'LinkedIn'} en producción, por favor agrega las variables a tu archivo .env o en el panel de Vercel:\n\n` + 
-        (proveedor === 'google' 
-          ? 'EXPO_PUBLIC_GOOGLE_CLIENT_ID="TU_GOOGLE_CLIENT_ID"' 
+      mensaje: `Estamos mostrando la simulación interactiva porque no has configurado tus credenciales OAuth.\n\nPara habilitar el login real de ${proveedor === 'google' ? 'Google/Gmail' : 'LinkedIn'} en producción, por favor agrega las variables a tu archivo .env o en el panel de Vercel:\n\n` +
+        (proveedor === 'google'
+          ? 'EXPO_PUBLIC_GOOGLE_CLIENT_ID="TU_GOOGLE_CLIENT_ID"'
           : 'EXPO_PUBLIC_LINKEDIN_CLIENT_ID="TU_LINKEDIN_CLIENT_ID"\nEXPO_PUBLIC_LINKEDIN_CLIENT_SECRET="TU_LINKEDIN_CLIENT_SECRET"')
     });
     setMostrarModal(true);
@@ -465,7 +456,7 @@ export default function LoginScreen() {
    */
   const manejarSeleccionCorreoOauth = (correoSeleccionado: string) => {
     setCorreoOauth(correoSeleccionado);
-    
+
     // Sugiere un nombre basado en las primeras letras del correo
     const partes = correoSeleccionado.split('@')[0];
     const nombreSugerido = partes
@@ -483,7 +474,7 @@ export default function LoginScreen() {
         const correoRegistrado = (u.correoOTelefono || (u as any).emailOrPhone || '').toLowerCase();
         return correoRegistrado === correoSeleccionado.toLowerCase();
       });
-      
+
       if (usuarioExiste) {
         // Cuenta existente: Inicia sesión directamente respetando sus datos
         registrarEIniciarSesion(usuarioExiste.nombre, usuarioExiste.correoOTelefono, usuarioExiste.rol, proveedorOauth || 'google');
@@ -553,7 +544,7 @@ export default function LoginScreen() {
 
     setTimeout(async () => {
       await registrarEIniciarSesion(nombreOauth, correoOauth, rolOauth, proveedorOauth || 'google');
-      
+
       setConfiguracionModal({
         titulo: '🎉 ¡Registro Exitoso!',
         mensaje: `Te has registrado correctamente con tu cuenta de ${proveedorOauth === 'google' ? 'Google' : 'LinkedIn'}. ¡Bienvenido a Todo Ya, ${nombreOauth}!`
@@ -566,8 +557,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView 
-      style={{ flex: 1, backgroundColor: '#f5f5f5' }} 
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#f5f5f5' }}
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
@@ -578,8 +569,8 @@ export default function LoginScreen() {
       <View style={styles.content}>
         {/* Sección de Encabezado y Logo */}
         <View style={styles.logoContainer}>
-          <Image 
-            source={require('@/assets/images/icon.png')} 
+          <Image
+            source={require('@/assets/images/icon.png')}
             style={styles.logoImage}
             contentFit="contain"
           />
@@ -588,30 +579,40 @@ export default function LoginScreen() {
 
         {/* Tarjeta de Formulario de Entrada */}
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>{esRegistro ? 'Crear Cuenta' : 'Iniciar Sesión'}</Text>
+          <Text style={[styles.formTitle, tipoEntidad === 'empresa' && { color: '#4338ca' }]}>
+            {esRegistro ? (tipoEntidad === 'empresa' ? 'Crear cuenta empresarial' : 'Crear cuenta personal') : (tipoEntidad === 'empresa' ? 'Acceso Empresas' : 'Acceso Personas')}
+          </Text>
+          <View style={[styles.entityToggleContainer, { marginBottom: 18 }]}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityState={{ selected: tipoEntidad === 'natural' }}
+              style={[styles.entityToggleBtn, tipoEntidad === 'natural' && styles.entityToggleActive]}
+              onPress={() => { if (!cargando) { setTipoEntidad('natural'); setContrasena(''); } }}
+              disabled={cargando}
+            >
+              <Ionicons name="person-outline" size={17} color={tipoEntidad === 'natural' ? '#2F2F2F' : '#64748b'} />
+              <Text style={[styles.entityToggleText, tipoEntidad === 'natural' && styles.entityToggleActiveText]}>Persona</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityState={{ selected: tipoEntidad === 'empresa' }}
+              style={[styles.entityToggleBtn, tipoEntidad === 'empresa' && { backgroundColor: '#6366f1', borderColor: '#6366f1' }]}
+              onPress={() => { if (!cargando) { setTipoEntidad('empresa'); setContrasena(''); } }}
+              disabled={cargando}
+            >
+              <Ionicons name="business-outline" size={17} color={tipoEntidad === 'empresa' ? '#fff' : '#64748b'} />
+              <Text style={[styles.entityToggleText, tipoEntidad === 'empresa' && { color: '#fff', fontWeight: '700' }]}>Empresa</Text>
+            </TouchableOpacity>
+          </View>
+          {!esRegistro && (
+            <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 16, marginTop: -4 }}>
+              {tipoEntidad === 'empresa' ? 'Ingresa con la cuenta corporativa registrada en Todo Ya.' : 'Ingresa con tu cuenta personal de Todo Ya.'}
+            </Text>
+          )}
 
           {esRegistro ? (
             // FORMULARIO DE REGISTRO MANUAL
             <ScrollView style={{ maxHeight: Platform.OS === 'web' ? 550 : 320 }} showsVerticalScrollIndicator={Platform.OS !== 'web'}>
-              {/* Selector de Tipo de Entidad (Persona Natural vs Empresa) */}
-              <Text style={styles.inputLabel}>¿Cómo te registras?</Text>
-              <View style={styles.entityToggleContainer}>
-                <TouchableOpacity 
-                  style={[styles.entityToggleBtn, tipoEntidad === 'natural' && styles.entityToggleActive]}
-                  onPress={() => setTipoEntidad('natural')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.entityToggleText, tipoEntidad === 'natural' && styles.entityToggleActiveText]}>Persona Natural</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.entityToggleBtn, tipoEntidad === 'empresa' && styles.entityToggleActive]}
-                  onPress={() => setTipoEntidad('empresa')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.entityToggleText, tipoEntidad === 'empresa' && styles.entityToggleActiveText]}>Empresa (B2B)</Text>
-                </TouchableOpacity>
-              </View>
-
               {/* Nombre / Razón Social */}
               <View style={[
                 styles.inputContainer,
@@ -633,7 +634,7 @@ export default function LoginScreen() {
               {/* Celular con Selector de Código de País */}
               <Text style={styles.inputLabel}>Número de Celular:</Text>
               <View style={styles.phoneRowContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[
                     styles.countryDropdownBtn,
                     tipoEntidad === 'empresa' ? styles.borderB2B : styles.borderNormal
@@ -753,8 +754,8 @@ export default function LoginScreen() {
                   <Text style={styles.inputLabel}>Rubro Comercial:</Text>
                   <View style={styles.rubroContainer}>
                     {['Papelería', 'Decoración', 'Branding & Lettering', 'Servicios Generales'].map((r) => (
-                      <TouchableOpacity 
-                        key={r} 
+                      <TouchableOpacity
+                        key={r}
                         style={[styles.rubroChip, rubro === r && styles.rubroChipActive]}
                         onPress={() => setRubro(r)}
                         activeOpacity={0.7}
@@ -773,12 +774,12 @@ export default function LoginScreen() {
               {/* Campo Celular / Correo */}
               <View style={[
                 styles.inputContainer,
-                focusedInput === 'correoOTelefono' && styles.inputContainerFocused
+                focusedInput === 'correoOTelefono' && (tipoEntidad === 'empresa' ? styles.inputContainerFocusedB2B : styles.inputContainerFocused)
               ]}>
-                <Ionicons name="mail-outline" size={20} color={focusedInput === 'correoOTelefono' ? '#cca000' : '#888'} style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={20} color={focusedInput === 'correoOTelefono' ? (tipoEntidad === 'empresa' ? '#6366f1' : '#cca000') : '#888'} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Celular o correo electrónico"
+                  placeholder={tipoEntidad === 'empresa' ? 'Correo electrónico empresarial' : 'Correo electrónico'}
                   placeholderTextColor="#999"
                   value={correoOTelefono}
                   onChangeText={setCorreoOTelefono}
@@ -793,9 +794,9 @@ export default function LoginScreen() {
               {/* Campo Contraseña */}
               <View style={[
                 styles.inputContainer,
-                focusedInput === 'contrasena' && styles.inputContainerFocused
+                focusedInput === 'contrasena' && (tipoEntidad === 'empresa' ? styles.inputContainerFocusedB2B : styles.inputContainerFocused)
               ]}>
-                <Ionicons name="lock-closed-outline" size={20} color={focusedInput === 'contrasena' ? '#cca000' : '#888'} style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color={focusedInput === 'contrasena' ? (tipoEntidad === 'empresa' ? '#6366f1' : '#cca000') : '#888'} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Contraseña"
@@ -815,22 +816,22 @@ export default function LoginScreen() {
           {/* Botón o Cargando */}
           {cargando ? (
             <View style={styles.loadingWrapper}>
-              <ActivityIndicator size="large" color="#FFB400" />
+              <ActivityIndicator size="large" color={tipoEntidad === 'empresa' ? '#6366f1' : '#FFB400'} />
               <Text style={styles.loadingText}>Procesando solicitud...</Text>
             </View>
           ) : (
-            <TouchableOpacity 
-              style={styles.loginBtn} 
+            <TouchableOpacity
+              style={[styles.loginBtn, tipoEntidad === 'empresa' && { backgroundColor: '#6366f1', shadowColor: '#6366f1' }]}
               onPress={esRegistro ? manejarRegistroManual : manejarLoginNormal}
               activeOpacity={0.7}
             >
-              <Text style={styles.loginBtnText}>{esRegistro ? 'Registrarse' : 'Ingresar'}</Text>
-              <Ionicons name="arrow-forward" size={20} color="#2F2F2F" />
+              <Text style={[styles.loginBtnText, tipoEntidad === 'empresa' && { color: '#fff' }]}>{esRegistro ? 'Registrarse' : (tipoEntidad === 'empresa' ? 'Entrar como Empresa' : 'Entrar como Persona')}</Text>
+              <Ionicons name="arrow-forward" size={20} color={tipoEntidad === 'empresa' ? '#fff' : '#2F2F2F'} />
             </TouchableOpacity>
           )}
 
           {/* Toggle entre Login y Registro */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.toggleRegisterBtn}
             onPress={() => setEsRegistro(!esRegistro)}
             disabled={cargando}
@@ -846,16 +847,16 @@ export default function LoginScreen() {
         <View style={styles.demoCard}>
           <Text style={styles.demoTitle}>💡 Acceso rápido de prueba (Entrar al instante):</Text>
           <View style={styles.demoButtons}>
-            <TouchableOpacity 
-              style={styles.demoBtn} 
+            <TouchableOpacity
+              style={styles.demoBtn}
               onPress={() => manejarAccesoRapido('luis@todoya.com')}
               disabled={cargando}
               activeOpacity={0.7}
             >
               <Text style={styles.demoBtnText}>Cliente (Luis)</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.demoBtn} 
+            <TouchableOpacity
+              style={styles.demoBtn}
               onPress={() => manejarAccesoRapido('juan.rios@todoya.com')}
               disabled={cargando}
               activeOpacity={0.7}
@@ -864,16 +865,16 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
           <View style={[styles.demoButtons, { marginTop: 10 }]}>
-            <TouchableOpacity 
-              style={styles.demoBtn} 
+            <TouchableOpacity
+              style={styles.demoBtn}
               onPress={() => manejarAccesoRapido('empresa@todoya.com')}
               disabled={cargando}
               activeOpacity={0.7}
             >
               <Text style={styles.demoBtnText}>Empresa (Alfa)</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.demoBtn} 
+            <TouchableOpacity
+              style={styles.demoBtn}
               onPress={() => manejarAccesoRapido('proveedor_empresa@todoya.com')}
               disabled={cargando}
               activeOpacity={0.7}
@@ -890,22 +891,22 @@ export default function LoginScreen() {
             Simula paso a paso flujos completos para clientes o proveedores.
           </Text>
           <View style={styles.demoButtons}>
-            <TouchableOpacity 
-              style={[styles.demoBtn, { backgroundColor: '#fffbeb', borderColor: '#d97706' }]} 
+            <TouchableOpacity
+              style={[styles.demoBtn, { backgroundColor: '#fffbeb', borderColor: '#d97706' }]}
               onPress={() => {
                 setCargando(true);
-                startClientSimulation().finally(() => setCargando(false));
+                setCargando(false); setConfiguracionModal({ titulo: 'Simulación deshabilitada', mensaje: 'Utiliza una cuenta real.' }); setMostrarModal(true);
               }}
               disabled={cargando}
               activeOpacity={0.7}
             >
               <Text style={[styles.demoBtnText, { color: '#d97706', fontWeight: 'bold' }]}>Simular Cliente 🏠</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.demoBtn, { backgroundColor: '#e0e7ff', borderColor: '#4f46e5' }]} 
+            <TouchableOpacity
+              style={[styles.demoBtn, { backgroundColor: '#e0e7ff', borderColor: '#4f46e5' }]}
               onPress={() => {
                 setCargando(true);
-                startProviderSimulation().finally(() => setCargando(false));
+                setCargando(false); setConfiguracionModal({ titulo: 'Simulación deshabilitada', mensaje: 'Utiliza una cuenta real.' }); setMostrarModal(true);
               }}
               disabled={cargando}
               activeOpacity={0.7}
@@ -919,7 +920,7 @@ export default function LoginScreen() {
         <Text style={styles.socialDivider}>O CONECTAR CON</Text>
 
         <View style={styles.socialContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.socialBtn}
             onPress={() => iniciarOauth('google')}
           >
@@ -927,7 +928,7 @@ export default function LoginScreen() {
             <Text style={styles.socialBtnText}>Google / Gmail</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.socialBtn, { borderColor: '#0077b5' }]}
             onPress={() => iniciarOauth('linkedin')}
           >
@@ -951,7 +952,7 @@ export default function LoginScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{configuracionModal.titulo}</Text>
             <Text style={styles.modalMessage}>{configuracionModal.mensaje}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalConfirmBtn}
               onPress={() => setMostrarModal(false)}
             >
@@ -1054,8 +1055,8 @@ export default function LoginScreen() {
             ) : null}
 
             <Text style={styles.countdownText}>
-              {smsCountdown > 0 
-                ? `El código expira en ${smsCountdown}s` 
+              {smsCountdown > 0
+                ? `El código expira en ${smsCountdown}s`
                 : 'El código ha expirado'}
             </Text>
 
@@ -1095,7 +1096,7 @@ export default function LoginScreen() {
       {proveedorOauth && (
         <View style={styles.oauthOverlay}>
           <View style={styles.oauthWindow}>
-            
+
             {/* Cabecera de ventana de navegador simulada */}
             <View style={styles.oauthBrowserHeader}>
               <View style={styles.browserDots}>
@@ -1104,8 +1105,8 @@ export default function LoginScreen() {
                 <View style={[styles.dot, { backgroundColor: '#27c93f' }]} />
               </View>
               <Text style={styles.browserUrl}>
-                {proveedorOauth === 'google' 
-                  ? 'accounts.google.com/oauth' 
+                {proveedorOauth === 'google'
+                  ? 'accounts.google.com/oauth'
                   : 'linkedin.com/uas/oauth2'}
               </Text>
               <TouchableOpacity style={styles.browserClose} onPress={() => setProveedorOauth(null)} activeOpacity={0.7}>
@@ -1124,7 +1125,7 @@ export default function LoginScreen() {
                       <Text style={styles.oauthSubtitle}>para continuar a <Text style={{ fontWeight: 'bold' }}>Todo Ya</Text></Text>
 
                       <View style={styles.oauthAccountsList}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.oauthAccountItem}
                           onPress={() => manejarSeleccionCorreoOauth('luis.m@gmail.com')}
                           activeOpacity={0.7}
@@ -1136,7 +1137,7 @@ export default function LoginScreen() {
                           </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.oauthAccountItem}
                           onPress={() => manejarSeleccionCorreoOauth('juan.rios@gmail.com')}
                           activeOpacity={0.7}
@@ -1149,7 +1150,7 @@ export default function LoginScreen() {
                         </TouchableOpacity>
 
                         {!mostrarEntradaCorreoPersonalizado ? (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={[styles.oauthAccountItem, { justifyContent: 'center', backgroundColor: '#f9f9f9', borderStyle: 'dashed' }]}
                             onPress={() => setMostrarEntradaCorreoPersonalizado(true)}
                             activeOpacity={0.7}
@@ -1170,14 +1171,14 @@ export default function LoginScreen() {
                               onBlur={() => setFocusedInput(null)}
                             />
                             <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                              <TouchableOpacity 
+                              <TouchableOpacity
                                 style={[styles.oauthBtnSecondary, { flex: 1 }]}
                                 onPress={() => setMostrarEntradaCorreoPersonalizado(false)}
                                 activeOpacity={0.7}
                               >
                                 <Text style={{ color: '#2F2F2F', fontWeight: '600' }}>Atrás</Text>
                               </TouchableOpacity>
-                              <TouchableOpacity 
+                              <TouchableOpacity
                                 style={[styles.oauthBtnPrimary, { flex: 2, backgroundColor: '#ea4335' }]}
                                 onPress={manejarEnvioCorreoPersonalizado}
                                 activeOpacity={0.7}
@@ -1209,7 +1210,7 @@ export default function LoginScreen() {
                       </View>
 
                       <View style={{ gap: 12, width: '100%', marginTop: 16 }}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.oauthAccountItem}
                           onPress={() => manejarAutenticacionLinkedIn('mario.linkedin@todoya.com', 'Mario Céspedes')}
                           activeOpacity={0.7}
@@ -1221,7 +1222,7 @@ export default function LoginScreen() {
                           </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.oauthAccountItem}
                           onPress={() => manejarAutenticacionLinkedIn('gloria.valdez@linkedin.com', 'Gloria Valdez')}
                           activeOpacity={0.7}
@@ -1243,8 +1244,8 @@ export default function LoginScreen() {
                 <View style={styles.oauthLoadingContainer}>
                   <ActivityIndicator size="large" color={proveedorOauth === 'google' ? '#ea4335' : '#0077b5'} />
                   <Text style={styles.oauthLoadingText}>
-                    {proveedorOauth === 'google' 
-                      ? 'Sincronizando con Google Account...' 
+                    {proveedorOauth === 'google'
+                      ? 'Sincronizando con Google Account...'
                       : 'Cargando perfil profesional de LinkedIn...'}
                   </Text>
                 </View>
@@ -1272,9 +1273,9 @@ export default function LoginScreen() {
                   </Text>
 
                   {/* Botón Finalizar */}
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
-                      styles.oauthBtnSubmit, 
+                      styles.oauthBtnSubmit,
                       { backgroundColor: proveedorOauth === 'google' ? '#ea4335' : '#0077b5' }
                     ]}
                     onPress={manejarRegistroCompleto}
