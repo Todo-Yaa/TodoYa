@@ -1,8 +1,11 @@
+import { validPeruRuc } from '../../utils/security';
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const type = url.searchParams.get('type') || 'dni';
     const number = url.searchParams.get('number');
+
 
     // 1. Consulta de Tipo de Cambio SUNAT / SBS en Perú (100% Gratis)
     if (type === 'exchange') {
@@ -86,11 +89,21 @@ export async function GET(request: Request) {
       });
     }
 
-    // 3. Consulta de RUC SUNAT Perú (Gratuito vía apis.net.pe)
+    // 3. Consulta de RUC SUNAT Perú (Gratuito vía apis.net.pe con validación Módulo 11)
     if (type === 'ruc') {
       if (cleanNum.length !== 11) {
         return Response.json(
           { success: false, error: 'Un RUC peruano debe contener exactamente 11 dígitos.' },
+          { status: 400 }
+        );
+      }
+
+      if (!validPeruRuc(cleanNum)) {
+        return Response.json(
+          { 
+            success: false, 
+            error: 'El número de RUC no es válido según el algoritmo oficial de SUNAT (debe iniciar con 10, 15, 17 o 20 y tener un dígito verificador correcto).' 
+          },
           { status: 400 }
         );
       }

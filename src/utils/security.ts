@@ -117,3 +117,22 @@ export function sanitizePromptInput(text: unknown): string {
     .replace(/(?:system instruction|ignore previous|disregard prior|act as root|bypass rules|jailbreak)/gi, '[filtrado]')
     .replace(/```(?:system|prompt|instruction)/gi, '```');
 }
+
+/**
+ * Valida matemáticamente un RUC peruano usando el algoritmo oficial de Módulo 11 de SUNAT.
+ * Verifica:
+ * 1. Longitud exacta de 11 dígitos.
+ * 2. Prefijo válido oficial (10: Natural con negocio, 15: Extranjero, 17: Especial, 20: Jurídico/Empresa).
+ * 3. Dígito verificador de control ponderado por factores [5, 4, 3, 2, 7, 6, 5, 4, 3, 2].
+ */
+export function validPeruRuc(ruc: string | number): boolean {
+  const str = String(ruc).trim().replace(/\D/g, '');
+  if (!/^(10|15|17|20)\d{9}$/.test(str)) return false;
+  const weights = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  const sum = weights.reduce((total, weight, index) => total + Number(str[index]) * weight, 0);
+  const checkDigit = (11 - (sum % 11)) % 10;
+  return checkDigit === Number(str[10]);
+}
+
+export const isValidPeruRuc = validPeruRuc;
+
